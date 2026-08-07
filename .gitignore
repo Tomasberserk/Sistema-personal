@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Jarvis local SQLite database
+jarvis.sqlite3

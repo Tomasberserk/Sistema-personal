@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: ingresos
+    description: Registro de ingresos
+  - name: gastos-fijos
+    description: Gastos fijos configurados
+  - name: gastos-variables
+    description: Gastos variables del día a día
+  - name: kilometraje
+    description: Registros de kilometraje
+  - name: resumen
+    description: Resumen financiero
 paths:
   /healthz:
     get:
@@ -24,7 +34,350 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /ingresos:
+    get:
+      operationId: listIngresos
+      tags: [ingresos]
+      summary: Lista ingresos
+      responses:
+        "200":
+          description: Lista de ingresos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingreso"
+    post:
+      operationId: createIngreso
+      tags: [ingresos]
+      summary: Registra un ingreso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngresoInput"
+      responses:
+        "201":
+          description: Ingreso creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingreso"
+  /ingresos/{id}:
+    get:
+      operationId: getIngreso
+      tags: [ingresos]
+      summary: Obtiene un ingreso
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Ingreso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingreso"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateIngreso
+      tags: [ingresos]
+      summary: Actualiza un ingreso
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngresoUpdate"
+      responses:
+        "200":
+          description: Ingreso actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingreso"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteIngreso
+      tags: [ingresos]
+      summary: Elimina un ingreso
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Ingreso eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /gastos-fijos:
+    get:
+      operationId: listGastosFijos
+      tags: [gastos-fijos]
+      summary: Lista gastos fijos
+      responses:
+        "200":
+          description: Lista de gastos fijos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GastoFijo"
+    post:
+      operationId: createGastoFijo
+      tags: [gastos-fijos]
+      summary: Registra un gasto fijo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GastoFijoInput"
+      responses:
+        "201":
+          description: Gasto fijo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoFijo"
+  /gastos-fijos/{id}:
+    get:
+      operationId: getGastoFijo
+      tags: [gastos-fijos]
+      summary: Obtiene un gasto fijo
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Gasto fijo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoFijo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateGastoFijo
+      tags: [gastos-fijos]
+      summary: Actualiza un gasto fijo
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GastoFijoUpdate"
+      responses:
+        "200":
+          description: Gasto fijo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoFijo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteGastoFijo
+      tags: [gastos-fijos]
+      summary: Elimina un gasto fijo
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Gasto fijo eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /gastos-variables:
+    get:
+      operationId: listGastosVariables
+      tags: [gastos-variables]
+      summary: Lista gastos variables
+      responses:
+        "200":
+          description: Lista de gastos variables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GastoVariable"
+    post:
+      operationId: createGastoVariable
+      tags: [gastos-variables]
+      summary: Registra un gasto variable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GastoVariableInput"
+      responses:
+        "201":
+          description: Gasto variable creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoVariable"
+  /gastos-variables/{id}:
+    get:
+      operationId: getGastoVariable
+      tags: [gastos-variables]
+      summary: Obtiene un gasto variable
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Gasto variable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoVariable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateGastoVariable
+      tags: [gastos-variables]
+      summary: Actualiza un gasto variable
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GastoVariableUpdate"
+      responses:
+        "200":
+          description: Gasto variable actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GastoVariable"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteGastoVariable
+      tags: [gastos-variables]
+      summary: Elimina un gasto variable
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Gasto variable eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /kilometraje:
+    get:
+      operationId: listKilometrajes
+      tags: [kilometraje]
+      summary: Lista registros de kilometraje
+      responses:
+        "200":
+          description: Lista de kilometraje
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Kilometraje"
+    post:
+      operationId: createKilometraje
+      tags: [kilometraje]
+      summary: Registra kilometraje
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KilometrajeInput"
+      responses:
+        "201":
+          description: Kilometraje creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kilometraje"
+  /kilometraje/{id}:
+    get:
+      operationId: getKilometraje
+      tags: [kilometraje]
+      summary: Obtiene un registro de kilometraje
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Registro de kilometraje
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kilometraje"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateKilometraje
+      tags: [kilometraje]
+      summary: Actualiza kilometraje
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KilometrajeUpdate"
+      responses:
+        "200":
+          description: Registro actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kilometraje"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteKilometraje
+      tags: [kilometraje]
+      summary: Elimina kilometraje
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Registro eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /resumen/mes-actual:
+    get:
+      operationId: getResumenMesActual
+      tags: [resumen]
+      summary: Calcula el resumen financiero del mes actual
+      responses:
+        "200":
+          description: Resumen financiero
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumenMensual"
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: number
+        minimum: 1
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +386,193 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+      required: [detail]
+    Ingreso:
+      type: object
+      properties:
+        id:
+          type: number
+        fecha:
+          type: string
+          format: date
+        fuente:
+          type: string
+          enum: [Didi, papa, amigo, otro]
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [id, fecha, fuente, monto, nota]
+    IngresoInput:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        fuente:
+          type: string
+          enum: [Didi, papa, amigo, otro]
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [fecha, fuente, monto, nota]
+    IngresoUpdate:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        fuente:
+          type: string
+          enum: [Didi, papa, amigo, otro]
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+    GastoFijo:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        tipo:
+          type: string
+          enum: [mensual, por_kilometraje]
+        activo:
+          type: boolean
+      required: [id, nombre, monto, tipo, activo]
+    GastoFijoInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        tipo:
+          type: string
+          enum: [mensual, por_kilometraje]
+        activo:
+          type: boolean
+      required: [nombre, monto, tipo, activo]
+    GastoFijoUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        tipo:
+          type: string
+          enum: [mensual, por_kilometraje]
+        activo:
+          type: boolean
+    GastoVariable:
+      type: object
+      properties:
+        id:
+          type: number
+        fecha:
+          type: string
+          format: date
+        categoria:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [id, fecha, categoria, monto, nota]
+    GastoVariableInput:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        categoria:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [fecha, categoria, monto, nota]
+    GastoVariableUpdate:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        categoria:
+          type: string
+        monto:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+    Kilometraje:
+      type: object
+      properties:
+        id:
+          type: number
+        fecha:
+          type: string
+          format: date
+        km_actuales:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [id, fecha, km_actuales, nota]
+    KilometrajeInput:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        km_actuales:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [fecha, km_actuales, nota]
+    KilometrajeUpdate:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        km_actuales:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+    ResumenMensual:
+      type: object
+      properties:
+        mes:
+          type: string
+        total_ingresos:
+          type: number
+        total_gastos_fijos:
+          type: number
+        total_gastos_variables:
+          type: number
+        saldo:
+          type: number
+      required: [mes, total_ingresos, total_gastos_fijos, total_gastos_variables, saldo]
 

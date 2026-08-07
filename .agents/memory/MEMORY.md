@@ -1,0 +1,1 @@
+- [OpenAPI integer compatibility](openapi-integer-compatibility.md) — this workspace's Zod generator does not support generated `z.int()` with its pinned Zod version.

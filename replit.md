@@ -1,6 +1,7 @@
-# [Project name]
+# Jarvis
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Jarvis es un sistema personal de gestión financiera para registrar ingresos,
+gastos, kilometraje y el saldo del mes en pesos colombianos.
 
 ## Run & Operate
 
@@ -9,36 +10,49 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `uv run --project . uvicorn backend.main:app --reload` — run the FastAPI backend directly
+- SQLite local: `jarvis.sqlite3` (se crea automáticamente y no se versiona)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- API: Python 3.13 + FastAPI + Uvicorn
+- DB: SQLite
+- Frontend: React + Vite + TanStack Query
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `backend/main.py` — aplicación FastAPI, modelos Pydantic, inicialización SQLite y endpoints.
+- `artifacts/jarvis/src/App.tsx` — dashboard React, formularios y CRUD conectado a los hooks generados.
+- `artifacts/jarvis/src/index.css` — tema visual responsive de Jarvis.
+- `lib/api-spec/openapi.yaml` — contrato fuente para hooks y tipos del cliente.
+- `frontend/README.md` — referencia de la separación backend/frontend solicitada.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- FastAPI sirve las rutas bajo `/api` para que el frontend use el proxy del workspace sin URLs hardcodeadas.
+- SQLite se usa como persistencia local inicial; las tablas y datos iniciales se crean al iniciar.
+- Los gastos fijos `mensual` se suman automáticamente al resumen; los `por_kilometraje` representan configuración y no se cobran automáticamente.
+- La interfaz usa React Query para refrescar listas y resumen después de cada mutación.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Dashboard mensual con saldo, ingresos, gastos fijos y gastos variables.
+- CRUD completo de ingresos, gastos fijos, gastos variables y kilometraje.
+- Formularios responsive en español y valores monetarios formateados en COP.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- La app se llama Jarvis.
+- La interfaz debe estar en español y los montos deben mostrarse en COP.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Si cambia el contrato OpenAPI, ejecutar codegen antes de revisar el frontend.
+- El backend usa `jarvis.sqlite3`; borrar ese archivo reinicia los datos iniciales.
 
 ## Pointers
 
