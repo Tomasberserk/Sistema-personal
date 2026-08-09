@@ -9,7 +9,8 @@
 export interface GastoVariable {
   id: number;
   fecha: Date;
-  categoria: string;
+  /** @minimum 1 */
+  categoria_id: number;
   /** @minimum 0 */
   monto: number;
   nota: string;

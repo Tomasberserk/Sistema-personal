@@ -248,6 +248,7 @@ export const DeleteGastoFijoResponse = zod.void()
 /**
  * @summary Lista gastos variables
  */
+
 export const listGastosVariablesResponseMontoMin = 0;
 
 
@@ -255,7 +256,7 @@ export const listGastosVariablesResponseMontoMin = 0;
 export const ListGastosVariablesResponseItem = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "categoria": zod.string(),
+  "categoria_id": zod.number().min(1),
   "monto": zod.number().min(listGastosVariablesResponseMontoMin),
   "nota": zod.string()
 })
@@ -265,16 +266,18 @@ export const ListGastosVariablesResponse = zod.array(ListGastosVariablesResponse
 /**
  * @summary Registra un gasto variable
  */
+
 export const createGastoVariableBodyMontoMin = 0;
 
 
 
 export const CreateGastoVariableBody = zod.object({
   "fecha": zod.coerce.date(),
-  "categoria": zod.string(),
+  "categoria_id": zod.number().min(1),
   "monto": zod.number().min(createGastoVariableBodyMontoMin),
-  "nota": zod.string()
+  "nota": zod.string().optional()
 })
+
 
 export const createGastoVariableResponseMontoMin = 0;
 
@@ -283,7 +286,7 @@ export const createGastoVariableResponseMontoMin = 0;
 export const CreateGastoVariableResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "categoria": zod.string(),
+  "categoria_id": zod.number().min(1),
   "monto": zod.number().min(createGastoVariableResponseMontoMin),
   "nota": zod.string()
 })
@@ -299,6 +302,7 @@ export const GetGastoVariableParams = zod.object({
   "id": zod.coerce.number().min(1)
 })
 
+
 export const getGastoVariableResponseMontoMin = 0;
 
 
@@ -306,7 +310,7 @@ export const getGastoVariableResponseMontoMin = 0;
 export const GetGastoVariableResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "categoria": zod.string(),
+  "categoria_id": zod.number().min(1),
   "monto": zod.number().min(getGastoVariableResponseMontoMin),
   "nota": zod.string()
 })
@@ -322,16 +326,18 @@ export const UpdateGastoVariableParams = zod.object({
   "id": zod.coerce.number().min(1)
 })
 
+
 export const updateGastoVariableBodyMontoMin = 0;
 
 
 
 export const UpdateGastoVariableBody = zod.object({
   "fecha": zod.coerce.date().optional(),
-  "categoria": zod.string().optional(),
+  "categoria_id": zod.number().min(1).optional(),
   "monto": zod.number().min(updateGastoVariableBodyMontoMin).optional(),
   "nota": zod.string().optional()
 })
+
 
 export const updateGastoVariableResponseMontoMin = 0;
 
@@ -340,7 +346,7 @@ export const updateGastoVariableResponseMontoMin = 0;
 export const UpdateGastoVariableResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "categoria": zod.string(),
+  "categoria_id": zod.number().min(1),
   "monto": zod.number().min(updateGastoVariableResponseMontoMin),
   "nota": zod.string()
 })
@@ -357,6 +363,96 @@ export const DeleteGastoVariableParams = zod.object({
 })
 
 export const DeleteGastoVariableResponse = zod.void()
+
+
+/**
+ * @summary Lista categorías
+ */
+export const ListCategoriasResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activa": zod.boolean()
+})
+export const ListCategoriasResponse = zod.array(ListCategoriasResponseItem)
+
+
+/**
+ * @summary Crea una categoría
+ */
+export const CreateCategoriaBody = zod.object({
+  "nombre": zod.string(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "activa": zod.boolean().optional()
+})
+
+export const CreateCategoriaResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activa": zod.boolean()
+})
+
+
+/**
+ * @summary Obtiene una categoría
+ */
+
+
+
+export const GetCategoriaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetCategoriaResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activa": zod.boolean()
+})
+
+
+/**
+ * @summary Actualiza una categoría
+ */
+
+
+
+export const UpdateCategoriaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const UpdateCategoriaBody = zod.object({
+  "nombre": zod.string().optional(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "activa": zod.boolean().optional()
+})
+
+export const UpdateCategoriaResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activa": zod.boolean()
+})
+
+
+/**
+ * @summary Elimina una categoría
+ */
+
+
+
+export const DeleteCategoriaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteCategoriaResponse = zod.void()
 
 
 /**
@@ -477,5 +573,20 @@ export const GetResumenMesActualResponse = zod.object({
   "total_gastos_variables": zod.number(),
   "saldo": zod.number()
 })
+
+
+/**
+ * @summary Resumen de gastos variables del mes desglosado por categoría
+ */
+export const GetResumenMensualPorCategoriaResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "cantidad": zod.number(),
+  "total": zod.number(),
+  "porcentaje": zod.number()
+})
+export const GetResumenMensualPorCategoriaResponse = zod.array(GetResumenMensualPorCategoriaResponseItem)
 
 

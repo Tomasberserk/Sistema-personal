@@ -20,6 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  Categoria,
+  CategoriaInput,
+  CategoriaUpdate,
+  Error,
   GastoFijo,
   GastoFijoInput,
   GastoFijoUpdate,
@@ -34,6 +38,7 @@ import type {
   KilometrajeInput,
   KilometrajeUpdate,
   NotFoundResponse,
+  ResumenCategoria,
   ResumenMensual
 } from './api.schemas';
 
@@ -1246,6 +1251,374 @@ export const useDeleteGastoVariable = <TError = ErrorType<NotFoundResponse>,
       return useMutation(getDeleteGastoVariableMutationOptions(options));
     }
 
+export const getListCategoriasUrl = () => {
+
+
+
+
+  return `/api/categorias`
+}
+
+/**
+ * @summary Lista categorías
+ */
+export const listCategorias = async ( options?: Parameters<typeof customFetch>[1]): Promise<Categoria[]> => {
+
+  return customFetch<Categoria[]>(getListCategoriasUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCategoriasQueryKey = () => {
+    return [
+    `/api/categorias`
+    ] as const;
+    }
+
+
+export const getListCategoriasQueryOptions = <TData = Awaited<ReturnType<typeof listCategorias>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCategorias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCategoriasQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCategorias>>> = ({ signal }) => listCategorias({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCategorias>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCategoriasQueryResult = NonNullable<Awaited<ReturnType<typeof listCategorias>>>
+export type ListCategoriasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista categorías
+ */
+
+export function useListCategorias<TData = Awaited<ReturnType<typeof listCategorias>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCategorias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCategoriasQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCategoriaUrl = () => {
+
+
+
+
+  return `/api/categorias`
+}
+
+/**
+ * @summary Crea una categoría
+ */
+export const createCategoria = async (categoriaInput: CategoriaInput, options?: Parameters<typeof customFetch>[1]): Promise<Categoria> => {
+
+  return customFetch<Categoria>(getCreateCategoriaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(categoriaInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCategoriaMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategoria>>, TError,{data: BodyType<CategoriaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCategoria>>, TError,{data: BodyType<CategoriaInput>}, TContext> => {
+
+const mutationKey = ['createCategoria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCategoria>>, {data: BodyType<CategoriaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCategoria(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCategoriaMutationResult = NonNullable<Awaited<ReturnType<typeof createCategoria>>>
+    export type CreateCategoriaMutationBody = BodyType<CategoriaInput>
+    export type CreateCategoriaMutationError = ErrorType<Error>
+
+    /**
+ * @summary Crea una categoría
+ */
+export const useCreateCategoria = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategoria>>, TError,{data: BodyType<CategoriaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCategoria>>,
+        TError,
+        {data: BodyType<CategoriaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCategoriaMutationOptions(options));
+    }
+
+export const getGetCategoriaUrl = (id: number,) => {
+
+
+
+
+  return `/api/categorias/${id}`
+}
+
+/**
+ * @summary Obtiene una categoría
+ */
+export const getCategoria = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Categoria> => {
+
+  return customFetch<Categoria>(getGetCategoriaUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCategoriaQueryKey = (id: number,) => {
+    return [
+    `/api/categorias/${id}`
+    ] as const;
+    }
+
+
+export const getGetCategoriaQueryOptions = <TData = Awaited<ReturnType<typeof getCategoria>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCategoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCategoriaQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCategoria>>> = ({ signal }) => getCategoria(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCategoria>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCategoriaQueryResult = NonNullable<Awaited<ReturnType<typeof getCategoria>>>
+export type GetCategoriaQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene una categoría
+ */
+
+export function useGetCategoria<TData = Awaited<ReturnType<typeof getCategoria>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCategoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCategoriaQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCategoriaUrl = (id: number,) => {
+
+
+
+
+  return `/api/categorias/${id}`
+}
+
+/**
+ * @summary Actualiza una categoría
+ */
+export const updateCategoria = async (id: number,
+    categoriaUpdate: CategoriaUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Categoria> => {
+
+  return customFetch<Categoria>(getUpdateCategoriaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(categoriaUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCategoriaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategoria>>, TError,{id: number;data: BodyType<CategoriaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCategoria>>, TError,{id: number;data: BodyType<CategoriaUpdate>}, TContext> => {
+
+const mutationKey = ['updateCategoria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCategoria>>, {id: number;data: BodyType<CategoriaUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCategoria(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCategoriaMutationResult = NonNullable<Awaited<ReturnType<typeof updateCategoria>>>
+    export type UpdateCategoriaMutationBody = BodyType<CategoriaUpdate>
+    export type UpdateCategoriaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Actualiza una categoría
+ */
+export const useUpdateCategoria = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategoria>>, TError,{id: number;data: BodyType<CategoriaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCategoria>>,
+        TError,
+        {id: number;data: BodyType<CategoriaUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCategoriaMutationOptions(options));
+    }
+
+export const getDeleteCategoriaUrl = (id: number,) => {
+
+
+
+
+  return `/api/categorias/${id}`
+}
+
+/**
+ * @summary Elimina una categoría
+ */
+export const deleteCategoria = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteCategoriaUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCategoriaMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategoria>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCategoria>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCategoria'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCategoria>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCategoria(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCategoriaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCategoria>>>
+
+    export type DeleteCategoriaMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Elimina una categoría
+ */
+export const useDeleteCategoria = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategoria>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCategoria>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCategoriaMutationOptions(options));
+    }
+
 export const getListKilometrajesUrl = () => {
 
 
@@ -1679,6 +2052,83 @@ export function useGetResumenMesActual<TData = Awaited<ReturnType<typeof getResu
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetResumenMesActualQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetResumenMensualPorCategoriaUrl = () => {
+
+
+
+
+  return `/api/resumen/mes-actual/por-categoria`
+}
+
+/**
+ * @summary Resumen de gastos variables del mes desglosado por categoría
+ */
+export const getResumenMensualPorCategoria = async ( options?: Parameters<typeof customFetch>[1]): Promise<ResumenCategoria[]> => {
+
+  return customFetch<ResumenCategoria[]>(getGetResumenMensualPorCategoriaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetResumenMensualPorCategoriaQueryKey = () => {
+    return [
+    `/api/resumen/mes-actual/por-categoria`
+    ] as const;
+    }
+
+
+export const getGetResumenMensualPorCategoriaQueryOptions = <TData = Awaited<ReturnType<typeof getResumenMensualPorCategoria>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResumenMensualPorCategoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetResumenMensualPorCategoriaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getResumenMensualPorCategoria>>> = ({ signal }) => getResumenMensualPorCategoria({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getResumenMensualPorCategoria>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetResumenMensualPorCategoriaQueryResult = NonNullable<Awaited<ReturnType<typeof getResumenMensualPorCategoria>>>
+export type GetResumenMensualPorCategoriaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Resumen de gastos variables del mes desglosado por categoría
+ */
+
+export function useGetResumenMensualPorCategoria<TData = Awaited<ReturnType<typeof getResumenMensualPorCategoria>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResumenMensualPorCategoria>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetResumenMensualPorCategoriaQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

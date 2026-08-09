@@ -18,15 +18,22 @@ https://github.com/Tomasberserk/Sistema-personal
 /lib/db          → Schema Drizzle (vacío, ignorar)
 /scripts         → Scripts varios
 
-## Estado actual del módulo de Finanzas
-Ya construido por Replit. Incluye:
-- Tabla ingresos: fecha, fuente, monto, nota
-- Tabla gastos_fijos: nombre, monto, tipo (mensual/por_kilometraje), activo
-- Tabla gastos_variables: fecha, categoria (texto libre), monto, nota ESTO HAY QUE MEJORAR
-- Tabla kilometraje: fecha, km_actuales, nota
-- CRUD completo para cada tabla
-- Endpoint resumen mensual (total ingresos, gastos, saldo)
-- Frontend React básico funcional
+## Estado actual del módulo de Finanzas (tarea Cosmos COMPLETADA)
+Todo lo anterior sigue funcionando (ingresos, gastos_fijos, gastos_variables, kilometraje, resumen mensual),
+pero con el rediseño Cosmos + categorías ya terminado:
+
+- Tabla `categorias` (id, nombre único, icono emoji, color hex, activa) + CRUD en API
+- `gastos_variables` ahora usa `categoria_id` (FK a categorias); migración automática de la BD vieja
+- 10 categorías por defecto sembradas al arrancar (Comida, Transporte, Gasolina, ...)
+- Endpoint `GET /api/resumen/mes-actual/por-categoria` (nombre, icono, color, cantidad, total, %)
+- Frontend con estilo **Cosmos**: fondo #0a0a0a + grain SVG, blobs blur, cards glassmorphism
+  (rgba blanco 0.04 / border 0.08 / radius 20px / backdrop-blur 12px), títulos serif (Georgia),
+  cuerpo Inter, inputs 14px redondeados, botón primario blanco pill, acentos = color de cada categoría
+- Dashboard: dona de gastos por categoría + resumen con barras de progreso coloreadas y %
+- Modal de gasto variable con selector de categorías en pills (emoji + nombre + color)
+- Página `/categorias` con CRUD visual (picker de emoji, swatches de color, toggle activo)
+- Cliente regenerado con orval (hooks `useListCategorias`, `useCreateCategoria`, `useUpdateCategoria`,
+  `useDeleteCategoria`, `useGetResumenMensualPorCategoria`)
 
 ## Gastos fijos ya insertados en la BD
 - Cuota moto: 390.000 COP, mensual
@@ -40,49 +47,15 @@ Ya construido por Replit. Incluye:
 
 ---
 
-## PROXIMA TAREA - Mejora modulo finanzas estilo Monefy + diseno Cosmos
+## SIGUIENTE TAREA - Módulo Habitos
+El módulo de Finanzas con categorías + estilo Cosmos ya está terminado.
+La próxima tarea natural es el **módulo de Hábitos**:
 
-### Cambios en la base de datos
-
-1. Crear tabla categorias:
-   - id, nombre (texto unico), icono (emoji), color (hex), activa (bool)
-
-2. Modificar gastos_variables:
-   - Reemplazar campo categoria (texto) por categoria_id (FK a categorias)
-
-3. Insertar categorias por defecto:
-   - Comida #e85d4a
-   - Transporte #5d8ae8
-   - Gasolina #e8a85d
-   - Entretenimiento #a85de8
-   - Ropa #5de8c4
-   - Medicina #e85d8a
-   - Regalos #e8d95d
-   - Hogar #5de87a
-   - Tecnologia #5dc4e8
-   - Aseo personal #e8755d
-
-### Nuevos endpoints FastAPI
-- CRUD completo para categorias
-- Resumen mensual desglosado por categoria (nombre, total, porcentaje)
-
-### Cambios en el frontend React - ESTILO VISUAL COSMOS
-
-Fondo: #0a0a0a con textura grain sutil (SVG noise filter)
-Blobs decorativos: 2-3 circulos grandes blur(80px), opacity: 0.15, color #333, en esquinas
-Cards: background rgba(255,255,255,0.04), border 1px solid rgba(255,255,255,0.08), border-radius 20px, backdrop-filter blur(12px)
-Tipografia titulos: Georgia o serif, color #f5f5f5
-Tipografia cuerpo: Inter o system-ui, color #a0a0a0
-Inputs: background rgba(255,255,255,0.06), border-radius 14px, sin borde en reposo, borde sutil al focus
-Boton primario: background #ffffff, color #000000, border-radius 50px, bold
-Boton secundario: outline blanco fondo transparente
-Acento: solo los colores de cada categoria
-
-### Funcionalidades nuevas del frontend
-- Selector visual de categorias al registrar gasto: grid de pills oscuros con emoji y nombre
-- Dashboard: grafico de dona con gastos por categoria sobre card glassmorphism
-- Seccion Categorias: CRUD visual con emoji, color y nombre
-- Resumen mensual: lista de categorias con barra de progreso coloreada y porcentaje
+- Check diario por hábito
+- Racha (streak)
+- Categorías personalizables con iconos custom
+- Reutilizar la plantilla: tabla en backend/main.py, patch en lib/api-spec/openapi.yaml,
+  regenerar cliente (`pnpm --filter @workspace/api-spec run codegen`), y UI Cosmos en artifacts/jarvis/
 
 ---
 

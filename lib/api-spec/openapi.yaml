@@ -16,6 +16,8 @@ tags:
     description: Gastos fijos configurados
   - name: gastos-variables
     description: Gastos variables del día a día
+  - name: categorias
+    description: Categorías de gastos variables
   - name: kilometraje
     description: Registros de kilometraje
   - name: resumen
@@ -271,6 +273,97 @@ paths:
           description: Gasto variable eliminado
         "404":
           $ref: "#/components/responses/NotFound"
+  /categorias:
+    get:
+      operationId: listCategorias
+      tags: [categorias]
+      summary: Lista categorías
+      responses:
+        "200":
+          description: Lista de categorías
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Categoria"
+    post:
+      operationId: createCategoria
+      tags: [categorias]
+      summary: Crea una categoría
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaInput"
+      responses:
+        "201":
+          description: Categoría creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "400":
+          description: Nombre duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /categorias/{id}:
+    get:
+      operationId: getCategoria
+      tags: [categorias]
+      summary: Obtiene una categoría
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Categoría
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateCategoria
+      tags: [categorias]
+      summary: Actualiza una categoría
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaUpdate"
+      responses:
+        "200":
+          description: Categoría actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCategoria
+      tags: [categorias]
+      summary: Elimina una categoría
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Categoría eliminada
+        "400":
+          description: Categoría en uso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /kilometraje:
     get:
       operationId: listKilometrajes
@@ -362,6 +455,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResumenMensual"
+  /resumen/mes-actual/por-categoria:
+    get:
+      operationId: getResumenMensualPorCategoria
+      tags: [resumen]
+      summary: Resumen de gastos variables del mes desglosado por categoría
+      responses:
+        "200":
+          description: Desglose por categoría
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResumenCategoria"
 components:
   parameters:
     Id:
@@ -481,6 +588,43 @@ components:
           enum: [mensual, por_kilometraje]
         activo:
           type: boolean
+    Categoria:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activa:
+          type: boolean
+      required: [id, nombre, icono, color, activa]
+    CategoriaInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activa:
+          type: boolean
+      required: [nombre]
+    CategoriaUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activa:
+          type: boolean
     GastoVariable:
       type: object
       properties:
@@ -489,36 +633,39 @@ components:
         fecha:
           type: string
           format: date
-        categoria:
-          type: string
+        categoria_id:
+          type: number
+          minimum: 1
         monto:
           type: number
           minimum: 0
         nota:
           type: string
-      required: [id, fecha, categoria, monto, nota]
+      required: [id, fecha, categoria_id, monto, nota]
     GastoVariableInput:
       type: object
       properties:
         fecha:
           type: string
           format: date
-        categoria:
-          type: string
+        categoria_id:
+          type: number
+          minimum: 1
         monto:
           type: number
           minimum: 0
         nota:
           type: string
-      required: [fecha, categoria, monto, nota]
+      required: [fecha, categoria_id, monto]
     GastoVariableUpdate:
       type: object
       properties:
         fecha:
           type: string
           format: date
-        categoria:
-          type: string
+        categoria_id:
+          type: number
+          minimum: 1
         monto:
           type: number
           minimum: 0
@@ -575,4 +722,22 @@ components:
         saldo:
           type: number
       required: [mes, total_ingresos, total_gastos_fijos, total_gastos_variables, saldo]
+    ResumenCategoria:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        cantidad:
+          type: number
+        total:
+          type: number
+        porcentaje:
+          type: number
+      required: [id, nombre, icono, color, cantidad, total, porcentaje]
 

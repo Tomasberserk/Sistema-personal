@@ -117,10 +117,33 @@ export interface GastoFijoUpdate {
   activo?: boolean;
 }
 
+export interface Categoria {
+  id: number;
+  nombre: string;
+  icono: string;
+  color: string;
+  activa: boolean;
+}
+
+export interface CategoriaInput {
+  nombre: string;
+  icono?: string;
+  color?: string;
+  activa?: boolean;
+}
+
+export interface CategoriaUpdate {
+  nombre?: string;
+  icono?: string;
+  color?: string;
+  activa?: boolean;
+}
+
 export interface GastoVariable {
   id: number;
   fecha: string;
-  categoria: string;
+  /** @minimum 1 */
+  categoria_id: number;
   /** @minimum 0 */
   monto: number;
   nota: string;
@@ -128,15 +151,17 @@ export interface GastoVariable {
 
 export interface GastoVariableInput {
   fecha: string;
-  categoria: string;
+  /** @minimum 1 */
+  categoria_id: number;
   /** @minimum 0 */
   monto: number;
-  nota: string;
+  nota?: string;
 }
 
 export interface GastoVariableUpdate {
   fecha?: string;
-  categoria?: string;
+  /** @minimum 1 */
+  categoria_id?: number;
   /** @minimum 0 */
   monto?: number;
   nota?: string;
@@ -170,6 +195,16 @@ export interface ResumenMensual {
   total_gastos_fijos: number;
   total_gastos_variables: number;
   saldo: number;
+}
+
+export interface ResumenCategoria {
+  id: number;
+  nombre: string;
+  icono: string;
+  color: string;
+  cantidad: number;
+  total: number;
+  porcentaje: number;
 }
 
 /**

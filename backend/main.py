@@ -17,6 +17,19 @@ DB_PATH = ROOT / "jarvis.sqlite3"
 Fuente = Literal["Didi", "papa", "amigo", "otro"]
 TipoGastoFijo = Literal["mensual", "por_kilometraje"]
 
+DEFAULT_CATEGORIAS = [
+    ("Comida", "🍔", "#e85d4a"),
+    ("Transporte", "🛵", "#5d8ae8"),
+    ("Gasolina", "⛽", "#e8a85d"),
+    ("Entretenimiento", "🎮", "#a85de8"),
+    ("Ropa", "👕", "#5de8c4"),
+    ("Medicina", "💊", "#e85d8a"),
+    ("Regalos", "🎁", "#e8d95d"),
+    ("Hogar", "🏠", "#5de87a"),
+    ("Tecnologia", "📱", "#5dc4e8"),
+    ("Aseo personal", "🧴", "#e8755d"),
+]
+
 
 class IngresoInput(BaseModel):
     fecha: date
@@ -55,16 +68,34 @@ class GastoFijo(GastoFijoInput):
     id: int
 
 
+class CategoriaInput(BaseModel):
+    nombre: str = Field(min_length=1)
+    icono: str = "🏷️"
+    color: str = "#333333"
+    activa: bool = True
+
+
+class CategoriaUpdate(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1)
+    icono: str | None = None
+    color: str | None = None
+    activa: bool | None = None
+
+
+class Categoria(CategoriaInput):
+    id: int
+
+
 class GastoVariableInput(BaseModel):
     fecha: date
-    categoria: str = Field(min_length=1)
+    categoria_id: int = Field(ge=1)
     monto: float = Field(ge=0)
     nota: str = ""
 
 
 class GastoVariableUpdate(BaseModel):
     fecha: date | None = None
-    categoria: str | None = Field(default=None, min_length=1)
+    categoria_id: int | None = Field(default=None, ge=1)
     monto: float | None = Field(default=None, ge=0)
     nota: str | None = None
 
@@ -97,6 +128,16 @@ class ResumenMensual(BaseModel):
     saldo: float
 
 
+class ResumenCategoria(BaseModel):
+    id: int
+    nombre: str
+    icono: str
+    color: str
+    cantidad: int
+    total: float
+    porcentaje: float
+
+
 def get_connection() -> sqlite3.Connection:
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
@@ -108,6 +149,13 @@ def init_db() -> None:
     with closing(get_connection()) as connection:
         connection.executescript(
             """
+            CREATE TABLE IF NOT EXISTS categorias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL UNIQUE,
+                icono TEXT NOT NULL DEFAULT '🏷️',
+                color TEXT NOT NULL DEFAULT '#333333',
+                activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
+            );
             CREATE TABLE IF NOT EXISTS ingresos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT NOT NULL,
@@ -125,7 +173,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS gastos_variables (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fecha TEXT NOT NULL,
-                categoria TEXT NOT NULL,
+                categoria_id INTEGER NOT NULL REFERENCES categorias(id),
                 monto REAL NOT NULL CHECK (monto >= 0),
                 nota TEXT NOT NULL DEFAULT ''
             );
@@ -137,6 +185,57 @@ def init_db() -> None:
             );
             """
         )
+        connection.executemany(
+            """
+            INSERT OR IGNORE INTO categorias (nombre, icono, color, activa)
+            VALUES (?, ?, ?, 1)
+            """,
+            DEFAULT_CATEGORIAS,
+        )
+        columns = [
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()
+        ]
+        if "categoria" in columns and "categoria_id" not in columns:
+            connection.execute("ALTER TABLE gastos_variables RENAME TO gastos_variables_old")
+            connection.execute(
+                """
+                CREATE TABLE gastos_variables (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fecha TEXT NOT NULL,
+                    categoria_id INTEGER NOT NULL REFERENCES categorias(id),
+                    monto REAL NOT NULL CHECK (monto >= 0),
+                    nota TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            connection.execute(
+                """
+                INSERT INTO categorias (nombre, icono, color, activa)
+                SELECT DISTINCT o.categoria, '🏷️', '#dddddd', 1
+                FROM gastos_variables_old o
+                WHERE trim(o.categoria) <> ''
+                AND NOT EXISTS (
+                    SELECT 1 FROM categorias c WHERE lower(c.nombre) = lower(trim(o.categoria))
+                )
+                """
+            )
+            connection.execute(
+                """
+                INSERT INTO gastos_variables (id, fecha, categoria_id, monto, nota)
+                SELECT o.id,
+                       o.fecha,
+                       COALESCE(
+                           (SELECT c.id FROM categorias c
+                            WHERE lower(c.nombre) = lower(trim(o.categoria))),
+                           (SELECT MIN(id) FROM categorias)
+                       ),
+                       o.monto,
+                       COALESCE(o.nota, '')
+                FROM gastos_variables_old o
+                """
+            )
+            connection.execute("DROP TABLE gastos_variables_old")
         existing = connection.execute("SELECT COUNT(*) FROM gastos_fijos").fetchone()[0]
         if existing == 0:
             connection.executemany(
@@ -163,6 +262,7 @@ def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sql
         "gastos_fijos",
         "gastos_variables",
         "kilometraje",
+        "categorias",
     }
     if table not in allowed_tables:
         raise ValueError("Tabla no permitida")
@@ -173,6 +273,14 @@ def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sql
     if row is None:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
     return row
+
+
+def require_categoria(connection: sqlite3.Connection, categoria_id: int) -> None:
+    exists = connection.execute(
+        "SELECT 1 FROM categorias WHERE id = ?", (categoria_id,)
+    ).fetchone()
+    if exists is None:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
 
 def create_item(table: str, fields: dict[str, Any]) -> dict[str, Any]:
@@ -305,6 +413,59 @@ def delete_gasto_fijo(item_id: int) -> Response:
     return Response(status_code=204)
 
 
+@app.get("/api/categorias", response_model=list[Categoria])
+def list_categorias() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT * FROM categorias ORDER BY activa DESC, id"
+        ).fetchall()
+        return [{**row_to_dict(row), "activa": bool(row["activa"])} for row in rows]
+
+
+@app.post("/api/categorias", response_model=Categoria, status_code=201)
+def create_categoria(payload: CategoriaInput) -> dict[str, Any]:
+    try:
+        result = create_item(
+            "categorias", {**payload.model_dump(), "activa": int(payload.activa)}
+        )
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+    result["activa"] = bool(result["activa"])
+    return result
+
+
+@app.get("/api/categorias/{item_id}", response_model=Categoria)
+def get_categoria(item_id: int) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "categorias", item_id)
+        return {**row_to_dict(row), "activa": bool(row["activa"])}
+
+
+@app.patch("/api/categorias/{item_id}", response_model=Categoria)
+def update_categoria(item_id: int, payload: CategoriaUpdate) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    if "activa" in fields and fields["activa"] is not None:
+        fields["activa"] = int(fields["activa"])
+    try:
+        result = update_item("categorias", item_id, fields)
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+    result["activa"] = bool(result["activa"])
+    return result
+
+
+@app.delete("/api/categorias/{item_id}", status_code=204)
+def delete_categoria(item_id: int) -> Response:
+    try:
+        delete_item("categorias", item_id)
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar la categoría: tiene gastos asociados",
+        )
+    return Response(status_code=204)
+
+
 @app.get("/api/gastos-variables", response_model=list[GastoVariable])
 def list_gastos_variables() -> list[dict[str, Any]]:
     with closing(get_connection()) as connection:
@@ -316,6 +477,8 @@ def list_gastos_variables() -> list[dict[str, Any]]:
 
 @app.post("/api/gastos-variables", response_model=GastoVariable, status_code=201)
 def create_gasto_variable(payload: GastoVariableInput) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        require_categoria(connection, payload.categoria_id)
     return create_item(
         "gastos_variables",
         {**payload.model_dump(), "fecha": payload.fecha.isoformat()},
@@ -333,6 +496,9 @@ def update_gasto_variable(item_id: int, payload: GastoVariableUpdate) -> dict[st
     fields = payload.model_dump(exclude_unset=True)
     if "fecha" in fields and fields["fecha"] is not None:
         fields["fecha"] = fields["fecha"].isoformat()
+    if "categoria_id" in fields and fields["categoria_id"] is not None:
+        with closing(get_connection()) as connection:
+            require_categoria(connection, fields["categoria_id"])
     return update_item("gastos_variables", item_id, fields)
 
 
@@ -409,3 +575,44 @@ def resumen_mes_actual() -> dict[str, Any]:
         "total_gastos_variables": float(variables),
         "saldo": float(ingresos - fijos - variables),
     }
+
+
+@app.get(
+    "/api/resumen/mes-actual/por-categoria",
+    response_model=list[ResumenCategoria],
+)
+def resumen_mes_actual_por_categoria() -> list[dict[str, Any]]:
+    current_month = datetime.now().strftime("%Y-%m")
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            """
+            SELECT c.id,
+                   c.nombre,
+                   c.icono,
+                   c.color,
+                   COUNT(gv.id) AS cantidad,
+                   SUM(gv.monto) AS total
+            FROM gastos_variables gv
+            JOIN categorias c ON c.id = gv.categoria_id
+            WHERE substr(gv.fecha, 1, 7) = ?
+            GROUP BY c.id, c.nombre, c.icono, c.color
+            ORDER BY total DESC
+            """,
+            (current_month,),
+        ).fetchall()
+    grand_total = sum((row["total"] or 0) for row in rows)
+    result = []
+    for row in rows:
+        total = float(row["total"] or 0)
+        result.append(
+            {
+                "id": row["id"],
+                "nombre": row["nombre"],
+                "icono": row["icono"],
+                "color": row["color"],
+                "cantidad": row["cantidad"],
+                "total": total,
+                "porcentaje": round((total / grand_total * 100) if grand_total else 0, 1),
+            }
+        )
+    return result

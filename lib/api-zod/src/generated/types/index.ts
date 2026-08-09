@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './categoria';
+export * from './categoriaInput';
+export * from './categoriaUpdate';
 export * from './error';
 export * from './gastoFijo';
 export * from './gastoFijoInput';
@@ -27,4 +30,5 @@ export * from './kilometraje';
 export * from './kilometrajeInput';
 export * from './kilometrajeUpdate';
 export * from './notFoundResponse';
+export * from './resumenCategoria';
 export * from './resumenMensual';

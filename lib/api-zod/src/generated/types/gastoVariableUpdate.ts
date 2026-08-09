@@ -8,7 +8,8 @@
 
 export interface GastoVariableUpdate {
   fecha?: Date;
-  categoria?: string;
+  /** @minimum 1 */
+  categoria_id?: number;
   /** @minimum 0 */
   monto?: number;
   nota?: string;
