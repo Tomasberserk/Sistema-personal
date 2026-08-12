@@ -24,6 +24,8 @@ tags:
     description: Estado y mantenimiento de la moto
   - name: habitos
     description: Hábitos diarios y registro de cumplimiento
+  - name: rutina
+    description: Rutina y cronograma semanal
   - name: resumen
     description: Resumen financiero
 paths:
@@ -663,6 +665,139 @@ paths:
                 $ref: "#/components/schemas/CheckHabitoResult"
         "404":
           $ref: "#/components/responses/NotFound"
+  /rutina/bloques:
+    get:
+      operationId: listBloquesRutina
+      tags: [rutina]
+      summary: Lista todos los bloques de rutina
+      responses:
+        "200":
+          description: Lista de bloques
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BloqueRutina"
+    post:
+      operationId: createBloqueRutina
+      tags: [rutina]
+      summary: Crea un bloque de rutina
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BloqueRutinaInput"
+      responses:
+        "201":
+          description: Bloque creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueRutina"
+        "400":
+          description: hora_fin debe ser posterior a hora_inicio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /rutina/semana:
+    get:
+      operationId: getRutinaSemana
+      tags: [rutina]
+      summary: Los 7 días con sus bloques activos
+      responses:
+        "200":
+          description: Semana completa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiaRutina"
+  /rutina/dia/{dia_semana}:
+    get:
+      operationId: getRutinaDia
+      tags: [rutina]
+      summary: Bloques activos de un día (0=lunes … 6=domingo)
+      parameters:
+        - name: dia_semana
+          in: path
+          required: true
+          schema:
+            type: number
+            minimum: 0
+            maximum: 6
+      responses:
+        "200":
+          description: Bloques del día
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BloqueRutina"
+        "400":
+          description: Día fuera de rango
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /rutina/bloques/{id}:
+    get:
+      operationId: getBloqueRutina
+      tags: [rutina]
+      summary: Obtiene un bloque de rutina
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Bloque de rutina
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueRutina"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateBloqueRutina
+      tags: [rutina]
+      summary: Actualiza un bloque de rutina
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BloqueRutinaUpdate"
+      responses:
+        "200":
+          description: Bloque actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloqueRutina"
+        "400":
+          description: hora_fin debe ser posterior a hora_inicio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteBloqueRutina
+      tags: [rutina]
+      summary: Elimina un bloque de rutina
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Bloque eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
   /resumen/mes-actual:
     get:
       operationId: getResumenMesActual
@@ -1083,4 +1218,81 @@ components:
           type: number
           minimum: 0
       required: [id, racha]
+    BloqueRutina:
+      type: object
+      properties:
+        id:
+          type: number
+        dia_semana:
+          type: number
+          minimum: 0
+          maximum: 6
+        hora_inicio:
+          type: string
+        hora_fin:
+          type: string
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        color:
+          type: string
+        icono:
+          type: string
+        activo:
+          type: boolean
+      required: [id, dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, activo]
+    BloqueRutinaInput:
+      type: object
+      properties:
+        dia_semana:
+          type: number
+          minimum: 0
+          maximum: 6
+        hora_inicio:
+          type: string
+        hora_fin:
+          type: string
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        color:
+          type: string
+        icono:
+          type: string
+        activo:
+          type: boolean
+      required: [dia_semana, hora_inicio, hora_fin, titulo]
+    BloqueRutinaUpdate:
+      type: object
+      properties:
+        dia_semana:
+          type: number
+          minimum: 0
+          maximum: 6
+        hora_inicio:
+          type: string
+        hora_fin:
+          type: string
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        color:
+          type: string
+        icono:
+          type: string
+        activo:
+          type: boolean
+    DiaRutina:
+      type: object
+      properties:
+        dia_semana:
+          type: number
+        bloques:
+          type: array
+          items:
+            $ref: "#/components/schemas/BloqueRutina"
+      required: [dia_semana, bloques]
 

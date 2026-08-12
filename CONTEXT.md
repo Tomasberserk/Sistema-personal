@@ -78,9 +78,29 @@ pero con el rediseño Cosmos + categorías ya terminado:
 
 ---
 
-## SIGUIENTE TAREA - Módulo Rutina / Cronograma semanal
-Los módulos Finanzas (Cosmos), Moto y Hábitos están terminados.
-La próxima tarea natural es el **cronograma semanal** (bloques de tiempo editables):
+## Estado actual del módulo de Rutina / Cronograma semanal (COMPLETADO)
+- Tabla `bloques_rutina` (id, dia_semana 0=lunes..6=domingo, hora_inicio/hora_fin "HH:MM" con patrón
+  validado, titulo, descripcion, color hex, icono emoji, activo 0/1). Se seedea la rutina real del usuario
+  sólo si la tabla está vacía (45 bloques): Paseo y carrera 05-06 y Desayuno 07-07:30 (todos los días),
+  Gym 08:30-11 (Lun/Mar/Jue/Vie), SENA/Didi 11-12, Tiempo libre 13:30-17, Preparación SENA 17-17:30 y
+  SENA 18-23:30 (Lun-Vie), Almuerzo 12-13 (todos los días)
+- Endpoints: CRUD `/api/rutina/bloques`, `GET /api/rutina/dia/{dia_semana}` (solo activos ordenados por
+  hora_inicio, 400 si fuera de 0-6), `GET /api/rutina/semana` (7 días con bloques activos). Validación:
+  hora_fin debe ser posterior a hora_inicio (400, incluso al PATCHear una sola hora contra la guardada)
+- `require_row.allowed_tables` incluye `bloques_rutina`
+- Página `/rutina` (ícono CalendarClock en nav desktop + móvil): tabs Día/Semana, selector de 7 días con
+  conteo de bloques y día actual resaltado; cards con franja de color, emoji, hora inicio-fin y descripción,
+  con badge "ahora" y resaltado cuando el bloque está transcurriendo; vista semanal grid de 7 columnas con
+  pastillas de colores; sección "Todos los bloques" con pausar/editar/eliminar; modal con día, horas,
+  título, descripción, emoji picker, swatches de color y toggle activo
+- Cliente regenerado: `useListBloquesRutina`, `useCreateBloqueRutina`, `useGetRutinaSemana`, `useGetRutinaDia`,
+  `useGetBloqueRutina`, `useUpdateBloqueRutina`, `useDeleteBloqueRutina`
+
+---
+
+## SIGUIENTE TAREA - Módulo Fechas especiales
+Los módulos Finanzas (Cosmos), Moto, Hábitos y Rutina están terminados.
+La próxima tarea natural es **fechas especiales** (cumpleaños, aniversarios, recordatorios automáticos):
 
 - Reutilizar la plantilla: tabla en backend/main.py, patch en lib/api-spec/openapi.yaml,
   regenerar cliente (`pnpm --filter @workspace/api-spec run codegen`), y UI Cosmos en artifacts/jarvis/
@@ -89,28 +109,16 @@ La próxima tarea natural es el **cronograma semanal** (bloques de tiempo editab
 
 ## MODULOS PENDIENTES
 
-### 2. Rutina / Cronograma semanal
-- Bloques de tiempo editables
-- 5-6am paseo y carrera con perra
-- 7-7:30am desayuno
-- 8/8:30-10:30/11am gym 4 dias
-- 11am-12pm SENA o Didi
-- 12pm almuerzo
-- 1:30-4:30/5pm libre
-- 5pm lunch bano alistarse
-- 6pm-11:30pm SENA
-- 12:30am llegada a casa
-
-### 3. Fechas especiales
+### 2. Fechas especiales
 - Cumpleanos, aniversarios, recordatorios automaticos
 
-### 4. SENA
+### 3. SENA
 - Entregas pendientes, horario de clases, ficha y materias
 
-### 5. Metas
+### 4. Metas
 - Objetivos con progreso (ahorro, km, habitos)
 
-### 6. Bot Telegram (fase final)
+### 5. Bot Telegram (fase final)
 - Registrar gastos por chat
 - Consultar habitos
 - Recordatorios automaticos

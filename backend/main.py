@@ -30,6 +30,43 @@ DEFAULT_CATEGORIAS = [
     ("Aseo personal", "🧴", "#e8755d"),
 ]
 
+DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+
+DEFAULT_BLOQUES = [
+    *[
+        (d, "05:00", "06:00", "Paseo y carrera", "", "#5d8ae8", "🐕")
+        for d in range(7)
+    ],
+    *[
+        (d, "07:00", "07:30", "Desayuno", "", "#e8a85d", "🍳")
+        for d in range(7)
+    ],
+    *[
+        (d, "08:30", "11:00", "Gym", "", "#e85d4a", "💪")
+        for d in (0, 1, 3, 4)
+    ],
+    *[
+        (d, "11:00", "12:00", "SENA/Didi", "", "#a85de8", "📚")
+        for d in range(5)
+    ],
+    *[
+        (d, "12:00", "13:00", "Almuerzo", "", "#5de87a", "🍽️")
+        for d in range(7)
+    ],
+    *[
+        (d, "13:30", "17:00", "Tiempo libre", "", "#e8d95d", "🕐")
+        for d in range(5)
+    ],
+    *[
+        (d, "17:00", "17:30", "Preparación SENA", "", "#5dc4e8", "🛁")
+        for d in range(5)
+    ],
+    *[
+        (d, "18:00", "23:30", "SENA", "", "#e85d8a", "🏫")
+        for d in range(5)
+    ],
+]
+
 
 class IngresoInput(BaseModel):
     fecha: date
@@ -164,6 +201,37 @@ class Racha(BaseModel):
     racha: int
 
 
+class BloqueRutinaInput(BaseModel):
+    dia_semana: int = Field(ge=0, le=6)
+    hora_inicio: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    hora_fin: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    titulo: str = Field(min_length=1)
+    descripcion: str = ""
+    color: str = "#5d8ae8"
+    icono: str = "⏰"
+    activo: bool = True
+
+
+class BloqueRutinaUpdate(BaseModel):
+    dia_semana: int | None = Field(default=None, ge=0, le=6)
+    hora_inicio: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    hora_fin: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    titulo: str | None = Field(default=None, min_length=1)
+    descripcion: str | None = None
+    color: str | None = None
+    icono: str | None = None
+    activo: bool | None = None
+
+
+class BloqueRutina(BloqueRutinaInput):
+    id: int
+
+
+class DiaRutina(BaseModel):
+    dia_semana: int
+    bloques: list[BloqueRutina]
+
+
 class ResumenMensual(BaseModel):
     mes: str
     total_ingresos: float
@@ -265,6 +333,17 @@ def init_db() -> None:
                 completado INTEGER NOT NULL DEFAULT 1 CHECK (completado IN (0, 1)),
                 UNIQUE (habito_id, fecha)
             );
+            CREATE TABLE IF NOT EXISTS bloques_rutina (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+                hora_inicio TEXT NOT NULL,
+                hora_fin TEXT NOT NULL,
+                titulo TEXT NOT NULL,
+                descripcion TEXT NOT NULL DEFAULT '',
+                color TEXT NOT NULL DEFAULT '#5d8ae8',
+                icono TEXT NOT NULL DEFAULT '⏰',
+                activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+            );
             """
         )
         connection.executemany(
@@ -337,6 +416,18 @@ def init_db() -> None:
             VALUES (1, 0, 2000, 200)
             """
         )
+        bloque_count = connection.execute(
+            "SELECT COUNT(*) AS n FROM bloques_rutina"
+        ).fetchone()["n"]
+        if bloque_count == 0:
+            connection.executemany(
+                """
+                INSERT INTO bloques_rutina
+                    (dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, activo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                """,
+                DEFAULT_BLOQUES,
+            )
         connection.commit()
 
 
@@ -353,6 +444,7 @@ def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sql
         "categorias",
         "habitos",
         "registro_habitos",
+        "bloques_rutina",
     }
     if table not in allowed_tables:
         raise ValueError("Tabla no permitida")
@@ -921,6 +1013,101 @@ def toggle_habito(item_id: int, fecha: date) -> dict[str, Any]:
             completado = True
         connection.commit()
     return {"habito_id": item_id, "fecha": fecha_iso, "completado": completado}
+
+
+def bloque_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {**row_to_dict(row), "activo": bool(row["activo"])}
+
+
+def validar_horas(inicio: str, fin: str) -> None:
+    t1 = datetime.strptime(inicio, "%H:%M").time()
+    t2 = datetime.strptime(fin, "%H:%M").time()
+    if t2 <= t1:
+        raise HTTPException(
+            status_code=400, detail="hora_fin debe ser posterior a hora_inicio"
+        )
+
+
+@app.get("/api/rutina/bloques", response_model=list[BloqueRutina])
+def list_bloques_rutina() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT * FROM bloques_rutina ORDER BY dia_semana, hora_inicio, id"
+        ).fetchall()
+        return [bloque_dict(row) for row in rows]
+
+
+@app.post("/api/rutina/bloques", response_model=BloqueRutina, status_code=201)
+def create_bloque_rutina(payload: BloqueRutinaInput) -> dict[str, Any]:
+    validar_horas(payload.hora_inicio, payload.hora_fin)
+    result = create_item(
+        "bloques_rutina",
+        {**payload.model_dump(), "activo": int(payload.activo)},
+    )
+    result["activo"] = bool(result["activo"])
+    return result
+
+
+@app.get("/api/rutina/semana", response_model=list[DiaRutina])
+def rutina_semana() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT * FROM bloques_rutina WHERE activo = 1"
+            " ORDER BY dia_semana, hora_inicio, id"
+        ).fetchall()
+    dias: dict[int, list[dict[str, Any]]] = {i: [] for i in range(7)}
+    for row in rows:
+        dias[row["dia_semana"]].append(bloque_dict(row))
+    return [{"dia_semana": i, "bloques": dias[i]} for i in range(7)]
+
+
+@app.get("/api/rutina/dia/{dia_semana}", response_model=list[BloqueRutina])
+def bloques_dia(dia_semana: int) -> list[dict[str, Any]]:
+    if not 0 <= dia_semana <= 6:
+        raise HTTPException(
+            status_code=400,
+            detail="dia_semana debe estar entre 0 (lunes) y 6 (domingo)",
+        )
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT * FROM bloques_rutina"
+            " WHERE dia_semana = ? AND activo = 1 ORDER BY hora_inicio, id",
+            (dia_semana,),
+        ).fetchall()
+        return [bloque_dict(row) for row in rows]
+
+
+@app.get("/api/rutina/bloques/{item_id}", response_model=BloqueRutina)
+def get_bloque_rutina(item_id: int) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "bloques_rutina", item_id)
+        return {**row_to_dict(row), "activo": bool(row["activo"])}
+
+
+@app.patch("/api/rutina/bloques/{item_id}", response_model=BloqueRutina)
+def update_bloque_rutina(item_id: int, payload: BloqueRutinaUpdate) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    if fields.get("activo") is not None:
+        fields["activo"] = int(fields["activo"])
+    if "hora_inicio" in fields or "hora_fin" in fields:
+        with closing(get_connection()) as connection:
+            row = require_row(connection, "bloques_rutina", item_id)
+        inicio = fields.get("hora_inicio", row["hora_inicio"])
+        fin = fields.get("hora_fin", row["hora_fin"])
+        validar_horas(inicio, fin)
+    if not fields:
+        with closing(get_connection()) as connection:
+            row = require_row(connection, "bloques_rutina", item_id)
+        return {**row_to_dict(row), "activo": bool(row["activo"])}
+    result = update_item("bloques_rutina", item_id, fields)
+    result["activo"] = bool(result["activo"])
+    return result
+
+
+@app.delete("/api/rutina/bloques/{item_id}", status_code=204)
+def delete_bloque_rutina(item_id: int) -> Response:
+    delete_item("bloques_rutina", item_id)
+    return Response(status_code=204)
 
 
 @app.get("/api/resumen/mes-actual", response_model=ResumenMensual)

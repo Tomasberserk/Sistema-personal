@@ -20,10 +20,14 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BloqueRutina,
+  BloqueRutinaInput,
+  BloqueRutinaUpdate,
   Categoria,
   CategoriaInput,
   CategoriaUpdate,
   CheckHabitoResult,
+  DiaRutina,
   Error,
   EstadoAceite,
   GastoFijo,
@@ -2885,6 +2889,528 @@ export const useToggleHabitoFecha = <TError = ErrorType<NotFoundResponse>,
         TContext
       > => {
       return useMutation(getToggleHabitoFechaMutationOptions(options));
+    }
+
+export const getListBloquesRutinaUrl = () => {
+
+
+
+
+  return `/api/rutina/bloques`
+}
+
+/**
+ * @summary Lista todos los bloques de rutina
+ */
+export const listBloquesRutina = async ( options?: Parameters<typeof customFetch>[1]): Promise<BloqueRutina[]> => {
+
+  return customFetch<BloqueRutina[]>(getListBloquesRutinaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBloquesRutinaQueryKey = () => {
+    return [
+    `/api/rutina/bloques`
+    ] as const;
+    }
+
+
+export const getListBloquesRutinaQueryOptions = <TData = Awaited<ReturnType<typeof listBloquesRutina>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloquesRutina>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBloquesRutinaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBloquesRutina>>> = ({ signal }) => listBloquesRutina({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBloquesRutina>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBloquesRutinaQueryResult = NonNullable<Awaited<ReturnType<typeof listBloquesRutina>>>
+export type ListBloquesRutinaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista todos los bloques de rutina
+ */
+
+export function useListBloquesRutina<TData = Awaited<ReturnType<typeof listBloquesRutina>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBloquesRutina>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBloquesRutinaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBloqueRutinaUrl = () => {
+
+
+
+
+  return `/api/rutina/bloques`
+}
+
+/**
+ * @summary Crea un bloque de rutina
+ */
+export const createBloqueRutina = async (bloqueRutinaInput: BloqueRutinaInput, options?: Parameters<typeof customFetch>[1]): Promise<BloqueRutina> => {
+
+  return customFetch<BloqueRutina>(getCreateBloqueRutinaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bloqueRutinaInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBloqueRutinaMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBloqueRutina>>, TError,{data: BodyType<BloqueRutinaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBloqueRutina>>, TError,{data: BodyType<BloqueRutinaInput>}, TContext> => {
+
+const mutationKey = ['createBloqueRutina'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBloqueRutina>>, {data: BodyType<BloqueRutinaInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBloqueRutina(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBloqueRutinaMutationResult = NonNullable<Awaited<ReturnType<typeof createBloqueRutina>>>
+    export type CreateBloqueRutinaMutationBody = BodyType<BloqueRutinaInput>
+    export type CreateBloqueRutinaMutationError = ErrorType<Error>
+
+    /**
+ * @summary Crea un bloque de rutina
+ */
+export const useCreateBloqueRutina = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBloqueRutina>>, TError,{data: BodyType<BloqueRutinaInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBloqueRutina>>,
+        TError,
+        {data: BodyType<BloqueRutinaInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBloqueRutinaMutationOptions(options));
+    }
+
+export const getGetRutinaSemanaUrl = () => {
+
+
+
+
+  return `/api/rutina/semana`
+}
+
+/**
+ * @summary Los 7 días con sus bloques activos
+ */
+export const getRutinaSemana = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiaRutina[]> => {
+
+  return customFetch<DiaRutina[]>(getGetRutinaSemanaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRutinaSemanaQueryKey = () => {
+    return [
+    `/api/rutina/semana`
+    ] as const;
+    }
+
+
+export const getGetRutinaSemanaQueryOptions = <TData = Awaited<ReturnType<typeof getRutinaSemana>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRutinaSemana>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRutinaSemanaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRutinaSemana>>> = ({ signal }) => getRutinaSemana({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRutinaSemana>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRutinaSemanaQueryResult = NonNullable<Awaited<ReturnType<typeof getRutinaSemana>>>
+export type GetRutinaSemanaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Los 7 días con sus bloques activos
+ */
+
+export function useGetRutinaSemana<TData = Awaited<ReturnType<typeof getRutinaSemana>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRutinaSemana>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRutinaSemanaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRutinaDiaUrl = (diaSemana: number,) => {
+
+
+
+
+  return `/api/rutina/dia/${diaSemana}`
+}
+
+/**
+ * @summary Bloques activos de un día (0=lunes … 6=domingo)
+ */
+export const getRutinaDia = async (diaSemana: number, options?: Parameters<typeof customFetch>[1]): Promise<BloqueRutina[]> => {
+
+  return customFetch<BloqueRutina[]>(getGetRutinaDiaUrl(diaSemana),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRutinaDiaQueryKey = (diaSemana: number,) => {
+    return [
+    `/api/rutina/dia/${diaSemana}`
+    ] as const;
+    }
+
+
+export const getGetRutinaDiaQueryOptions = <TData = Awaited<ReturnType<typeof getRutinaDia>>, TError = ErrorType<Error>>(diaSemana: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRutinaDia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRutinaDiaQueryKey(diaSemana);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRutinaDia>>> = ({ signal }) => getRutinaDia(diaSemana, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: diaSemana !== null && diaSemana !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRutinaDia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRutinaDiaQueryResult = NonNullable<Awaited<ReturnType<typeof getRutinaDia>>>
+export type GetRutinaDiaQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Bloques activos de un día (0=lunes … 6=domingo)
+ */
+
+export function useGetRutinaDia<TData = Awaited<ReturnType<typeof getRutinaDia>>, TError = ErrorType<Error>>(
+ diaSemana: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRutinaDia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRutinaDiaQueryOptions(diaSemana,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBloqueRutinaUrl = (id: number,) => {
+
+
+
+
+  return `/api/rutina/bloques/${id}`
+}
+
+/**
+ * @summary Obtiene un bloque de rutina
+ */
+export const getBloqueRutina = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<BloqueRutina> => {
+
+  return customFetch<BloqueRutina>(getGetBloqueRutinaUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBloqueRutinaQueryKey = (id: number,) => {
+    return [
+    `/api/rutina/bloques/${id}`
+    ] as const;
+    }
+
+
+export const getGetBloqueRutinaQueryOptions = <TData = Awaited<ReturnType<typeof getBloqueRutina>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBloqueRutina>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBloqueRutinaQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBloqueRutina>>> = ({ signal }) => getBloqueRutina(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBloqueRutina>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBloqueRutinaQueryResult = NonNullable<Awaited<ReturnType<typeof getBloqueRutina>>>
+export type GetBloqueRutinaQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene un bloque de rutina
+ */
+
+export function useGetBloqueRutina<TData = Awaited<ReturnType<typeof getBloqueRutina>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBloqueRutina>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBloqueRutinaQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBloqueRutinaUrl = (id: number,) => {
+
+
+
+
+  return `/api/rutina/bloques/${id}`
+}
+
+/**
+ * @summary Actualiza un bloque de rutina
+ */
+export const updateBloqueRutina = async (id: number,
+    bloqueRutinaUpdate: BloqueRutinaUpdate, options?: Parameters<typeof customFetch>[1]): Promise<BloqueRutina> => {
+
+  return customFetch<BloqueRutina>(getUpdateBloqueRutinaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bloqueRutinaUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateBloqueRutinaMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBloqueRutina>>, TError,{id: number;data: BodyType<BloqueRutinaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBloqueRutina>>, TError,{id: number;data: BodyType<BloqueRutinaUpdate>}, TContext> => {
+
+const mutationKey = ['updateBloqueRutina'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBloqueRutina>>, {id: number;data: BodyType<BloqueRutinaUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBloqueRutina(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBloqueRutinaMutationResult = NonNullable<Awaited<ReturnType<typeof updateBloqueRutina>>>
+    export type UpdateBloqueRutinaMutationBody = BodyType<BloqueRutinaUpdate>
+    export type UpdateBloqueRutinaMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Actualiza un bloque de rutina
+ */
+export const useUpdateBloqueRutina = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBloqueRutina>>, TError,{id: number;data: BodyType<BloqueRutinaUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBloqueRutina>>,
+        TError,
+        {id: number;data: BodyType<BloqueRutinaUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateBloqueRutinaMutationOptions(options));
+    }
+
+export const getDeleteBloqueRutinaUrl = (id: number,) => {
+
+
+
+
+  return `/api/rutina/bloques/${id}`
+}
+
+/**
+ * @summary Elimina un bloque de rutina
+ */
+export const deleteBloqueRutina = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteBloqueRutinaUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteBloqueRutinaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBloqueRutina>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBloqueRutina>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteBloqueRutina'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBloqueRutina>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBloqueRutina(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBloqueRutinaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBloqueRutina>>>
+
+    export type DeleteBloqueRutinaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Elimina un bloque de rutina
+ */
+export const useDeleteBloqueRutina = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBloqueRutina>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBloqueRutina>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteBloqueRutinaMutationOptions(options));
     }
 
 export const getGetResumenMesActualUrl = () => {

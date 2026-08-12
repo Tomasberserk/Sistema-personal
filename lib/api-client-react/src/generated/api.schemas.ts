@@ -284,6 +284,57 @@ export interface Racha {
   racha: number;
 }
 
+export interface BloqueRutina {
+  id: number;
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fin: string;
+  titulo: string;
+  descripcion: string;
+  color: string;
+  icono: string;
+  activo: boolean;
+}
+
+export interface BloqueRutinaInput {
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fin: string;
+  titulo: string;
+  descripcion?: string;
+  color?: string;
+  icono?: string;
+  activo?: boolean;
+}
+
+export interface BloqueRutinaUpdate {
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  dia_semana?: number;
+  hora_inicio?: string;
+  hora_fin?: string;
+  titulo?: string;
+  descripcion?: string;
+  color?: string;
+  icono?: string;
+  activo?: boolean;
+}
+
+export interface DiaRutina {
+  dia_semana: number;
+  bloques: BloqueRutina[];
+}
+
 /**
  * Recurso no encontrado
  */

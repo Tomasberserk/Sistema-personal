@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import { toast } from 'sonner';
 import {
-  Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight,
-  CircleDollarSign, Droplets, Flame, Gauge, ListTodo, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
+  Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight,
+  CircleDollarSign, Clock, Droplets, Flame, Gauge, LayoutGrid, List, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
   Trash2, TrendingUp, TriangleAlert, Wrench, X,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -22,8 +22,10 @@ import {
   useGetMotoEstadoAceite, usePostMotoCambioAceite, usePutMotoConfig,
   useListHabitos, useCreateHabito, useUpdateHabito, useDeleteHabito, useGetResumenHabitos, useToggleHabitoFecha,
   getListHabitosQueryKey, getGetResumenHabitosQueryKey,
+  useListBloquesRutina, useCreateBloqueRutina, useGetRutinaSemana, useGetRutinaDia, useUpdateBloqueRutina, useDeleteBloqueRutina,
+  getListBloquesRutinaQueryKey, getGetRutinaSemanaQueryKey, getGetRutinaDiaQueryKey,
 } from '@workspace/api-client-react';
-import type { Categoria, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, ResumenCategoria } from '@workspace/api-client-react';
+import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, ResumenCategoria } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -52,6 +54,12 @@ const CATEGORY_COLORS = ['#e85d4a', '#5d8ae8', '#e8a85d', '#a85de8', '#5de8c4', 
 const FALLBACK_CAT = { icono: '🏷️', color: '#9aa0a6', nombre: 'Sin categoría' };
 const HABITO_EMOJIS = ['✅', '🏃', '💧', '📖', '🧘', '🥗', '💪', '🛌', '🚭', '💰', '🧹', '✍️', '🎯', '🌅', '🚴', '🧠', '🙏', '🎸', '🐕', '☀️'];
 const HABITO_COLORS = ['#5de8c4', '#5d8ae8', '#e8a85d', '#a85de8', '#e85d4a', '#5de87a', '#5dc4e8', '#e85dd3', '#e8d95d', '#8a8aa0'];
+const RUTINA_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const RUTINA_DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const RUTINA_EMOJIS = ['🐕', '🍳', '💪', '📚', '🍽️', '🕐', '🛁', '🏫', '⏰', '🧘', '🚿', '🛌', '📖', '💻', '🎮', '🏃', '🥗', '☕', '🚌', '🏠', '✨'];
+const RUTINA_COLORS = ['#5d8ae8', '#e8a85d', '#e85d4a', '#a85de8', '#5de87a', '#e8d95d', '#5dc4e8', '#e85d8a', '#5de8c4', '#8a8aa0'];
+const hoyIdx = () => (new Date().getDay() + 6) % 7;
+const horaAhora = () => new Date().toTimeString().slice(0, 5);
 
 function DetailPrefetchers({ ids }: { ids: { ingreso?: number; fijo?: number; variable?: number; km?: number } }) {
   useHealthCheck({ query: { enabled: false, queryKey: ['/api/healthz'] } });
@@ -87,6 +95,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Resumen" testId="link-resumen" />
           <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Kilometraje" testId="link-kilometraje" />
           <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="link-habitos" />
+          <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="link-rutina" />
           <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={18} />} label="Moto" testId="link-moto" />
           <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={18} />} label="Categorías" testId="link-categorias" />
         </nav>
@@ -103,6 +112,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={20} />} label="Resumen" testId="mobile-link-resumen" />
         <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={20} />} label="Km" testId="mobile-link-kilometraje" />
         <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={20} />} label="Hábitos" testId="mobile-link-habitos" />
+        <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={20} />} label="Rutina" testId="mobile-link-rutina" />
         <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={20} />} label="Moto" testId="mobile-link-moto" />
         <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={20} />} label="Cat." testId="mobile-link-categorias" />
       </nav>
@@ -661,6 +671,186 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
   );
 }
 
+function RutinaPage() {
+  const queryClient = useQueryClient();
+  const today = hoyIdx();
+  const [dia, setDia] = useState(today);
+  const [view, setView] = useState<'dia' | 'semana'>('dia');
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<BloqueRutina | null>(null);
+  const diaQ = useGetRutinaDia(dia);
+  const semanaQ = useGetRutinaSemana();
+  const todosQ = useListBloquesRutina();
+  const create = useCreateBloqueRutina(); const update = useUpdateBloqueRutina(); const remove = useDeleteBloqueRutina();
+  const bloquesDia = asList<BloqueRutina>(diaQ.data);
+  const semana = asList<DiaRutina>(semanaQ.data);
+  const todos = asList<BloqueRutina>(todosQ.data);
+  const ahora = horaAhora();
+  const activoAhora = (b: BloqueRutina) => dia === today && b.hora_inicio <= ahora && ahora < b.hora_fin;
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetRutinaDiaQueryKey(dia) });
+    queryClient.invalidateQueries({ queryKey: getGetRutinaSemanaQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListBloquesRutinaQueryKey() });
+  };
+  const onSave = (data: Record<string, unknown>) => {
+    const doneMut = () => { invalidate(); setModal(false); setEditing(null); };
+    const onError = (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el bloque');
+    if (editing) update.mutate({ id: editing.id, data: data as never }, { onSuccess: doneMut, onError });
+    else create.mutate({ data: data as never }, { onSuccess: doneMut, onError });
+  };
+  const onDelete = (b: BloqueRutina) => {
+    if (!window.confirm(`¿Eliminar "${b.titulo}" de ${b.hora_inicio} a ${b.hora_fin}?`)) return;
+    remove.mutate({ id: b.id }, { onSuccess: () => { invalidate(); toast.success('Bloque eliminado'); }, onError: () => toast.error('No se pudo eliminar') });
+  };
+  const onActive = (b: BloqueRutina, activo: boolean) => {
+    update.mutate({ id: b.id, data: { activo } as never }, { onSuccess: invalidate });
+  };
+  return <Shell><div className="relative z-10 min-h-[100dvh]">
+    <Topbar eyebrow="semana y ritmo" title="Rutina" onAdd={() => { setEditing(null); setModal(true); }} />
+    <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
+      <div className="flex items-center justify-between gap-3">
+        <div className="cosmos-card flex gap-1 p-1">
+          <button onClick={() => setView('dia')} data-testid="tab-rutina-dia" className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${view === 'dia' ? 'bg-white text-black' : 'text-white/55 hover:text-white'}`}><List size={15} /><span className="hidden sm:inline">Día</span></button>
+          <button onClick={() => setView('semana')} data-testid="tab-rutina-semana" className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${view === 'semana' ? 'bg-white text-black' : 'text-white/55 hover:text-white'}`}><LayoutGrid size={15} /><span className="hidden sm:inline">Semana</span></button>
+        </div>
+        <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1.5 text-xs font-semibold text-white/60"><Clock size={13} /> {RUTINA_DIAS_FULL[today]} · {ahora}</span>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+        {RUTINA_DIAS.map((label, i) => {
+          const n = semana[i]?.bloques.length ?? 0;
+          const selected = view === 'dia' && dia === i;
+          const isToday = i === today;
+          return (
+            <button key={i} onClick={() => { setDia(i); setView('dia'); }} data-testid={`selector-dia-${i}`}
+              className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5 text-center transition ${selected ? 'bg-white text-black' : isToday ? 'bg-white/10 text-white' : 'bg-white/4 text-white/60 hover:bg-white/8'}`}>
+              <span className="text-[10px] font-semibold uppercase tracking-wide">{label}</span>
+              <span className={`cosmos-number text-sm font-bold ${selected ? 'text-black' : isToday ? 'text-[#5de8c4]' : 'text-white/45'}`}>{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {view === 'dia' ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div><div className="cosmos-eyebrow mb-1">hoy en el día</div><h2 className="cosmos-title text-xl font-bold">{RUTINA_DIAS_FULL[dia]}</h2></div>
+            <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Bloque</span></button>
+          </div>
+          {diaQ.isLoading ? <LoadingRows /> : !bloquesDia.length ? (
+            <EmptyState title="Día sin bloques" copy="Agrega un bloque para este día y arma tu ritmo." action="Agregar bloque" onClick={() => setModal(true)} testId="button-empty-rutina" />
+          ) : bloquesDia.map((b) => {
+            const running = activoAhora(b);
+            return (
+              <div key={b.id} data-testid={`bloque-rutina-${b.id}`} className={`cosmos-card group relative flex items-center gap-4 overflow-hidden p-4 sm:p-5 ${running ? 'ring-1' : ''}`} style={running ? { boxShadow: `inset 0 0 0 1px ${b.color}cc`, backgroundColor: `${b.color}14` } : undefined}>
+                <span className="h-12 w-1.5 shrink-0 self-center rounded-full" style={{ backgroundColor: b.color, boxShadow: running ? `0 0 14px ${b.color}` : undefined }} />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl" style={{ backgroundColor: `${b.color}26` }}>{b.icono}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-white">{b.titulo}</span>
+                    {running && <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black" style={{ backgroundColor: b.color }}>ahora</span>}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-white/45"><Clock size={12} /><span className="cosmos-number font-semibold" style={{ color: b.color }}>{b.hora_inicio} – {b.hora_fin}</span>{b.descripcion ? ` · ${b.descripcion}` : ''}</div>
+                </div>
+                <div className="flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+                  <button onClick={() => { setEditing(b); setModal(true); }} aria-label="Editar bloque" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                  <button onClick={() => onDelete(b)} aria-label="Eliminar bloque" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      ) : (
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          {semanaQ.isLoading ? <LoadingRows /> : semana.map((d, i) => (
+            <div key={d.dia_semana} data-testid={`columna-semana-${i}`} className={`cosmos-card flex flex-col gap-1.5 p-3 ${i === today ? 'ring-1 ring-white/20' : ''}`}>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{RUTINA_DIAS[i]}</span>
+                <span className={`text-xs font-semibold ${i === today ? 'text-[#5de8c4]' : 'text-white/35'}`}>{d.bloques.length}</span>
+              </div>
+              {!d.bloques.length ? <span className="text-center text-[11px] text-white/25">—</span> : d.bloques.map((b) => (
+                <button key={b.id} onClick={() => { setDia(i); setView('dia'); }} data-testid={`pastilla-semana-${b.id}`}
+                  className="flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-left text-[11px] font-medium leading-tight text-white/85 transition hover:scale-[1.02]"
+                  style={{ backgroundColor: `${b.color}24`, boxShadow: `inset 0 0 0 1px ${b.color}55` }}>
+                  <span>{b.icono}</span>
+                  <span className="min-w-0"><span className="block truncate">{b.titulo}</span><span className="cosmos-number block text-[9px] font-semibold" style={{ color: b.color }}>{b.hora_inicio}–{b.hora_fin}</span></span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="cosmos-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6">
+          <div><div className="cosmos-eyebrow mb-1">gestión</div><h2 className="cosmos-title text-lg font-bold">Todos los bloques</h2></div>
+          <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-bloque-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Nuevo</span></button>
+        </div>
+        <div className="p-3 sm:p-4">
+          {todosQ.isLoading ? <LoadingRows /> : !todos.length ? <EmptyState title="Sin bloques configurados" copy="Agrega el primer bloque de tu rutina." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-gestion-rutina" /> : <div className="grid gap-1.5 sm:grid-cols-2">{todos.map((b) => (
+            <div key={b.id} data-testid={`fila-bloque-${b.id}`} className={`group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4 ${b.activo ? '' : 'opacity-60'}`}>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: b.color }} />
+                <div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{b.icono} {b.titulo}</div><div className="text-xs text-white/45">{RUTINA_DIAS[b.dia_semana]} · {b.hora_inicio}–{b.hora_fin}{b.descripcion ? ` · ${b.descripcion}` : ''}</div></div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => onActive(b, !b.activo)} data-testid={`toggle-activo-bloque-${b.id}`} className={`rounded-lg p-2 transition ${b.activo ? 'text-[#5de8c4]' : 'text-white/35'} hover:bg-white/8`} title={b.activo ? 'Pausar' : 'Activar'}><CalendarCheck size={16} /></button>
+                <button onClick={() => { setEditing(b); setModal(true); }} aria-label="Editar bloque" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                <button onClick={() => onDelete(b)} aria-label="Eliminar bloque" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+              </div>
+            </div>
+          ))}</div>}
+        </div>
+      </section>
+    </div>
+    {modal && <RutinaModal record={editing} pending={create.isPending || update.isPending || remove.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={onSave} />}
+  </div></Shell>;
+}
+
+function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRutina | null; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+  const [form, setForm] = useState<Record<string, string | boolean>>({ dia_semana: String(record?.dia_semana ?? hoyIdx()), hora_inicio: record?.hora_inicio ?? '08:00', hora_fin: record?.hora_fin ?? '09:00', titulo: record?.titulo ?? '', descripcion: record?.descripcion ?? '', icono: record?.icono ?? RUTINA_EMOJIS[0], color: record?.color ?? RUTINA_COLORS[0], activo: record?.activo ?? true });
+  const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const inicio = String(form.hora_inicio);
+    const fin = String(form.hora_fin);
+    if (fin <= inicio) { toast.error('La hora de fin debe ser posterior a la de inicio'); return; }
+    if (!String(form.titulo).trim()) return;
+    onSubmit({ dia_semana: Number(form.dia_semana), hora_inicio: inicio, hora_fin: fin, titulo: String(form.titulo).trim(), descripcion: String(form.descripcion).trim(), icono: String(form.icono), color: String(form.color), activo: Boolean(form.activo) });
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / rutina</div><h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar bloque' : 'Nuevo bloque'}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block"><span className="cosmos-field-label">Día</span><select className="cosmos-select" value={String(form.dia_semana)} onChange={(e) => set('dia_semana', e.target.value)} data-testid="select-rutina-dia">{RUTINA_DIAS.map((label, i) => <option key={i} value={i}>{label} · {RUTINA_DIAS_FULL[i]}</option>)}</select></label>
+            <label className="block"><span className="cosmos-field-label">Icono</span><select className="cosmos-select" value={String(form.icono)} onChange={(e) => set('icono', e.target.value)} data-testid="select-rutina-icono">{RUTINA_EMOJIS.map((emoji) => <option key={emoji} value={emoji}>{emoji}</option>)}</select></label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block"><span className="cosmos-field-label">Hora inicio</span><input required type="time" className="cosmos-input" value={String(form.hora_inicio)} onChange={(e) => set('hora_inicio', e.target.value)} data-testid="input-rutina-inicio" /></label>
+            <label className="block"><span className="cosmos-field-label">Hora fin</span><input required type="time" className="cosmos-input" value={String(form.hora_fin)} onChange={(e) => set('hora_fin', e.target.value)} data-testid="input-rutina-fin" /></label>
+          </div>
+          <label className="block"><span className="cosmos-field-label">Título</span><input required className="cosmos-input" value={String(form.titulo)} onChange={(e) => set('titulo', e.target.value)} data-testid="input-rutina-titulo" placeholder="Ej. Desayuno, SENA, Tiempo libre..." /></label>
+          <label className="block"><span className="cosmos-field-label">Descripción (opcional)</span><input className="cosmos-input" value={String(form.descripcion)} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-rutina-descripcion" placeholder="Un detalle de este bloque..." /></label>
+          <div><span className="cosmos-field-label">Color</span>
+            <div className="flex flex-wrap gap-2">
+              {RUTINA_COLORS.map((color) => (
+                <button key={color} type="button" onClick={() => set('color', color)} data-testid="swatch-rutina-color" aria-label={color} className={`h-8 w-8 rounded-full transition ${form.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a]' : 'hover:scale-110'}`} style={{ backgroundColor: color }} />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
+            <span className="text-sm font-medium text-white/80">¿Mostrarlo en la rutina?</span>
+            <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-rutina-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
+          </div>
+          <button disabled={pending} type="submit" data-testid="button-save-rutina" className="cosmos-button-primary w-full">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar bloque'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function CategoriesPage() {
   const queryClient = useQueryClient();
   const [modal, setModal] = useState(false);
@@ -817,6 +1007,7 @@ function App() {
     <Route path="/" component={Dashboard} />
     <Route path="/kilometraje" component={KilometrajePage} />
     <Route path="/habitos" component={HabitosPage} />
+    <Route path="/rutina" component={RutinaPage} />
     <Route path="/moto" component={MotoPage} />
     <Route path="/categorias" component={CategoriesPage} />
     <Route component={() => <Shell><div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center"><div><h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1><Link href="/" data-testid="link-back-home" className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4">Volver al resumen</Link></div></div></Shell>} />

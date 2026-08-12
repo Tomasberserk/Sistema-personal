@@ -824,6 +824,206 @@ export const ToggleHabitoFechaResponse = zod.object({
 
 
 /**
+ * @summary Lista todos los bloques de rutina
+ */
+export const listBloquesRutinaResponseDiaSemanaMin = 0;
+export const listBloquesRutinaResponseDiaSemanaMax = 6;
+
+
+
+export const ListBloquesRutinaResponseItem = zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(listBloquesRutinaResponseDiaSemanaMin).max(listBloquesRutinaResponseDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+})
+export const ListBloquesRutinaResponse = zod.array(ListBloquesRutinaResponseItem)
+
+
+/**
+ * @summary Crea un bloque de rutina
+ */
+export const createBloqueRutinaBodyDiaSemanaMin = 0;
+export const createBloqueRutinaBodyDiaSemanaMax = 6;
+
+
+
+export const CreateBloqueRutinaBody = zod.object({
+  "dia_semana": zod.number().min(createBloqueRutinaBodyDiaSemanaMin).max(createBloqueRutinaBodyDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "color": zod.string().optional(),
+  "icono": zod.string().optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const createBloqueRutinaResponseDiaSemanaMin = 0;
+export const createBloqueRutinaResponseDiaSemanaMax = 6;
+
+
+
+export const CreateBloqueRutinaResponse = zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(createBloqueRutinaResponseDiaSemanaMin).max(createBloqueRutinaResponseDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Los 7 días con sus bloques activos
+ */
+export const getRutinaSemanaResponseBloquesItemDiaSemanaMin = 0;
+export const getRutinaSemanaResponseBloquesItemDiaSemanaMax = 6;
+
+
+
+export const GetRutinaSemanaResponseItem = zod.object({
+  "dia_semana": zod.number(),
+  "bloques": zod.array(zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(getRutinaSemanaResponseBloquesItemDiaSemanaMin).max(getRutinaSemanaResponseBloquesItemDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+}))
+})
+export const GetRutinaSemanaResponse = zod.array(GetRutinaSemanaResponseItem)
+
+
+/**
+ * @summary Bloques activos de un día (0=lunes … 6=domingo)
+ */
+export const getRutinaDiaPathDiaSemanaMin = 0;
+export const getRutinaDiaPathDiaSemanaMax = 6;
+
+
+
+export const GetRutinaDiaParams = zod.object({
+  "dia_semana": zod.coerce.number().min(getRutinaDiaPathDiaSemanaMin).max(getRutinaDiaPathDiaSemanaMax)
+})
+
+export const getRutinaDiaResponseDiaSemanaMin = 0;
+export const getRutinaDiaResponseDiaSemanaMax = 6;
+
+
+
+export const GetRutinaDiaResponseItem = zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(getRutinaDiaResponseDiaSemanaMin).max(getRutinaDiaResponseDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+})
+export const GetRutinaDiaResponse = zod.array(GetRutinaDiaResponseItem)
+
+
+/**
+ * @summary Obtiene un bloque de rutina
+ */
+
+
+
+export const GetBloqueRutinaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const getBloqueRutinaResponseDiaSemanaMin = 0;
+export const getBloqueRutinaResponseDiaSemanaMax = 6;
+
+
+
+export const GetBloqueRutinaResponse = zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(getBloqueRutinaResponseDiaSemanaMin).max(getBloqueRutinaResponseDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Actualiza un bloque de rutina
+ */
+
+
+
+export const UpdateBloqueRutinaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const updateBloqueRutinaBodyDiaSemanaMin = 0;
+export const updateBloqueRutinaBodyDiaSemanaMax = 6;
+
+
+
+export const UpdateBloqueRutinaBody = zod.object({
+  "dia_semana": zod.number().min(updateBloqueRutinaBodyDiaSemanaMin).max(updateBloqueRutinaBodyDiaSemanaMax).optional(),
+  "hora_inicio": zod.string().optional(),
+  "hora_fin": zod.string().optional(),
+  "titulo": zod.string().optional(),
+  "descripcion": zod.string().optional(),
+  "color": zod.string().optional(),
+  "icono": zod.string().optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const updateBloqueRutinaResponseDiaSemanaMin = 0;
+export const updateBloqueRutinaResponseDiaSemanaMax = 6;
+
+
+
+export const UpdateBloqueRutinaResponse = zod.object({
+  "id": zod.number(),
+  "dia_semana": zod.number().min(updateBloqueRutinaResponseDiaSemanaMin).max(updateBloqueRutinaResponseDiaSemanaMax),
+  "hora_inicio": zod.string(),
+  "hora_fin": zod.string(),
+  "titulo": zod.string(),
+  "descripcion": zod.string(),
+  "color": zod.string(),
+  "icono": zod.string(),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Elimina un bloque de rutina
+ */
+
+
+
+export const DeleteBloqueRutinaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteBloqueRutinaResponse = zod.void()
+
+
+/**
  * @summary Calcula el resumen financiero del mes actual
  */
 export const GetResumenMesActualResponse = zod.object({

@@ -6,10 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './bloqueRutina';
+export * from './bloqueRutinaInput';
+export * from './bloqueRutinaUpdate';
 export * from './categoria';
 export * from './categoriaInput';
 export * from './categoriaUpdate';
 export * from './checkHabitoResult';
+export * from './diaRutina';
 export * from './error';
 export * from './estadoAceite';
 export * from './gastoFijo';
