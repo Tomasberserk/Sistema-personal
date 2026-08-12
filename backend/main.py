@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from contextlib import closing
 from datetime import date, datetime, timedelta
@@ -10,59 +11,80 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
+try:
+    import psycopg2
+    import psycopg2.extras
+
+    _HAS_PSYCOPG2 = True
+except ImportError:
+    _HAS_PSYCOPG2 = False
+
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "jarvis.sqlite3"
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+IS_POSTGRES = bool(DATABASE_URL)
+
+if IS_POSTGRES and not _HAS_PSYCOPG2:
+    raise RuntimeError(
+        "DATABASE_URL estÃ¡ definida pero falta psycopg2. "
+        "InstalÃ¡ psycopg2-binary (agregado a requirements.txt)."
+    )
+
+_INTEGRITY_ERRORS: tuple[type[BaseException], ...] = (sqlite3.IntegrityError,)
+if _HAS_PSYCOPG2:
+    _INTEGRITY_ERRORS = (sqlite3.IntegrityError, psycopg2.IntegrityError)
 
 Fuente = Literal["Didi", "papa", "amigo", "otro"]
 TipoGastoFijo = Literal["mensual", "por_kilometraje"]
 
 DEFAULT_CATEGORIAS = [
-    ("Comida", "🍔", "#e85d4a"),
-    ("Transporte", "🛵", "#5d8ae8"),
-    ("Gasolina", "⛽", "#e8a85d"),
-    ("Entretenimiento", "🎮", "#a85de8"),
-    ("Ropa", "👕", "#5de8c4"),
-    ("Medicina", "💊", "#e85d8a"),
-    ("Regalos", "🎁", "#e8d95d"),
-    ("Hogar", "🏠", "#5de87a"),
-    ("Tecnologia", "📱", "#5dc4e8"),
-    ("Aseo personal", "🧴", "#e8755d"),
+    ("Comida", "ðŸ”", "#e85d4a"),
+    ("Transporte", "ðŸ›µ", "#5d8ae8"),
+    ("Gasolina", "â›½", "#e8a85d"),
+    ("Entretenimiento", "ðŸŽ®", "#a85de8"),
+    ("Ropa", "ðŸ‘•", "#5de8c4"),
+    ("Medicina", "ðŸ’Š", "#e85d8a"),
+    ("Regalos", "ðŸŽ", "#e8d95d"),
+    ("Hogar", "ðŸ ", "#5de87a"),
+    ("Tecnologia", "ðŸ“±", "#5dc4e8"),
+    ("Aseo personal", "ðŸ§´", "#e8755d"),
 ]
 
 DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 
 DEFAULT_BLOQUES = [
     *[
-        (d, "05:00", "06:00", "Paseo y carrera", "", "#5d8ae8", "🐕")
+        (d, "05:00", "06:00", "Paseo y carrera", "", "#5d8ae8", "ðŸ•")
         for d in range(7)
     ],
     *[
-        (d, "07:00", "07:30", "Desayuno", "", "#e8a85d", "🍳")
+        (d, "07:00", "07:30", "Desayuno", "", "#e8a85d", "ðŸ³")
         for d in range(7)
     ],
     *[
-        (d, "08:30", "11:00", "Gym", "", "#e85d4a", "💪")
+        (d, "08:30", "11:00", "Gym", "", "#e85d4a", "ðŸ’ª")
         for d in (0, 1, 3, 4)
     ],
     *[
-        (d, "11:00", "12:00", "SENA/Didi", "", "#a85de8", "📚")
+        (d, "11:00", "12:00", "SENA/Didi", "", "#a85de8", "ðŸ“š")
         for d in range(5)
     ],
     *[
-        (d, "12:00", "13:00", "Almuerzo", "", "#5de87a", "🍽️")
+        (d, "12:00", "13:00", "Almuerzo", "", "#5de87a", "ðŸ½ï¸")
         for d in range(7)
     ],
     *[
-        (d, "13:30", "17:00", "Tiempo libre", "", "#e8d95d", "🕐")
+        (d, "13:30", "17:00", "Tiempo libre", "", "#e8d95d", "ðŸ•")
         for d in range(5)
     ],
     *[
-        (d, "17:00", "17:30", "Preparación SENA", "", "#5dc4e8", "🛁")
+        (d, "17:00", "17:30", "PreparaciÃ³n SENA", "", "#5dc4e8", "ðŸ›")
         for d in range(5)
     ],
     *[
-        (d, "18:00", "23:30", "SENA", "", "#e85d8a", "🏫")
+        (d, "18:00", "23:30", "SENA", "", "#e85d8a", "ðŸ«")
         for d in range(5)
     ],
 ]
@@ -107,7 +129,7 @@ class GastoFijo(GastoFijoInput):
 
 class CategoriaInput(BaseModel):
     nombre: str = Field(min_length=1)
-    icono: str = "🏷️"
+    icono: str = "ðŸ·ï¸"
     color: str = "#333333"
     activa: bool = True
 
@@ -164,7 +186,7 @@ class KilometrajeResumen(BaseModel):
 
 class HabitoInput(BaseModel):
     nombre: str = Field(min_length=1)
-    icono: str = "✅"
+    icono: str = "âœ…"
     color: str = "#5de8c4"
     activo: bool = True
 
@@ -208,7 +230,7 @@ class BloqueRutinaInput(BaseModel):
     titulo: str = Field(min_length=1)
     descripcion: str = ""
     color: str = "#5d8ae8"
-    icono: str = "⏰"
+    icono: str = "â°"
     activo: bool = True
 
 
@@ -261,161 +283,358 @@ class EstadoAceite(BaseModel):
     km_ultimo_cambio: int
     km_proximo_cambio: int
     km_restantes: int
-    alerta: bool
-    porcentaje_vida_aceite: float
-    intervalo_km: int
-    alerta_km_antes: int
+def _normalize_sql(sql: str) -> str:
+    """Asegura el placeholder correcto según el motor (%s para PostgreSQL, ? para SQLite)."""
+    if IS_POSTGRES:
+        return sql.replace("?", "%s")
+    return sql.replace("%s", "?")
 
 
-def get_connection() -> sqlite3.Connection:
+def _split_sql_statements(sql: str) -> list[str]:
+    return [part.strip() for part in sql.split(";") if part.strip()]
+
+
+class _Row:
+    """Fila con acceso por nombre o por posición (emula sqlite3.Row)."""
+
+    def __init__(self, mapping: dict[str, Any] | Any):
+        if isinstance(mapping, (dict, psycopg2.extras.RealDictRow)):
+            self._mapping = dict(mapping)
+        elif hasattr(mapping, "_asdict"):
+            self._mapping = mapping._asdict()
+        else:
+            self._mapping = dict(mapping)
+
+    def __getitem__(self, key: int | str) -> Any:
+        if isinstance(key, int):
+            return list(self._mapping.values())[key]
+        return self._mapping[key]
+
+    def __iter__(self):
+        return iter(self._mapping)
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+    def keys(self) -> list[str]:
+        return list(self._mapping.keys())
+
+
+class _PgCursor:
+    def __init__(self, pg_cursor: Any):
+        self._cursor = pg_cursor
+
+    @property
+    def lastrowid(self) -> Any:
+        return getattr(self._cursor, "lastrowid", None)
+
+    def fetchone(self) -> _Row | None:
+        row = self._cursor.fetchone()
+        return _Row(row) if row is not None else None
+
+    def fetchall(self) -> list[_Row]:
+        return [_Row(row) for row in self._cursor.fetchall()]
+
+
+class _PgConnection:
+    """Wrapper de una conexión psycopg2 con API similar a sqlite3."""
+
+    def __init__(self, pg_conn: Any):
+        self._conn = pg_conn
+
+    def execute(self, sql: str, params: Any = None) -> _PgCursor:
+        cursor = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        normalized = _normalize_sql(sql)
+        if params is None:
+            cursor.execute(normalized)
+        else:
+            cursor.execute(normalized, params)
+        return _PgCursor(cursor)
+
+    def executemany(self, sql: str, seq_of_params: Any) -> _PgCursor:
+        cursor = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        normalized = _normalize_sql(sql)
+        cursor.executemany(normalized, seq_of_params)
+        return _PgCursor(cursor)
+
+    def executescript(self, script: str) -> None:
+        cursor = self._conn.cursor()
+        for statement in _split_sql_statements(script):
+            if statement.startswith("--") or statement.startswith("/*"):
+                continue
+            cursor.execute(statement)
+        cursor.close()
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+class _SqliteConnection:
+    """Wrapper de una conexión sqlite3 con API uniforme (_normalize_sql)."""
+
+    def __init__(self, conn: sqlite3.Connection):
+        self._conn = conn
+
+    def execute(self, sql: str, params: Any = None) -> Any:
+        normalized = _normalize_sql(sql)
+        if params is None:
+            return self._conn.execute(normalized)
+        return self._conn.execute(normalized, params)
+
+    def executemany(self, sql: str, seq_of_params: Any) -> Any:
+        normalized = _normalize_sql(sql)
+        return self._conn.executemany(normalized, seq_of_params)
+
+    def executescript(self, script: str) -> None:
+        self._conn.executescript(script)
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+def get_connection() -> Any:
+    if IS_POSTGRES:
+        url = DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        connection = psycopg2.connect(url)
+        connection.set_client_encoding("UTF8")
+        connection.set_session(autocommit=False)
+        return _PgConnection(connection)
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+    return _SqliteConnection(connection)
+
+
+POSTGRES_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS categorias (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE,
+        icono TEXT NOT NULL DEFAULT '🏷️',
+        color TEXT NOT NULL DEFAULT '#333333',
+        activa BOOLEAN NOT NULL DEFAULT TRUE
+    );
+    CREATE TABLE IF NOT EXISTS ingresos (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
+        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS gastos_fijos (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
+        tipo TEXT NOT NULL CHECK (tipo IN ('mensual', 'por_kilometraje')),
+        activo BOOLEAN NOT NULL DEFAULT TRUE
+    );
+    CREATE TABLE IF NOT EXISTS gastos_variables (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        categoria_id INTEGER NOT NULL REFERENCES categorias(id),
+        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS kilometraje (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        km_actuales INTEGER NOT NULL CHECK (km_actuales >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS moto_config (
+        id SERIAL PRIMARY KEY,
+        km_ultimo_cambio INTEGER NOT NULL DEFAULT 0 CHECK (km_ultimo_cambio >= 0),
+        intervalo_km INTEGER NOT NULL DEFAULT 2000 CHECK (intervalo_km >= 1),
+        alerta_km_antes INTEGER NOT NULL DEFAULT 200 CHECK (alerta_km_antes >= 0)
+    );
+    CREATE TABLE IF NOT EXISTS habitos (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE,
+        icono TEXT NOT NULL DEFAULT '✅',
+        color TEXT NOT NULL DEFAULT '#5de8c4',
+        activo BOOLEAN NOT NULL DEFAULT TRUE,
+        creado_en TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+    );
+    CREATE TABLE IF NOT EXISTS registro_habitos (
+        id SERIAL PRIMARY KEY,
+        habito_id INTEGER NOT NULL REFERENCES habitos(id) ON DELETE CASCADE,
+        fecha TEXT NOT NULL,
+        completado BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (habito_id, fecha)
+    );
+    CREATE TABLE IF NOT EXISTS bloques_rutina (
+        id SERIAL PRIMARY KEY,
+        dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+        hora_inicio TEXT NOT NULL,
+        hora_fin TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT '#5d8ae8',
+        icono TEXT NOT NULL DEFAULT '⏰',
+        activo BOOLEAN NOT NULL DEFAULT TRUE
+    );
+"""
+
+SQLITE_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS categorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL UNIQUE,
+        icono TEXT NOT NULL DEFAULT '🏷️',
+        color TEXT NOT NULL DEFAULT '#333333',
+        activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
+    );
+    CREATE TABLE IF NOT EXISTS ingresos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
+        monto REAL NOT NULL CHECK (monto >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS gastos_fijos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        monto REAL NOT NULL CHECK (monto >= 0),
+        tipo TEXT NOT NULL CHECK (tipo IN ('mensual', 'por_kilometraje')),
+        activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+    );
+    CREATE TABLE IF NOT EXISTS gastos_variables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        categoria_id INTEGER NOT NULL REFERENCES categorias(id),
+        monto REAL NOT NULL CHECK (monto >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS kilometraje (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        km_actuales INTEGER NOT NULL CHECK (km_actuales >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS moto_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        km_ultimo_cambio INTEGER NOT NULL DEFAULT 0 CHECK (km_ultimo_cambio >= 0),
+        intervalo_km INTEGER NOT NULL DEFAULT 2000 CHECK (intervalo_km >= 1),
+        alerta_km_antes INTEGER NOT NULL DEFAULT 200 CHECK (alerta_km_antes >= 0)
+    );
+    CREATE TABLE IF NOT EXISTS habitos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL UNIQUE,
+        icono TEXT NOT NULL DEFAULT '✅',
+        color TEXT NOT NULL DEFAULT '#5de8c4',
+        activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+        creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS registro_habitos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        habito_id INTEGER NOT NULL REFERENCES habitos(id) ON DELETE CASCADE,
+        fecha TEXT NOT NULL,
+        completado INTEGER NOT NULL DEFAULT 1 CHECK (completado IN (0, 1)),
+        UNIQUE (habito_id, fecha)
+    );
+    CREATE TABLE IF NOT EXISTS bloques_rutina (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
+        hora_inicio TEXT NOT NULL,
+        hora_fin TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT '#5d8ae8',
+        icono TEXT NOT NULL DEFAULT '⏰',
+        activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+    );
+"""
 
 
 def init_db() -> None:
     with closing(get_connection()) as connection:
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS categorias (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL UNIQUE,
-                icono TEXT NOT NULL DEFAULT '🏷️',
-                color TEXT NOT NULL DEFAULT '#333333',
-                activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
-            );
-            CREATE TABLE IF NOT EXISTS ingresos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
-                monto REAL NOT NULL CHECK (monto >= 0),
-                nota TEXT NOT NULL DEFAULT ''
-            );
-            CREATE TABLE IF NOT EXISTS gastos_fijos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL,
-                monto REAL NOT NULL CHECK (monto >= 0),
-                tipo TEXT NOT NULL CHECK (tipo IN ('mensual', 'por_kilometraje')),
-                activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
-            );
-            CREATE TABLE IF NOT EXISTS gastos_variables (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                categoria_id INTEGER NOT NULL REFERENCES categorias(id),
-                monto REAL NOT NULL CHECK (monto >= 0),
-                nota TEXT NOT NULL DEFAULT ''
-            );
-            CREATE TABLE IF NOT EXISTS kilometraje (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fecha TEXT NOT NULL,
-                km_actuales INTEGER NOT NULL CHECK (km_actuales >= 0),
-                nota TEXT NOT NULL DEFAULT ''
-            );
-            CREATE TABLE IF NOT EXISTS moto_config (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                km_ultimo_cambio INTEGER NOT NULL DEFAULT 0 CHECK (km_ultimo_cambio >= 0),
-                intervalo_km INTEGER NOT NULL DEFAULT 2000 CHECK (intervalo_km >= 1),
-                alerta_km_antes INTEGER NOT NULL DEFAULT 200 CHECK (alerta_km_antes >= 0)
-            );
-            CREATE TABLE IF NOT EXISTS habitos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL UNIQUE,
-                icono TEXT NOT NULL DEFAULT '✅',
-                color TEXT NOT NULL DEFAULT '#5de8c4',
-                activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
-                creado_en TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS registro_habitos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                habito_id INTEGER NOT NULL REFERENCES habitos(id) ON DELETE CASCADE,
-                fecha TEXT NOT NULL,
-                completado INTEGER NOT NULL DEFAULT 1 CHECK (completado IN (0, 1)),
-                UNIQUE (habito_id, fecha)
-            );
-            CREATE TABLE IF NOT EXISTS bloques_rutina (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
-                hora_inicio TEXT NOT NULL,
-                hora_fin TEXT NOT NULL,
-                titulo TEXT NOT NULL,
-                descripcion TEXT NOT NULL DEFAULT '',
-                color TEXT NOT NULL DEFAULT '#5d8ae8',
-                icono TEXT NOT NULL DEFAULT '⏰',
-                activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
-            );
-            """
-        )
-        connection.executemany(
-            """
-            INSERT OR IGNORE INTO categorias (nombre, icono, color, activa)
-            VALUES (?, ?, ?, 1)
-            """,
-            DEFAULT_CATEGORIAS,
-        )
-        columns = [
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()
-        ]
-        if "categoria" in columns and "categoria_id" not in columns:
-            connection.execute("ALTER TABLE gastos_variables RENAME TO gastos_variables_old")
-            connection.execute(
-                """
-                CREATE TABLE gastos_variables (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    fecha TEXT NOT NULL,
-                    categoria_id INTEGER NOT NULL REFERENCES categorias(id),
-                    monto REAL NOT NULL CHECK (monto >= 0),
-                    nota TEXT NOT NULL DEFAULT ''
-                )
-                """
-            )
-            connection.execute(
+        connection.executescript(POSTGRES_SCHEMA if IS_POSTGRES else SQLITE_SCHEMA)
+        categoria_count = connection.execute(
+            "SELECT COUNT(*) FROM categorias"
+        ).fetchone()[0]
+        if categoria_count == 0:
+            connection.executemany(
                 """
                 INSERT INTO categorias (nombre, icono, color, activa)
-                SELECT DISTINCT o.categoria, '🏷️', '#dddddd', 1
-                FROM gastos_variables_old o
-                WHERE trim(o.categoria) <> ''
-                AND NOT EXISTS (
-                    SELECT 1 FROM categorias c WHERE lower(c.nombre) = lower(trim(o.categoria))
+                VALUES (%s, %s, %s, TRUE)
+                """,
+                DEFAULT_CATEGORIAS,
+            )
+        if not IS_POSTGRES:
+            columns = [
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()
+            ]
+            if "categoria" in columns and "categoria_id" not in columns:
+                connection.execute("ALTER TABLE gastos_variables RENAME TO gastos_variables_old")
+                connection.execute(
+                    """
+                    CREATE TABLE gastos_variables (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        fecha TEXT NOT NULL,
+                        categoria_id INTEGER NOT NULL REFERENCES categorias(id),
+                        monto REAL NOT NULL CHECK (monto >= 0),
+                        nota TEXT NOT NULL DEFAULT ''
+                    )
+                    """
                 )
-                """
-            )
-            connection.execute(
-                """
-                INSERT INTO gastos_variables (id, fecha, categoria_id, monto, nota)
-                SELECT o.id,
-                       o.fecha,
-                       COALESCE(
-                           (SELECT c.id FROM categorias c
-                            WHERE lower(c.nombre) = lower(trim(o.categoria))),
-                           (SELECT MIN(id) FROM categorias)
-                       ),
-                       o.monto,
-                       COALESCE(o.nota, '')
-                FROM gastos_variables_old o
-                """
-            )
-            connection.execute("DROP TABLE gastos_variables_old")
+                connection.execute(
+                    """
+                    INSERT INTO categorias (nombre, icono, color, activa)
+                    SELECT DISTINCT o.categoria, '🏷️', '#dddddd', 1
+                    FROM gastos_variables_old o
+                    WHERE trim(o.categoria) <> ''
+                    AND NOT EXISTS (
+                        SELECT 1 FROM categorias c WHERE lower(c.nombre) = lower(trim(o.categoria))
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    INSERT INTO gastos_variables (id, fecha, categoria_id, monto, nota)
+                    SELECT o.id,
+                           o.fecha,
+                           COALESCE(
+                               (SELECT c.id FROM categorias c
+                                WHERE lower(c.nombre) = lower(trim(o.categoria))),
+                               (SELECT MIN(id) FROM categorias)
+                           ),
+                           o.monto,
+                           COALESCE(o.nota, '')
+                    FROM gastos_variables_old o
+                    """
+                )
+                connection.execute("DROP TABLE gastos_variables_old")
         existing = connection.execute("SELECT COUNT(*) FROM gastos_fijos").fetchone()[0]
         if existing == 0:
             connection.executemany(
                 """
                 INSERT INTO gastos_fijos (nombre, monto, tipo, activo)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, TRUE)
                 """,
                 [
-                    ("Cuota moto", 390000, "mensual", 1),
-                    ("Aceite moto", 60000, "por_kilometraje", 1),
-                    ("Plan Claro", 45000, "mensual", 1),
+                    ("Cuota moto", 390000, "mensual"),
+                    ("Aceite moto", 60000, "por_kilometraje"),
+                    ("Plan Claro", 45000, "mensual"),
                 ],
             )
-        connection.execute(
-            """
-            INSERT OR IGNORE INTO moto_config (id, km_ultimo_cambio, intervalo_km, alerta_km_antes)
-            VALUES (1, 0, 2000, 200)
-            """
-        )
+        moto = connection.execute(
+            "SELECT 1 FROM moto_config WHERE id = 1"
+        ).fetchone()
+        if moto is None:
+            connection.execute(
+                """
+                INSERT INTO moto_config (id, km_ultimo_cambio, intervalo_km, alerta_km_antes)
+                VALUES (1, %s, %s, %s)
+                """,
+                (0, 2000, 200),
+            )
         bloque_count = connection.execute(
             "SELECT COUNT(*) AS n FROM bloques_rutina"
         ).fetchone()["n"]
@@ -424,18 +643,26 @@ def init_db() -> None:
                 """
                 INSERT INTO bloques_rutina
                     (dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
                 """,
                 DEFAULT_BLOQUES,
             )
         connection.commit()
 
 
-def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+def _norm_bool(value: Any) -> Any:
+    if IS_POSTGRES:
+        return bool(value)
+    return int(value)
+
+
+def row_to_dict(row: Any) -> dict[str, Any]:
+    if isinstance(row, _Row):
+        return dict(row._mapping)
     return dict(row)
 
 
-def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sqlite3.Row:
+def require_row(connection: Any, table: str, item_id: int) -> Any:
     allowed_tables = {
         "ingresos",
         "gastos_fijos",
@@ -449,7 +676,7 @@ def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sql
     if table not in allowed_tables:
         raise ValueError("Tabla no permitida")
     row = connection.execute(
-        f"SELECT * FROM {table} WHERE id = ?",  # table is selected from a fixed allowlist
+        f"SELECT * FROM {table} WHERE id = %s",  # table is selected from a fixed allowlist
         (item_id,),
     ).fetchone()
     if row is None:
@@ -457,9 +684,9 @@ def require_row(connection: sqlite3.Connection, table: str, item_id: int) -> sql
     return row
 
 
-def require_categoria(connection: sqlite3.Connection, categoria_id: int) -> None:
+def require_categoria(connection: Any, categoria_id: int) -> None:
     exists = connection.execute(
-        "SELECT 1 FROM categorias WHERE id = ?", (categoria_id,)
+        "SELECT 1 FROM categorias WHERE id = %s", (categoria_id,)
     ).fetchone()
     if exists is None:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
@@ -468,14 +695,20 @@ def require_categoria(connection: sqlite3.Connection, categoria_id: int) -> None
 def create_item(table: str, fields: dict[str, Any]) -> dict[str, Any]:
     columns = list(fields)
     values = [fields[column] for column in columns]
-    placeholders = ", ".join("?" for _ in columns)
+    placeholders = ", ".join("%s" for _ in columns)
     with closing(get_connection()) as connection:
         cursor = connection.execute(
-            f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+            f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+            + (" RETURNING id" if IS_POSTGRES else ""),
             values,
         )
+        if IS_POSTGRES:
+            row = cursor.fetchone()
+            new_id = int(row[0])
+        else:
+            new_id = cursor.lastrowid
         connection.commit()
-        return row_to_dict(require_row(connection, table, cursor.lastrowid))
+        return row_to_dict(require_row(connection, table, new_id))
 
 
 def update_item(table: str, item_id: int, fields: dict[str, Any]) -> dict[str, Any]:
@@ -483,12 +716,12 @@ def update_item(table: str, item_id: int, fields: dict[str, Any]) -> dict[str, A
         with closing(get_connection()) as connection:
             return row_to_dict(require_row(connection, table, item_id))
     columns = list(fields)
-    assignments = ", ".join(f"{column} = ?" for column in columns)
+    assignments = ", ".join(f"{column} = %s" for column in columns)
     values = [fields[column] for column in columns]
     with closing(get_connection()) as connection:
         require_row(connection, table, item_id)
         connection.execute(
-            f"UPDATE {table} SET {assignments} WHERE id = ?",
+            f"UPDATE {table} SET {assignments} WHERE id = %s",
             [*values, item_id],
         )
         connection.commit()
@@ -498,11 +731,11 @@ def update_item(table: str, item_id: int, fields: dict[str, Any]) -> dict[str, A
 def delete_item(table: str, item_id: int) -> None:
     with closing(get_connection()) as connection:
         require_row(connection, table, item_id)
-        connection.execute(f"DELETE FROM {table} WHERE id = ?", (item_id,))
+        connection.execute(f"DELETE FROM {table} WHERE id = %s", (item_id,))
         connection.commit()
 
 
-def get_moto_config(connection: sqlite3.Connection) -> sqlite3.Row:
+def get_moto_config(connection: Any) -> Any:
     row = connection.execute("SELECT * FROM moto_config WHERE id = 1").fetchone()
     if row is None:
         connection.execute(
@@ -544,7 +777,7 @@ def build_estado_aceite() -> dict[str, Any]:
     }
 
 
-def ensure_km_no_regression(connection: sqlite3.Connection, km: int) -> None:
+def ensure_km_no_regression(connection: Any, km: int) -> None:
     last = connection.execute(
         "SELECT km_actuales FROM kilometraje ORDER BY fecha DESC, id DESC LIMIT 1"
     ).fetchone()
@@ -559,12 +792,12 @@ def ensure_km_no_regression(connection: sqlite3.Connection, km: int) -> None:
 
 
 def previous_kilometraje(
-    connection: sqlite3.Connection, item_id: int, fecha: str
-) -> sqlite3.Row | None:
+    connection: Any, item_id: int, fecha: str
+) -> Any:
     return connection.execute(
         """
         SELECT km_actuales FROM kilometraje
-        WHERE fecha < ? OR (fecha = ? AND id < ?)
+        WHERE fecha < %s OR (fecha = %s AND id < %s)
         ORDER BY fecha DESC, id DESC
         LIMIT 1
         """,
@@ -573,12 +806,12 @@ def previous_kilometraje(
 
 
 def next_kilometraje(
-    connection: sqlite3.Connection, item_id: int, fecha: str
-) -> sqlite3.Row | None:
+    connection: Any, item_id: int, fecha: str
+) -> Any:
     return connection.execute(
         """
         SELECT km_actuales FROM kilometraje
-        WHERE fecha > ? OR (fecha = ? AND id > ?)
+        WHERE fecha > %s OR (fecha = %s AND id > %s)
         ORDER BY fecha ASC, id ASC
         LIMIT 1
         """,
@@ -587,7 +820,7 @@ def next_kilometraje(
 
 
 def calcular_racha(
-    connection: sqlite3.Connection, habito_id: int, dia: date | None = None
+    connection: Any, habito_id: int, dia: date | None = None
 ) -> int:
     if dia is None:
         dia = date.today()
@@ -596,7 +829,7 @@ def calcular_racha(
         hecho = connection.execute(
             """
             SELECT 1 FROM registro_habitos
-            WHERE habito_id = ? AND fecha = ? AND completado = 1
+            WHERE habito_id = %s AND fecha = %s AND completado = TRUE
             """,
             (habito_id, dia.isoformat()),
         ).fetchone()
@@ -609,7 +842,7 @@ def calcular_racha(
 
 app = FastAPI(
     title="Jarvis API",
-    description="API de gestión financiera personal de Jarvis.",
+    description="API de gestiÃ³n financiera personal de Jarvis.",
     version="1.0.0",
 )
 app.add_middleware(
@@ -672,7 +905,7 @@ def list_gastos_fijos() -> list[dict[str, Any]]:
 
 @app.post("/api/gastos-fijos", response_model=GastoFijo, status_code=201)
 def create_gasto_fijo(payload: GastoFijoInput) -> dict[str, Any]:
-    result = create_item("gastos_fijos", {**payload.model_dump(), "activo": int(payload.activo)})
+    result = create_item("gastos_fijos", {**payload.model_dump(), "activo": _norm_bool(payload.activo)})
     result["activo"] = bool(result["activo"])
     return result
 
@@ -688,7 +921,7 @@ def get_gasto_fijo(item_id: int) -> dict[str, Any]:
 def update_gasto_fijo(item_id: int, payload: GastoFijoUpdate) -> dict[str, Any]:
     fields = payload.model_dump(exclude_unset=True)
     if "activo" in fields and fields["activo"] is not None:
-        fields["activo"] = int(fields["activo"])
+        fields["activo"] = _norm_bool(fields["activo"])
     result = update_item("gastos_fijos", item_id, fields)
     result["activo"] = bool(result["activo"])
     return result
@@ -713,10 +946,10 @@ def list_categorias() -> list[dict[str, Any]]:
 def create_categoria(payload: CategoriaInput) -> dict[str, Any]:
     try:
         result = create_item(
-            "categorias", {**payload.model_dump(), "activa": int(payload.activa)}
+            "categorias", {**payload.model_dump(), "activa": _norm_bool(payload.activa)}
         )
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+    except _INTEGRITY_ERRORS:
+        raise HTTPException(status_code=400, detail="Ya existe una categorÃ­a con ese nombre")
     result["activa"] = bool(result["activa"])
     return result
 
@@ -732,11 +965,11 @@ def get_categoria(item_id: int) -> dict[str, Any]:
 def update_categoria(item_id: int, payload: CategoriaUpdate) -> dict[str, Any]:
     fields = payload.model_dump(exclude_unset=True)
     if "activa" in fields and fields["activa"] is not None:
-        fields["activa"] = int(fields["activa"])
+        fields["activa"] = _norm_bool(fields["activa"])
     try:
         result = update_item("categorias", item_id, fields)
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+    except _INTEGRITY_ERRORS:
+        raise HTTPException(status_code=400, detail="Ya existe una categorÃ­a con ese nombre")
     result["activa"] = bool(result["activa"])
     return result
 
@@ -745,10 +978,10 @@ def update_categoria(item_id: int, payload: CategoriaUpdate) -> dict[str, Any]:
 def delete_categoria(item_id: int) -> Response:
     try:
         delete_item("categorias", item_id)
-    except sqlite3.IntegrityError:
+    except _INTEGRITY_ERRORS:
         raise HTTPException(
             status_code=400,
-            detail="No se puede eliminar la categoría: tiene gastos asociados",
+            detail="No se puede eliminar la categorÃ­a: tiene gastos asociados",
         )
     return Response(status_code=204)
 
@@ -846,7 +1079,7 @@ def update_kilometraje(item_id: int, payload: KilometrajeUpdate) -> dict[str, An
                 raise HTTPException(
                     status_code=400,
                     detail=(
-                        "El odómetro no puede retroceder: el registro anterior fue "
+                        "El odÃ³metro no puede retroceder: el registro anterior fue "
                         f"{int(prev['km_actuales'])} km"
                     ),
                 )
@@ -883,7 +1116,7 @@ def moto_cambio_aceite() -> dict[str, Any]:
         ).fetchone()
         km_actuales = int(km_row["km_actuales"]) if km_row else 0
         connection.execute(
-            "UPDATE moto_config SET km_ultimo_cambio = ? WHERE id = 1",
+            "UPDATE moto_config SET km_ultimo_cambio = %s WHERE id = 1",
             (km_actuales,),
         )
         connection.commit()
@@ -895,7 +1128,7 @@ def moto_update_config(payload: MotoConfigUpdate) -> dict[str, Any]:
     fields = payload.model_dump(exclude_unset=True)
     if not fields:
         return build_estado_aceite()
-    sets = ", ".join(f"{column} = ?" for column in fields)
+    sets = ", ".join(f"{column} = %s" for column in fields)
     values = [fields[column] for column in fields]
     with closing(get_connection()) as connection:
         get_moto_config(connection)
@@ -918,11 +1151,8 @@ def list_habitos() -> list[dict[str, Any]]:
 @app.post("/api/habitos", response_model=Habito, status_code=201)
 def create_habito(payload: HabitoInput) -> dict[str, Any]:
     try:
-        result = create_item(
-            "habitos",
-            {**payload.model_dump(), "activo": int(payload.activo)},
-        )
-    except sqlite3.IntegrityError:
+        result = create_item("habitos", payload.model_dump())
+    except _INTEGRITY_ERRORS:
         raise HTTPException(status_code=400, detail="Ya existe un hábito con ese nombre")
     result["activo"] = bool(result["activo"])
     return result
@@ -935,12 +1165,12 @@ def resumen_habitos(fecha: date) -> list[dict[str, Any]]:
         estado_rows = {
             row["habito_id"]: bool(row["completado"])
             for row in connection.execute(
-                "SELECT habito_id, completado FROM registro_habitos WHERE fecha = ?",
+                "SELECT habito_id, completado FROM registro_habitos WHERE fecha = %s",
                 (fecha_iso,),
             ).fetchall()
         }
         habits = connection.execute(
-            "SELECT * FROM habitos WHERE activo = 1 ORDER BY id"
+            "SELECT * FROM habitos WHERE activo = TRUE ORDER BY id"
         ).fetchall()
         return [
             {
@@ -973,15 +1203,13 @@ def get_habito(item_id: int) -> dict[str, Any]:
 @app.patch("/api/habitos/{item_id}", response_model=Habito)
 def update_habito(item_id: int, payload: HabitoUpdate) -> dict[str, Any]:
     fields = payload.model_dump(exclude_unset=True)
-    if fields.get("activo") is not None:
-        fields["activo"] = int(fields["activo"])
     if not fields:
         with closing(get_connection()) as connection:
             row = require_row(connection, "habitos", item_id)
         return {**row_to_dict(row), "activo": bool(row["activo"])}
     try:
         result = update_item("habitos", item_id, fields)
-    except sqlite3.IntegrityError:
+    except _INTEGRITY_ERRORS:
         raise HTTPException(status_code=400, detail="Ya existe un hábito con ese nombre")
     result["activo"] = bool(result["activo"])
     return result
@@ -999,15 +1227,15 @@ def toggle_habito(item_id: int, fecha: date) -> dict[str, Any]:
     with closing(get_connection()) as connection:
         require_row(connection, "habitos", item_id)
         existing = connection.execute(
-            "SELECT id FROM registro_habitos WHERE habito_id = ? AND fecha = ?",
+            "SELECT id FROM registro_habitos WHERE habito_id = %s AND fecha = %s",
             (item_id, fecha_iso),
         ).fetchone()
         if existing is not None:
-            connection.execute("DELETE FROM registro_habitos WHERE id = ?", (existing["id"],))
+            connection.execute("DELETE FROM registro_habitos WHERE id = %s", (existing["id"],))
             completado = False
         else:
             connection.execute(
-                "INSERT INTO registro_habitos (habito_id, fecha, completado) VALUES (?, ?, 1)",
+                "INSERT INTO registro_habitos (habito_id, fecha, completado) VALUES (%s, %s, TRUE)",
                 (item_id, fecha_iso),
             )
             completado = True
@@ -1015,7 +1243,7 @@ def toggle_habito(item_id: int, fecha: date) -> dict[str, Any]:
     return {"habito_id": item_id, "fecha": fecha_iso, "completado": completado}
 
 
-def bloque_dict(row: sqlite3.Row) -> dict[str, Any]:
+def bloque_dict(row: Any) -> dict[str, Any]:
     return {**row_to_dict(row), "activo": bool(row["activo"])}
 
 
@@ -1040,10 +1268,7 @@ def list_bloques_rutina() -> list[dict[str, Any]]:
 @app.post("/api/rutina/bloques", response_model=BloqueRutina, status_code=201)
 def create_bloque_rutina(payload: BloqueRutinaInput) -> dict[str, Any]:
     validar_horas(payload.hora_inicio, payload.hora_fin)
-    result = create_item(
-        "bloques_rutina",
-        {**payload.model_dump(), "activo": int(payload.activo)},
-    )
+    result = create_item("bloques_rutina", payload.model_dump())
     result["activo"] = bool(result["activo"])
     return result
 
@@ -1052,7 +1277,7 @@ def create_bloque_rutina(payload: BloqueRutinaInput) -> dict[str, Any]:
 def rutina_semana() -> list[dict[str, Any]]:
     with closing(get_connection()) as connection:
         rows = connection.execute(
-            "SELECT * FROM bloques_rutina WHERE activo = 1"
+            "SELECT * FROM bloques_rutina WHERE activo = TRUE"
             " ORDER BY dia_semana, hora_inicio, id"
         ).fetchall()
     dias: dict[int, list[dict[str, Any]]] = {i: [] for i in range(7)}
@@ -1071,7 +1296,7 @@ def bloques_dia(dia_semana: int) -> list[dict[str, Any]]:
     with closing(get_connection()) as connection:
         rows = connection.execute(
             "SELECT * FROM bloques_rutina"
-            " WHERE dia_semana = ? AND activo = 1 ORDER BY hora_inicio, id",
+            " WHERE dia_semana = %s AND activo = TRUE ORDER BY hora_inicio, id",
             (dia_semana,),
         ).fetchall()
         return [bloque_dict(row) for row in rows]
@@ -1087,8 +1312,6 @@ def get_bloque_rutina(item_id: int) -> dict[str, Any]:
 @app.patch("/api/rutina/bloques/{item_id}", response_model=BloqueRutina)
 def update_bloque_rutina(item_id: int, payload: BloqueRutinaUpdate) -> dict[str, Any]:
     fields = payload.model_dump(exclude_unset=True)
-    if fields.get("activo") is not None:
-        fields["activo"] = int(fields["activo"])
     if "hora_inicio" in fields or "hora_fin" in fields:
         with closing(get_connection()) as connection:
             row = require_row(connection, "bloques_rutina", item_id)
@@ -1115,14 +1338,14 @@ def resumen_mes_actual() -> dict[str, Any]:
     current_month = datetime.now().strftime("%Y-%m")
     with closing(get_connection()) as connection:
         ingresos = connection.execute(
-            "SELECT COALESCE(SUM(monto), 0) FROM ingresos WHERE substr(fecha, 1, 7) = ?",
+            "SELECT COALESCE(SUM(monto), 0) FROM ingresos WHERE substr(fecha, 1, 7) = %s",
             (current_month,),
         ).fetchone()[0]
         variables = connection.execute(
             """
             SELECT COALESCE(SUM(monto), 0)
             FROM gastos_variables
-            WHERE substr(fecha, 1, 7) = ?
+            WHERE substr(fecha, 1, 7) = %s
             """,
             (current_month,),
         ).fetchone()[0]
@@ -1130,7 +1353,7 @@ def resumen_mes_actual() -> dict[str, Any]:
             """
             SELECT COALESCE(SUM(monto), 0)
             FROM gastos_fijos
-            WHERE activo = 1 AND tipo = 'mensual'
+            WHERE activo = TRUE AND tipo = 'mensual'
             """
         ).fetchone()[0]
     return {
@@ -1159,7 +1382,7 @@ def resumen_mes_actual_por_categoria() -> list[dict[str, Any]]:
                    SUM(gv.monto) AS total
             FROM gastos_variables gv
             JOIN categorias c ON c.id = gv.categoria_id
-            WHERE substr(gv.fecha, 1, 7) = ?
+            WHERE substr(gv.fecha, 1, 7) = %s
             GROUP BY c.id, c.nombre, c.icono, c.color
             ORDER BY total DESC
             """,

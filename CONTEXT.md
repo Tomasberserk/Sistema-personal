@@ -8,7 +8,7 @@ https://github.com/Tomasberserk/Sistema-personal
 
 ## Stack
 - Backend: Python + FastAPI
-- Base de datos: SQLite (por ahora), luego PostgreSQL
+- Base de datos: SQLite (dev) / PostgreSQL (producción), seleccionado vía `DATABASE_URL`
 - Frontend: React + TypeScript (está en artifacts/jarvis/)
 - Hosting: Replit (puede cambiar)
 
@@ -131,3 +131,25 @@ La próxima tarea natural es **fechas especiales** (cumpleaños, aniversarios, r
 - Monedas en COP (pesos colombianos), formato es-CO
 - El frontend real esta en /artifacts/jarvis/ NO en /frontend/
 - No mover archivos de carpeta
+
+## Capa de base de datos (migración PostgreSQL — COMPLETADA y verificada)
+- `get_connection()` elige motor por `DATABASE_URL`: si la variable existe → psycopg2 (PostgreSQL),
+  si no → SQLite (dev local). `IS_POSTGRES = bool(DATABASE_URL)`.
+- `_PgConnection`/`_SqliteConnection`/`_normalize_sql` emulan la API de sqlite3: el SQL interno usa
+  placeholders `%s`; se convierten a `?` para SQLite en tiempo de ejecución. `_Row`/`sqlite3.Row`
+  dan acceso por nombre o por posición (`row["col"]`, `row[0]`).
+- Schemas `POSTGRES_SCHEMA`/`SQLITE_SCHEMA` con las 9 tablas (categorias, ingresos, gastos_fijos,
+  gastos_variables, kilometraje, moto_config, habitos, registro_habitos, bloques_rutina). Diferencias:
+  `id SERIAL` vs `AUTOINCREMENT`, `DOUBLE PRECISION` vs `REAL`, booleanos `BOOLEAN`/`TRUE` vs
+  `INTEGER 0/1`, `creado_en` default `to_char(now(),...)` vs `(datetime('now'))`.
+- `init_db()`: los seeds de categorías, gastos fijos, config moto y bloques de rutina se insertan solo
+  si sus tablas están vacías (contar antes de insertar, no `INSERT OR IGNORE`); migración
+  `gastos_variables` (categoria→categoria_id) solo en SQLite.
+- `create_item` usa `RETURNING id` en PG (psycopg2 no expone `lastrowid`) y `cursor.lastrowid` en SQLite.
+- `_norm_bool()` normaliza 0/1 vs TRUE/FALSE al escribir (`activa`, `activo`) según motor.
+- `requirements.txt` incluye `psycopg2-binary`. Verificado con smoke tests integrales en ambos motores
+  (SQLite local y PostgreSQL 17 vía Docker, todos los módulos: categorías, gastos, ingresos, kilometraje,
+  moto, hábitos, rutina, resúmenes → 39 checks PASS en cada motor).
+- Para probar PG localmente: `docker run -d --name jarvis-pg -e POSTGRES_USER=jarvis -e POSTGRES_PASSWORD=jarvis
+  -e POSTGRES_DB=jarvis -p 5433:5432 postgres:17-alpine` y usar
+  `DATABASE_URL=postgresql://jarvis:jarvis@localhost:5433/jarvis`.
