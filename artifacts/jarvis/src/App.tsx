@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import { toast } from 'sonner';
 import {
-  Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarDays, CircleDollarSign,
-  Gauge, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Trash2, TrendingUp, X,
+  Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight,
+  CircleDollarSign, Droplets, Flame, Gauge, ListTodo, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
+  Trash2, TrendingUp, TriangleAlert, Wrench, X,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -12,13 +13,17 @@ import {
   useListGastosFijos, useCreateGastoFijo, useGetGastoFijo, useUpdateGastoFijo, useDeleteGastoFijo,
   useListGastosVariables, useCreateGastoVariable, useGetGastoVariable, useUpdateGastoVariable, useDeleteGastoVariable,
   useListKilometrajes, useCreateKilometraje, useGetKilometraje, useUpdateKilometraje, useDeleteKilometraje,
+  useGetKilometrajeResumen,
   useGetResumenMesActual, useListCategorias, useCreateCategoria, useUpdateCategoria, useDeleteCategoria,
   useGetResumenMensualPorCategoria,
   getListIngresosQueryKey, getListGastosFijosQueryKey, getListGastosVariablesQueryKey,
-  getListKilometrajesQueryKey, getGetResumenMesActualQueryKey, getListCategoriasQueryKey,
-  getGetResumenMensualPorCategoriaQueryKey,
+  getListKilometrajesQueryKey, getGetKilometrajeResumenQueryKey, getGetResumenMesActualQueryKey, getListCategoriasQueryKey,
+  getGetResumenMensualPorCategoriaQueryKey, getGetMotoEstadoAceiteQueryKey,
+  useGetMotoEstadoAceite, usePostMotoCambioAceite, usePutMotoConfig,
+  useListHabitos, useCreateHabito, useUpdateHabito, useDeleteHabito, useGetResumenHabitos, useToggleHabitoFecha,
+  getListHabitosQueryKey, getGetResumenHabitosQueryKey,
 } from '@workspace/api-client-react';
-import type { Categoria, GastoFijo, GastoVariable, Ingreso, Kilometraje, ResumenCategoria } from '@workspace/api-client-react';
+import type { Categoria, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, ResumenCategoria } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -45,6 +50,8 @@ const sourceLabel: Record<string, string> = { Didi: 'Didi', papa: 'Papá', amigo
 const CATEGORY_EMOJIS = ['🍔', '🍕', '🥗', '☕', '🍺', '🛵', '🚗', '🚌', '⛽', '🎮', '🎬', '🎧', '📚', '💻', '📱', '👕', '💊', '🧴', '🎁', '🏠', '✨', '🐾', '✈️', '💰', '📦', '🧾'];
 const CATEGORY_COLORS = ['#e85d4a', '#5d8ae8', '#e8a85d', '#a85de8', '#5de8c4', '#e85d8a', '#e8d95d', '#5de87a', '#5dc4e8', '#e8755d', '#8a8aa0', '#b7e85d', '#e85dd3', '#5de8dd'];
 const FALLBACK_CAT = { icono: '🏷️', color: '#9aa0a6', nombre: 'Sin categoría' };
+const HABITO_EMOJIS = ['✅', '🏃', '💧', '📖', '🧘', '🥗', '💪', '🛌', '🚭', '💰', '🧹', '✍️', '🎯', '🌅', '🚴', '🧠', '🙏', '🎸', '🐕', '☀️'];
+const HABITO_COLORS = ['#5de8c4', '#5d8ae8', '#e8a85d', '#a85de8', '#e85d4a', '#5de87a', '#5dc4e8', '#e85dd3', '#e8d95d', '#8a8aa0'];
 
 function DetailPrefetchers({ ids }: { ids: { ingreso?: number; fijo?: number; variable?: number; km?: number } }) {
   useHealthCheck({ query: { enabled: false, queryKey: ['/api/healthz'] } });
@@ -79,6 +86,8 @@ function Shell({ children }: { children: React.ReactNode }) {
         <nav className="space-y-2">
           <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Resumen" testId="link-resumen" />
           <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Kilometraje" testId="link-kilometraje" />
+          <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="link-habitos" />
+          <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={18} />} label="Moto" testId="link-moto" />
           <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={18} />} label="Categorías" testId="link-categorias" />
         </nav>
         <div className="mt-auto space-y-5">
@@ -93,6 +102,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[70px] items-center justify-around border-t border-white/5 bg-[#0a0a0a]/85 px-6 backdrop-blur-xl md:hidden">
         <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={20} />} label="Resumen" testId="mobile-link-resumen" />
         <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={20} />} label="Km" testId="mobile-link-kilometraje" />
+        <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={20} />} label="Hábitos" testId="mobile-link-habitos" />
+        <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={20} />} label="Moto" testId="mobile-link-moto" />
         <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={20} />} label="Cat." testId="mobile-link-categorias" />
       </nav>
     </div>
@@ -131,6 +142,21 @@ function Metric({ label, value, icon, note, tone = 'default' }: { label: string;
       {note && <div className="mt-2 text-xs leading-5 text-white/45">{note}</div>}
     </div>
   );
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="rounded-2xl bg-white/4 px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{label}</div>
+      <div className="cosmos-number mt-1 text-lg font-bold" style={{ color: accent ?? '#ffffff' }}>{value}</div>
+    </div>
+  );
+}
+
+function oilTone(pct: number): { color: string; label: string } {
+  if (pct > 50) return { color: '#5de8c4', label: 'Aceite en buen estado' };
+  if (pct >= 20) return { color: '#e8d95d', label: 'Se acerca el cambio' };
+  return { color: '#e85d4a', label: 'Cambio de aceite pendiente' };
 }
 
 function EmptyState({ title, copy, action, onClick, testId }: { title: string; copy: string; action: string; onClick: () => void; testId: string }) {
@@ -330,17 +356,16 @@ function Dashboard() {
 
 function KilometrajePage() {
   const queryClient = useQueryClient(); const [modal, setModal] = useState(false); const [editing, setEditing] = useState<Kilometraje | null>(null);
-  const list = useListKilometrajes(); const create = useCreateKilometraje(); const update = useUpdateKilometraje(); const removeMutation = useDeleteKilometraje();
+  const list = useListKilometrajes(); const resumen = useGetKilometrajeResumen(); const create = useCreateKilometraje(); const update = useUpdateKilometraje(); const removeMutation = useDeleteKilometraje();
   const kms = asList<Kilometraje>(list.data);
-  const total = useMemo(() => kms.reduce((a, x) => a + x.km_actuales, 0), [kms]);
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: getListKilometrajesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() }); };
-  const submit = (data: Record<string, unknown>) => { const done = () => { invalidate(); setModal(false); setEditing(null); }; editing ? update.mutate({ id: editing.id, data: data as never }, { onSuccess: done }) : create.mutate({ data: data as never }, { onSuccess: done }); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: getListKilometrajesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetKilometrajeResumenQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetMotoEstadoAceiteQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() }); };
+  const submit = (data: Record<string, unknown>) => { const done = () => { invalidate(); setModal(false); setEditing(null); }; editing ? update.mutate({ id: editing.id, data: data as never }, { onSuccess: done, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el registro') }) : create.mutate({ data: data as never }, { onSuccess: done, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el registro') }); };
   const remove = (id: number) => { if (window.confirm('¿Eliminar este registro?')) removeMutation.mutate({ id }, { onSuccess: invalidate }); };
   return <Shell><div className="relative z-10 min-h-[100dvh]"><Topbar eyebrow="ruta y mantenimiento" title="Kilometraje" onAdd={() => { setEditing(null); setModal(true); }} /><div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
     <div className="grid gap-4 sm:grid-cols-3">
-      <Metric label="Kilómetros registrados" value={`${total.toLocaleString('es-MX')} km`} icon={<Bike size={19} />} tone="warm" note="Suma de tus registros" />
-      <Metric label="Jornadas anotadas" value={`${kms.length}`} icon={<CalendarDays size={19} />} note="Este espacio es tuyo" />
-      <Metric label="Odómetro" value="en vivo" icon={<Gauge size={19} />} note="Un odómetro al día te dice qué cuesta cada jornada." />
+      <Metric label="Odómetro actual" value={`${(resumen.data?.km_actuales ?? 0).toLocaleString('es-MX')} km`} icon={<Gauge size={19} />} tone="warm" note="Última lectura del cuenta kilómetros" />
+      <Metric label="Jornadas anotadas" value={`${kms.length}`} icon={<CalendarDays size={19} />} note="Cada lectura que registraste" />
+      <Metric label="Último registro" value={kms[0] ? dateLabel(kms[0].fecha) : '—'} icon={<Bike size={19} />} note="Fecha de la última lectura" />
     </div>
     <section className="cosmos-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6"><div><div className="cosmos-eyebrow mb-1">historial</div><h2 className="cosmos-title text-lg font-bold">Tus recorridos</h2></div><button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-kilometraje" className="cosmos-button-secondary px-3 py-2 text-sm"><Plus size={16} /> <span className="hidden sm:inline">Registrar</span></button></div>
@@ -349,6 +374,291 @@ function KilometrajePage() {
       </div>
     </section>
   </div>{modal && <RecordModal kind="km" record={editing} pending={create.isPending || update.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={submit} />}</div></Shell>;
+}
+
+function MotoPage() {
+  const queryClient = useQueryClient();
+  const estado = useGetMotoEstadoAceite();
+  const changeOil = usePostMotoCambioAceite();
+  const saveConfig = usePutMotoConfig();
+  const [form, setForm] = useState({ intervalo_km: '2000', alerta_km_antes: '200', km_ultimo_cambio: '0' });
+  const initialized = useRef(false);
+  const applyEstado = (data: EstadoAceite) => setForm({ intervalo_km: String(data.intervalo_km), alerta_km_antes: String(data.alerta_km_antes), km_ultimo_cambio: String(data.km_ultimo_cambio) });
+  useEffect(() => {
+    if (!initialized.current && estado.data) { initialized.current = true; applyEstado(estado.data); }
+  }, [estado.data]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetMotoEstadoAceiteQueryKey() });
+  const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const e = estado.data;
+  const pct = e?.porcentaje_vida_aceite ?? 0;
+  const tone = oilTone(pct);
+  const registerChange = () => {
+    if (!window.confirm('¿Registrar un cambio de aceite en el odómetro actual?')) return;
+    changeOil.mutate(undefined, {
+      onSuccess: (data) => { applyEstado(data); invalidate(); toast.success('Cambio de aceite registrado'); },
+      onError: () => toast.error('No se pudo registrar el cambio de aceite'),
+    });
+  };
+  const save = (event: React.FormEvent) => {
+    event.preventDefault();
+    const intervalo = Number(form.intervalo_km);
+    const alerta = Number(form.alerta_km_antes);
+    const kmUltimo = Number(form.km_ultimo_cambio);
+    if (!Number.isFinite(intervalo) || intervalo < 1) { toast.error('El intervalo debe ser de al menos 1 km'); return; }
+    if (!Number.isFinite(alerta) || alerta < 0) { toast.error('La alerta no puede ser negativa'); return; }
+    if (!Number.isFinite(kmUltimo) || kmUltimo < 0) { toast.error('El km del último cambio no puede ser negativo'); return; }
+    saveConfig.mutate({ data: { intervalo_km: intervalo, alerta_km_antes: alerta, km_ultimo_cambio: kmUltimo } }, {
+      onSuccess: (data) => { applyEstado(data); invalidate(); toast.success('Configuración guardada'); },
+      onError: () => toast.error('No se pudo guardar la configuración'),
+    });
+  };
+  return <Shell>
+    <div className="relative z-10 min-h-[100dvh]">
+      <Topbar eyebrow="moto y mantenimiento" title="Estado del aceite" />
+      <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
+        {estado.isLoading ? <LoadingRows /> : !e ? (
+          <div className="cosmos-card px-5 py-10 text-center text-sm text-white/45">No se pudo consultar el estado del aceite.</div>
+        ) : <>
+          {e.alerta && (
+            <div className="rounded-2xl border border-[#e85d4a]/35 bg-[#e85d4a]/12 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e85d4a]/20 text-[#ff8a7a]"><TriangleAlert size={18} /></span>
+                <div>
+                  <p className="text-sm font-bold text-[#ff8a7a]">Cambio de aceite pendiente</p>
+                  <p className="text-xs text-white/60">{e.km_restantes <= 0 ? `Te pasaste ${Math.abs(e.km_restantes).toLocaleString('es-MX')} km del cambio en ${e.km_proximo_cambio.toLocaleString('es-MX')} km.` : `Te faltan ${e.km_restantes.toLocaleString('es-MX')} km para el próximo cambio (${e.km_proximo_cambio.toLocaleString('es-MX')} km).`}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <section className="cosmos-card overflow-hidden p-6 sm:p-8">
+            <div className="flex flex-col items-center gap-8 lg:flex-row">
+              <div className="relative h-44 w-44 shrink-0">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="11" />
+                  <circle cx="60" cy="60" r="52" fill="none" stroke={tone.color} strokeWidth="11" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 2 * Math.PI * 52} ${2 * Math.PI * 52}`} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="cosmos-number text-4xl font-bold" style={{ color: tone.color }}>{pct}%</div>
+                  <div className="text-[10px] uppercase tracking-[0.16em] text-white/50">vida útil</div>
+                </div>
+              </div>
+              <div className="w-full flex-1 space-y-5">
+                <div>
+                  <div className="cosmos-eyebrow mb-1">{tone.label}</div>
+                  <h2 className="cosmos-title text-2xl font-bold">Aceite de la moto</h2>
+                  <p className="mt-2 text-sm leading-5 text-white/50">El cambio cada {e.intervalo_km.toLocaleString('es-MX')} km cuesta unos 60.000 COP. Mantén el ojo encima para que la moto rinda.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Stat label="Km actuales" value={`${e.km_actuales.toLocaleString('es-MX')} km`} />
+                  <Stat label="Próximo cambio" value={`${e.km_proximo_cambio.toLocaleString('es-MX')} km`} />
+                  <Stat label="Km restantes" value={e.km_restantes <= 0 ? '0 km' : `${e.km_restantes.toLocaleString('es-MX')} km`} accent={tone.color} />
+                </div>
+                <button onClick={registerChange} disabled={changeOil.isPending} data-testid="button-cambio-aceite" className="cosmos-button-primary">
+                  {changeOil.isPending ? <Timer size={17} className="animate-spin" /> : <Wrench size={17} />}
+                  {changeOil.isPending ? 'Registrando…' : 'Registrar cambio de aceite'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="cosmos-card p-6 sm:p-8">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div>
+                <div className="cosmos-eyebrow mb-1">configuración</div>
+                <h2 className="cosmos-title text-xl font-bold">Notificaciones de mantenimiento</h2>
+              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/6 text-white/70"><Wrench size={17} /></span>
+            </div>
+            <form onSubmit={save} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="block">
+                  <span className="cosmos-field-label">Intervalo (km)</span>
+                  <input required min="1" step="100" type="number" className="cosmos-input" value={form.intervalo_km} onChange={(event) => set('intervalo_km', event.target.value)} data-testid="input-moto-intervalo" placeholder="2000" />
+                </label>
+                <label className="block">
+                  <span className="cosmos-field-label">Avisar faltando (km)</span>
+                  <input required min="0" step="50" type="number" className="cosmos-input" value={form.alerta_km_antes} onChange={(event) => set('alerta_km_antes', event.target.value)} data-testid="input-moto-alerta" placeholder="200" />
+                </label>
+                <label className="block">
+                  <span className="cosmos-field-label">Último cambio en (km)</span>
+                  <input required min="0" step="100" type="number" className="cosmos-input" value={form.km_ultimo_cambio} onChange={(event) => set('km_ultimo_cambio', event.target.value)} data-testid="input-moto-ultimo-cambio" placeholder="0" />
+                </label>
+              </div>
+              <button disabled={saveConfig.isPending} type="submit" data-testid="button-save-moto-config" className="cosmos-button-secondary">
+                {saveConfig.isPending ? <Timer size={16} className="animate-spin" /> : <Check size={16} />}
+                {saveConfig.isPending ? 'Guardando…' : 'Guardar configuración'}
+              </button>
+            </form>
+          </section>
+        </>}
+      </div>
+    </div>
+  </Shell>;
+}
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const shiftIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const isoLabel = (iso: string) => new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${iso}T12:00:00`));
+
+function HabitosPage() {
+  const queryClient = useQueryClient();
+  const today = todayIso();
+  const [fecha, setFecha] = useState(today);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<Habito | null>(null);
+  const resumen = useGetResumenHabitos(fecha);
+  const list = useListHabitos();
+  const toggle = useToggleHabitoFecha();
+  const create = useCreateHabito(); const update = useUpdateHabito(); const remove = useDeleteHabito();
+  const items = asList<HabitoResumenItem>(resumen.data);
+  const habitos = asList<Habito>(list.data);
+  const done = items.filter((x) => x.completado).length;
+  const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetResumenHabitosQueryKey(fecha) });
+    queryClient.invalidateQueries({ queryKey: getListHabitosQueryKey() });
+  };
+  const onToggle = (id: number) => {
+    toggle.mutate({ id, fecha }, {
+      onSuccess: () => invalidate(),
+      onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo registrar el hábito'),
+    });
+  };
+  const onSave = (data: Record<string, unknown>) => {
+    const doneMut = () => { invalidate(); setModal(false); setEditing(null); };
+    const onError = (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el hábito');
+    if (editing) update.mutate({ id: editing.id, data: data as never }, { onSuccess: doneMut, onError });
+    else create.mutate({ data: data as never }, { onSuccess: doneMut, onError });
+  };
+  const onDelete = (h: Habito) => {
+    if (!window.confirm(`¿Eliminar "${h.nombre}"? Se borrará su historial.`)) return;
+    remove.mutate({ id: h.id }, { onSuccess: () => { invalidate(); toast.success('Hábito eliminado'); }, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar') });
+  };
+  const onActive = (h: Habito, activo: boolean) => {
+    update.mutate({ id: h.id, data: { activo } as never }, { onSuccess: invalidate });
+  };
+  return <Shell><div className="relative z-10 min-h-[100dvh]">
+    <Topbar eyebrow="constancia y rachas" title="Hábitos" onAdd={() => { setEditing(null); setModal(true); }} />
+    <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
+      <section className="cosmos-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-center gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><Flame size={22} /></span>
+          <div>
+            <div className="cosmos-eyebrow mb-1 capitalize">{isoLabel(fecha)}</div>
+            <div className="cosmos-title text-xl font-bold">{fecha === today ? 'Hoy' : fecha < today ? 'En el pasado' : 'Próximamente'}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setFecha((f) => shiftIso(f, -1))} disabled={toggle.isPending} data-testid="button-habitos-dia-anterior" aria-label="Día anterior" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition hover:bg-white/6 hover:text-white"><ChevronLeft size={18} /></button>
+          <button onClick={() => setFecha(today)} data-testid="button-habitos-hoy" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6">Hoy</button>
+          <button onClick={() => setFecha((f) => shiftIso(f, 1))} disabled={toggle.isPending || fecha >= today} data-testid="button-habitos-dia-siguiente" aria-label="Día siguiente" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition hover:bg-white/6 hover:text-white disabled:opacity-30"><ChevronRight size={18} /></button>
+        </div>
+      </section>
+
+      <section className="cosmos-card p-5 sm:p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <div><div className="cosmos-eyebrow mb-1">avance del día</div><h2 className="cosmos-title text-lg font-bold">{done} de {items.length} hábitos completados</h2></div>
+          <span className="cosmos-number text-xl font-bold text-[#5de8c4]">{pct}%</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-white/6">
+          <div className="h-full rounded-full bg-gradient-to-r from-[#5de8c4] to-[#5dc4e8] transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2">
+        {resumen.isLoading ? <LoadingRows /> : !items.length ? (
+          <div className="sm:col-span-2"><EmptyState title="Sin hábitos por hoy" copy="Crea tu primer hábito con 'Registrar' y empieza a encender la racha 🔥." action="Crear hábito" onClick={() => setModal(true)} testId="button-empty-habitos" /></div>
+        ) : items.map((h) => {
+          const active = h.completado ? 'scale-[0.94] border-[#5de8c4]' : 'border-white/10 hover:border-white/25';
+          return (
+            <div key={h.id} data-testid={`carta-habito-${h.id}`} className={`cosmos-card flex items-center gap-4 p-5 transition ${active}`} style={h.completado ? { backgroundColor: `${h.color}14`, boxShadow: `inset 0 0 0 1px ${h.color}aa` } : undefined}>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${h.color}26`, boxShadow: `0 0 0 1px ${h.color}55` }}>{h.icono}</div>
+              <div className="min-w-0 flex-1">
+                <div className={`truncate text-sm font-semibold ${h.completado ? 'line-through decoration-white/40 text-white/60' : 'text-white'}`}>{h.nombre}</div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs">
+                  <span className="flex items-center gap-1 font-semibold" style={{ color: h.racha > 0 ? '#e8a85d' : 'rgba(255,255,255,0.4)' }}><Flame size={13} /> {h.racha} día{h.racha === 1 ? '' : 's'}</span>
+                  <span className="text-white/35">·</span>
+                  <span className="text-white/45">{h.completado ? 'Listo hoy' : 'Pendiente'}</span>
+                </div>
+              </div>
+              <button onClick={() => onToggle(h.id)} disabled={toggle.isPending} data-testid={`check-habito-${h.id}`} aria-label={h.completado ? 'Desmarcar hábito' : 'Marcar hábito'}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition ${h.completado ? 'border-transparent text-black' : 'border-white/25 text-transparent hover:border-white/60'}`}
+                style={h.completado ? { backgroundColor: h.color, boxShadow: `0 0 18px ${h.color}66` } : undefined}>
+                <Check size={20} strokeWidth={3} className={h.completado ? 'opacity-100' : 'opacity-0'} />
+              </button>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="cosmos-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6">
+          <div><div className="cosmos-eyebrow mb-1">gestión</div><h2 className="cosmos-title text-lg font-bold">Tus hábitos</h2></div>
+          <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-habito" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Nuevo</span></button>
+        </div>
+        <div className="p-3 sm:p-4">
+          {list.isLoading ? <LoadingRows /> : !habitos.length ? <EmptyState title="Nada configurado aún" copy="Los hábitos activos aparecen en la lista del día y alimentan tu racha." action="Crear primer hábito" onClick={() => setModal(true)} testId="button-empty-gestores" /> : <div className="space-y-1">{habitos.map((h) => (
+            <div key={h.id} data-testid={`fila-habito-${h.id}`} className={`group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4 ${h.activo ? '' : 'opacity-60'}`}>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${h.color}26` }}>{h.icono}</span>
+                <div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{h.nombre}</div><div className="text-xs text-white/45">{h.activo ? 'activo' : 'pausado'}</div></div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => onActive(h, !h.activo)} data-testid={`toggle-activo-habito-${h.id}`} className={`rounded-lg p-2 transition ${h.activo ? 'text-[#5de8c4]' : 'text-white/35'} hover:bg-white/8`} title={h.activo ? 'Pausar' : 'Activar'}><CalendarCheck size={16} /></button>
+                <button onClick={() => { setEditing(h); setModal(true); }} aria-label="Editar hábito" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                <button onClick={() => onDelete(h)} aria-label="Eliminar hábito" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+              </div>
+            </div>
+          ))}</div>}
+        </div>
+      </section>
+    </div>
+    {modal && <HabitoModal record={editing} pending={create.isPending || update.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={onSave} />}
+  </div></Shell>;
+}
+
+function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | null; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+  const [form, setForm] = useState<Record<string, string | boolean>>({ nombre: record?.nombre ?? '', icono: record?.icono ?? HABITO_EMOJIS[0], color: record?.color ?? HABITO_COLORS[0], activo: record?.activo ?? true });
+  const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!String(form.nombre).trim()) return;
+    onSubmit({ nombre: String(form.nombre).trim(), icono: String(form.icono), color: String(form.color), activo: Boolean(form.activo) });
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / hábito</div><h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar hábito' : 'Nuevo hábito'}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+        <form onSubmit={submit} className="space-y-5">
+          <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-habito-nombre" placeholder="Ej. Meditar, Beber agua, Leer 10 min..." /></label>
+          <div><span className="cosmos-field-label">Icono</span>
+            <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
+              {HABITO_EMOJIS.map((emoji) => (
+                <button key={emoji} type="button" onClick={() => set('icono', emoji)} data-testid="picker-habito-icono" className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${form.icono === emoji ? 'bg-white text-black' : 'bg-white/5 hover:bg-white/10'}`}>{emoji}</button>
+              ))}
+            </div>
+          </div>
+          <div><span className="cosmos-field-label">Color</span>
+            <div className="flex flex-wrap gap-2">
+              {HABITO_COLORS.map((color) => (
+                <button key={color} type="button" onClick={() => set('color', color)} data-testid="swatch-habito-color" aria-label={color} className={`h-8 w-8 rounded-full transition ${form.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a]' : 'hover:scale-110'}`} style={{ backgroundColor: color }} />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
+            <span className="text-sm font-medium text-white/80">¿Mostrarlo en la lista diaria?</span>
+            <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-habito-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
+          </div>
+          <button disabled={pending} type="submit" data-testid="button-save-habito" className="cosmos-button-primary w-full">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar hábito'}</button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function CategoriesPage() {
@@ -506,6 +816,8 @@ function App() {
   return <QueryClientProvider client={queryClient}><TooltipProvider><Switch>
     <Route path="/" component={Dashboard} />
     <Route path="/kilometraje" component={KilometrajePage} />
+    <Route path="/habitos" component={HabitosPage} />
+    <Route path="/moto" component={MotoPage} />
     <Route path="/categorias" component={CategoriesPage} />
     <Route component={() => <Shell><div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center"><div><h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1><Link href="/" data-testid="link-back-home" className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4">Volver al resumen</Link></div></div></Shell>} />
   </Switch><Toaster /></TooltipProvider></QueryClientProvider>;

@@ -23,21 +23,30 @@ import type {
   Categoria,
   CategoriaInput,
   CategoriaUpdate,
+  CheckHabitoResult,
   Error,
+  EstadoAceite,
   GastoFijo,
   GastoFijoInput,
   GastoFijoUpdate,
   GastoVariable,
   GastoVariableInput,
   GastoVariableUpdate,
+  Habito,
+  HabitoInput,
+  HabitoResumenItem,
+  HabitoUpdate,
   HealthStatus,
   Ingreso,
   IngresoInput,
   IngresoUpdate,
   Kilometraje,
   KilometrajeInput,
+  KilometrajeResumen,
   KilometrajeUpdate,
+  MotoConfigUpdate,
   NotFoundResponse,
+  Racha,
   ResumenCategoria,
   ResumenMensual
 } from './api.schemas';
@@ -1722,7 +1731,7 @@ export const createKilometraje = async (kilometrajeInput: KilometrajeInput, opti
 
 
 
-export const getCreateKilometrajeMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateKilometrajeMutationOptions = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createKilometraje>>, TError,{data: BodyType<KilometrajeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createKilometraje>>, TError,{data: BodyType<KilometrajeInput>}, TContext> => {
 
@@ -1751,12 +1760,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateKilometrajeMutationResult = NonNullable<Awaited<ReturnType<typeof createKilometraje>>>
     export type CreateKilometrajeMutationBody = BodyType<KilometrajeInput>
-    export type CreateKilometrajeMutationError = ErrorType<unknown>
+    export type CreateKilometrajeMutationError = ErrorType<Error>
 
     /**
  * @summary Registra kilometraje
  */
-export const useCreateKilometraje = <TError = ErrorType<unknown>,
+export const useCreateKilometraje = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createKilometraje>>, TError,{data: BodyType<KilometrajeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createKilometraje>>,
@@ -1766,6 +1775,83 @@ export const useCreateKilometraje = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateKilometrajeMutationOptions(options));
     }
+
+export const getGetKilometrajeResumenUrl = () => {
+
+
+
+
+  return `/api/kilometraje/resumen`
+}
+
+/**
+ * @summary Resumen del kilometraje (odómetro actual y cantidad de registros)
+ */
+export const getKilometrajeResumen = async ( options?: Parameters<typeof customFetch>[1]): Promise<KilometrajeResumen> => {
+
+  return customFetch<KilometrajeResumen>(getGetKilometrajeResumenUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKilometrajeResumenQueryKey = () => {
+    return [
+    `/api/kilometraje/resumen`
+    ] as const;
+    }
+
+
+export const getGetKilometrajeResumenQueryOptions = <TData = Awaited<ReturnType<typeof getKilometrajeResumen>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKilometrajeResumen>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKilometrajeResumenQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKilometrajeResumen>>> = ({ signal }) => getKilometrajeResumen({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKilometrajeResumen>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKilometrajeResumenQueryResult = NonNullable<Awaited<ReturnType<typeof getKilometrajeResumen>>>
+export type GetKilometrajeResumenQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Resumen del kilometraje (odómetro actual y cantidad de registros)
+ */
+
+export function useGetKilometrajeResumen<TData = Awaited<ReturnType<typeof getKilometrajeResumen>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKilometrajeResumen>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKilometrajeResumenQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetKilometrajeUrl = (id: number,) => {
 
@@ -1871,7 +1957,7 @@ export const updateKilometraje = async (id: number,
 
 
 
-export const getUpdateKilometrajeMutationOptions = <TError = ErrorType<NotFoundResponse>,
+export const getUpdateKilometrajeMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKilometraje>>, TError,{id: number;data: BodyType<KilometrajeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateKilometraje>>, TError,{id: number;data: BodyType<KilometrajeUpdate>}, TContext> => {
 
@@ -1900,12 +1986,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateKilometrajeMutationResult = NonNullable<Awaited<ReturnType<typeof updateKilometraje>>>
     export type UpdateKilometrajeMutationBody = BodyType<KilometrajeUpdate>
-    export type UpdateKilometrajeMutationError = ErrorType<NotFoundResponse>
+    export type UpdateKilometrajeMutationError = ErrorType<Error | NotFoundResponse>
 
     /**
  * @summary Actualiza kilometraje
  */
-export const useUpdateKilometraje = <TError = ErrorType<NotFoundResponse>,
+export const useUpdateKilometraje = <TError = ErrorType<Error | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKilometraje>>, TError,{id: number;data: BodyType<KilometrajeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateKilometraje>>,
@@ -1985,6 +2071,820 @@ export const useDeleteKilometraje = <TError = ErrorType<NotFoundResponse>,
         TContext
       > => {
       return useMutation(getDeleteKilometrajeMutationOptions(options));
+    }
+
+export const getGetMotoEstadoAceiteUrl = () => {
+
+
+
+
+  return `/api/moto/estado-aceite`
+}
+
+/**
+ * @summary Estado del aceite de la moto
+ */
+export const getMotoEstadoAceite = async ( options?: Parameters<typeof customFetch>[1]): Promise<EstadoAceite> => {
+
+  return customFetch<EstadoAceite>(getGetMotoEstadoAceiteUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMotoEstadoAceiteQueryKey = () => {
+    return [
+    `/api/moto/estado-aceite`
+    ] as const;
+    }
+
+
+export const getGetMotoEstadoAceiteQueryOptions = <TData = Awaited<ReturnType<typeof getMotoEstadoAceite>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMotoEstadoAceite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMotoEstadoAceiteQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMotoEstadoAceite>>> = ({ signal }) => getMotoEstadoAceite({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMotoEstadoAceite>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMotoEstadoAceiteQueryResult = NonNullable<Awaited<ReturnType<typeof getMotoEstadoAceite>>>
+export type GetMotoEstadoAceiteQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Estado del aceite de la moto
+ */
+
+export function useGetMotoEstadoAceite<TData = Awaited<ReturnType<typeof getMotoEstadoAceite>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMotoEstadoAceite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMotoEstadoAceiteQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPostMotoCambioAceiteUrl = () => {
+
+
+
+
+  return `/api/moto/cambio-aceite`
+}
+
+/**
+ * @summary Registra un cambio de aceite
+ */
+export const postMotoCambioAceite = async ( options?: Parameters<typeof customFetch>[1]): Promise<EstadoAceite> => {
+
+  return customFetch<EstadoAceite>(getPostMotoCambioAceiteUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostMotoCambioAceiteMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext> => {
+
+const mutationKey = ['postMotoCambioAceite'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postMotoCambioAceite>>, void> = () => {
+
+
+          return  postMotoCambioAceite(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostMotoCambioAceiteMutationResult = NonNullable<Awaited<ReturnType<typeof postMotoCambioAceite>>>
+
+    export type PostMotoCambioAceiteMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Registra un cambio de aceite
+ */
+export const usePostMotoCambioAceite = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postMotoCambioAceite>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPostMotoCambioAceiteMutationOptions(options));
+    }
+
+export const getPutMotoConfigUrl = () => {
+
+
+
+
+  return `/api/moto/config`
+}
+
+/**
+ * @summary Actualiza la configuración del aceite
+ */
+export const putMotoConfig = async (motoConfigUpdate: MotoConfigUpdate, options?: Parameters<typeof customFetch>[1]): Promise<EstadoAceite> => {
+
+  return customFetch<EstadoAceite>(getPutMotoConfigUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(motoConfigUpdate)
+  }
+);}
+
+
+
+
+
+export const getPutMotoConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putMotoConfig>>, TError,{data: BodyType<MotoConfigUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putMotoConfig>>, TError,{data: BodyType<MotoConfigUpdate>}, TContext> => {
+
+const mutationKey = ['putMotoConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putMotoConfig>>, {data: BodyType<MotoConfigUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  putMotoConfig(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutMotoConfigMutationResult = NonNullable<Awaited<ReturnType<typeof putMotoConfig>>>
+    export type PutMotoConfigMutationBody = BodyType<MotoConfigUpdate>
+    export type PutMotoConfigMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Actualiza la configuración del aceite
+ */
+export const usePutMotoConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putMotoConfig>>, TError,{data: BodyType<MotoConfigUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof putMotoConfig>>,
+        TError,
+        {data: BodyType<MotoConfigUpdate>},
+        TContext
+      > => {
+      return useMutation(getPutMotoConfigMutationOptions(options));
+    }
+
+export const getListHabitosUrl = () => {
+
+
+
+
+  return `/api/habitos`
+}
+
+/**
+ * @summary Lista hábitos
+ */
+export const listHabitos = async ( options?: Parameters<typeof customFetch>[1]): Promise<Habito[]> => {
+
+  return customFetch<Habito[]>(getListHabitosUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHabitosQueryKey = () => {
+    return [
+    `/api/habitos`
+    ] as const;
+    }
+
+
+export const getListHabitosQueryOptions = <TData = Awaited<ReturnType<typeof listHabitos>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHabitos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHabitosQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHabitos>>> = ({ signal }) => listHabitos({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHabitos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHabitosQueryResult = NonNullable<Awaited<ReturnType<typeof listHabitos>>>
+export type ListHabitosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista hábitos
+ */
+
+export function useListHabitos<TData = Awaited<ReturnType<typeof listHabitos>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHabitos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHabitosQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateHabitoUrl = () => {
+
+
+
+
+  return `/api/habitos`
+}
+
+/**
+ * @summary Crea un hábito
+ */
+export const createHabito = async (habitoInput: HabitoInput, options?: Parameters<typeof customFetch>[1]): Promise<Habito> => {
+
+  return customFetch<Habito>(getCreateHabitoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(habitoInput)
+  }
+);}
+
+
+
+
+
+export const getCreateHabitoMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHabito>>, TError,{data: BodyType<HabitoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHabito>>, TError,{data: BodyType<HabitoInput>}, TContext> => {
+
+const mutationKey = ['createHabito'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHabito>>, {data: BodyType<HabitoInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHabito(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHabitoMutationResult = NonNullable<Awaited<ReturnType<typeof createHabito>>>
+    export type CreateHabitoMutationBody = BodyType<HabitoInput>
+    export type CreateHabitoMutationError = ErrorType<Error>
+
+    /**
+ * @summary Crea un hábito
+ */
+export const useCreateHabito = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHabito>>, TError,{data: BodyType<HabitoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHabito>>,
+        TError,
+        {data: BodyType<HabitoInput>},
+        TContext
+      > => {
+      return useMutation(getCreateHabitoMutationOptions(options));
+    }
+
+export const getGetResumenHabitosUrl = (fecha: string,) => {
+
+
+
+
+  return `/api/habitos/resumen/${fecha}`
+}
+
+/**
+ * @summary Resumen de hábitos para una fecha (con racha y cumplimiento)
+ */
+export const getResumenHabitos = async (fecha: string, options?: Parameters<typeof customFetch>[1]): Promise<HabitoResumenItem[]> => {
+
+  return customFetch<HabitoResumenItem[]>(getGetResumenHabitosUrl(fecha),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetResumenHabitosQueryKey = (fecha: string,) => {
+    return [
+    `/api/habitos/resumen/${fecha}`
+    ] as const;
+    }
+
+
+export const getGetResumenHabitosQueryOptions = <TData = Awaited<ReturnType<typeof getResumenHabitos>>, TError = ErrorType<unknown>>(fecha: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResumenHabitos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetResumenHabitosQueryKey(fecha);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getResumenHabitos>>> = ({ signal }) => getResumenHabitos(fecha, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: fecha !== null && fecha !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getResumenHabitos>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetResumenHabitosQueryResult = NonNullable<Awaited<ReturnType<typeof getResumenHabitos>>>
+export type GetResumenHabitosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Resumen de hábitos para una fecha (con racha y cumplimiento)
+ */
+
+export function useGetResumenHabitos<TData = Awaited<ReturnType<typeof getResumenHabitos>>, TError = ErrorType<unknown>>(
+ fecha: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getResumenHabitos>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetResumenHabitosQueryOptions(fecha,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRachaHabitoUrl = (id: number,) => {
+
+
+
+
+  return `/api/habitos/${id}/racha`
+}
+
+/**
+ * @summary Racha actual de un hábito
+ */
+export const getRachaHabito = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Racha> => {
+
+  return customFetch<Racha>(getGetRachaHabitoUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRachaHabitoQueryKey = (id: number,) => {
+    return [
+    `/api/habitos/${id}/racha`
+    ] as const;
+    }
+
+
+export const getGetRachaHabitoQueryOptions = <TData = Awaited<ReturnType<typeof getRachaHabito>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRachaHabito>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRachaHabitoQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRachaHabito>>> = ({ signal }) => getRachaHabito(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRachaHabito>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRachaHabitoQueryResult = NonNullable<Awaited<ReturnType<typeof getRachaHabito>>>
+export type GetRachaHabitoQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Racha actual de un hábito
+ */
+
+export function useGetRachaHabito<TData = Awaited<ReturnType<typeof getRachaHabito>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRachaHabito>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRachaHabitoQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetHabitoUrl = (id: number,) => {
+
+
+
+
+  return `/api/habitos/${id}`
+}
+
+/**
+ * @summary Obtiene un hábito
+ */
+export const getHabito = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Habito> => {
+
+  return customFetch<Habito>(getGetHabitoUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHabitoQueryKey = (id: number,) => {
+    return [
+    `/api/habitos/${id}`
+    ] as const;
+    }
+
+
+export const getGetHabitoQueryOptions = <TData = Awaited<ReturnType<typeof getHabito>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHabito>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHabitoQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHabito>>> = ({ signal }) => getHabito(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHabito>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHabitoQueryResult = NonNullable<Awaited<ReturnType<typeof getHabito>>>
+export type GetHabitoQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene un hábito
+ */
+
+export function useGetHabito<TData = Awaited<ReturnType<typeof getHabito>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHabito>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHabitoQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateHabitoUrl = (id: number,) => {
+
+
+
+
+  return `/api/habitos/${id}`
+}
+
+/**
+ * @summary Actualiza un hábito
+ */
+export const updateHabito = async (id: number,
+    habitoUpdate: HabitoUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Habito> => {
+
+  return customFetch<Habito>(getUpdateHabitoUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(habitoUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateHabitoMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHabito>>, TError,{id: number;data: BodyType<HabitoUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateHabito>>, TError,{id: number;data: BodyType<HabitoUpdate>}, TContext> => {
+
+const mutationKey = ['updateHabito'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateHabito>>, {id: number;data: BodyType<HabitoUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateHabito(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateHabitoMutationResult = NonNullable<Awaited<ReturnType<typeof updateHabito>>>
+    export type UpdateHabitoMutationBody = BodyType<HabitoUpdate>
+    export type UpdateHabitoMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Actualiza un hábito
+ */
+export const useUpdateHabito = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHabito>>, TError,{id: number;data: BodyType<HabitoUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateHabito>>,
+        TError,
+        {id: number;data: BodyType<HabitoUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateHabitoMutationOptions(options));
+    }
+
+export const getDeleteHabitoUrl = (id: number,) => {
+
+
+
+
+  return `/api/habitos/${id}`
+}
+
+/**
+ * @summary Elimina un hábito
+ */
+export const deleteHabito = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteHabitoUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteHabitoMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHabito>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteHabito>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteHabito'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteHabito>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteHabito(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteHabitoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHabito>>>
+
+    export type DeleteHabitoMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Elimina un hábito
+ */
+export const useDeleteHabito = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHabito>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteHabito>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteHabitoMutationOptions(options));
+    }
+
+export const getToggleHabitoFechaUrl = (id: number,
+    fecha: string,) => {
+
+
+
+
+  return `/api/habitos/${id}/check/${fecha}`
+}
+
+/**
+ * @summary Marca o desmarca un hábito en una fecha
+ */
+export const toggleHabitoFecha = async (id: number,
+    fecha: string, options?: Parameters<typeof customFetch>[1]): Promise<CheckHabitoResult> => {
+
+  return customFetch<CheckHabitoResult>(getToggleHabitoFechaUrl(id,fecha),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getToggleHabitoFechaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleHabitoFecha>>, TError,{id: number;fecha: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleHabitoFecha>>, TError,{id: number;fecha: string}, TContext> => {
+
+const mutationKey = ['toggleHabitoFecha'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleHabitoFecha>>, {id: number;fecha: string}> = (props) => {
+          const {id,fecha} = props ?? {};
+
+          return  toggleHabitoFecha(id,fecha,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleHabitoFechaMutationResult = NonNullable<Awaited<ReturnType<typeof toggleHabitoFecha>>>
+
+    export type ToggleHabitoFechaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Marca o desmarca un hábito en una fecha
+ */
+export const useToggleHabitoFecha = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleHabitoFecha>>, TError,{id: number;fecha: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleHabitoFecha>>,
+        TError,
+        {id: number;fecha: string},
+        TContext
+      > => {
+      return useMutation(getToggleHabitoFechaMutationOptions(options));
     }
 
 export const getGetResumenMesActualUrl = () => {

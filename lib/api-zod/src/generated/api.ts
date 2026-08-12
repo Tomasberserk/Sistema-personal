@@ -497,6 +497,21 @@ export const CreateKilometrajeResponse = zod.object({
 
 
 /**
+ * @summary Resumen del kilometraje (odómetro actual y cantidad de registros)
+ */
+export const getKilometrajeResumenResponseKmActualesMin = 0;
+
+export const getKilometrajeResumenResponseRegistrosMin = 0;
+
+
+
+export const GetKilometrajeResumenResponse = zod.object({
+  "km_actuales": zod.number().min(getKilometrajeResumenResponseKmActualesMin),
+  "registros": zod.number().min(getKilometrajeResumenResponseRegistrosMin)
+})
+
+
+/**
  * @summary Obtiene un registro de kilometraje
  */
 
@@ -561,6 +576,251 @@ export const DeleteKilometrajeParams = zod.object({
 })
 
 export const DeleteKilometrajeResponse = zod.void()
+
+
+/**
+ * @summary Estado del aceite de la moto
+ */
+export const getMotoEstadoAceiteResponseKmActualesMin = 0;
+
+export const getMotoEstadoAceiteResponseKmUltimoCambioMin = 0;
+
+export const getMotoEstadoAceiteResponseKmProximoCambioMin = 0;
+
+
+export const getMotoEstadoAceiteResponseAlertaKmAntesMin = 0;
+
+
+
+export const GetMotoEstadoAceiteResponse = zod.object({
+  "km_actuales": zod.number().min(getMotoEstadoAceiteResponseKmActualesMin),
+  "km_ultimo_cambio": zod.number().min(getMotoEstadoAceiteResponseKmUltimoCambioMin),
+  "km_proximo_cambio": zod.number().min(getMotoEstadoAceiteResponseKmProximoCambioMin),
+  "km_restantes": zod.number(),
+  "alerta": zod.boolean(),
+  "porcentaje_vida_aceite": zod.number(),
+  "intervalo_km": zod.number().min(1),
+  "alerta_km_antes": zod.number().min(getMotoEstadoAceiteResponseAlertaKmAntesMin)
+})
+
+
+/**
+ * @summary Registra un cambio de aceite
+ */
+export const postMotoCambioAceiteResponseKmActualesMin = 0;
+
+export const postMotoCambioAceiteResponseKmUltimoCambioMin = 0;
+
+export const postMotoCambioAceiteResponseKmProximoCambioMin = 0;
+
+
+export const postMotoCambioAceiteResponseAlertaKmAntesMin = 0;
+
+
+
+export const PostMotoCambioAceiteResponse = zod.object({
+  "km_actuales": zod.number().min(postMotoCambioAceiteResponseKmActualesMin),
+  "km_ultimo_cambio": zod.number().min(postMotoCambioAceiteResponseKmUltimoCambioMin),
+  "km_proximo_cambio": zod.number().min(postMotoCambioAceiteResponseKmProximoCambioMin),
+  "km_restantes": zod.number(),
+  "alerta": zod.boolean(),
+  "porcentaje_vida_aceite": zod.number(),
+  "intervalo_km": zod.number().min(1),
+  "alerta_km_antes": zod.number().min(postMotoCambioAceiteResponseAlertaKmAntesMin)
+})
+
+
+/**
+ * @summary Actualiza la configuración del aceite
+ */
+export const putMotoConfigBodyKmUltimoCambioMin = 0;
+
+
+export const putMotoConfigBodyAlertaKmAntesMin = 0;
+
+
+
+export const PutMotoConfigBody = zod.object({
+  "km_ultimo_cambio": zod.number().min(putMotoConfigBodyKmUltimoCambioMin).optional(),
+  "intervalo_km": zod.number().min(1).optional(),
+  "alerta_km_antes": zod.number().min(putMotoConfigBodyAlertaKmAntesMin).optional()
+})
+
+export const putMotoConfigResponseKmActualesMin = 0;
+
+export const putMotoConfigResponseKmUltimoCambioMin = 0;
+
+export const putMotoConfigResponseKmProximoCambioMin = 0;
+
+
+export const putMotoConfigResponseAlertaKmAntesMin = 0;
+
+
+
+export const PutMotoConfigResponse = zod.object({
+  "km_actuales": zod.number().min(putMotoConfigResponseKmActualesMin),
+  "km_ultimo_cambio": zod.number().min(putMotoConfigResponseKmUltimoCambioMin),
+  "km_proximo_cambio": zod.number().min(putMotoConfigResponseKmProximoCambioMin),
+  "km_restantes": zod.number(),
+  "alerta": zod.boolean(),
+  "porcentaje_vida_aceite": zod.number(),
+  "intervalo_km": zod.number().min(1),
+  "alerta_km_antes": zod.number().min(putMotoConfigResponseAlertaKmAntesMin)
+})
+
+
+/**
+ * @summary Lista hábitos
+ */
+export const ListHabitosResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activo": zod.boolean(),
+  "creado_en": zod.string()
+})
+export const ListHabitosResponse = zod.array(ListHabitosResponseItem)
+
+
+/**
+ * @summary Crea un hábito
+ */
+export const CreateHabitoBody = zod.object({
+  "nombre": zod.string(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const CreateHabitoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activo": zod.boolean(),
+  "creado_en": zod.string()
+})
+
+
+/**
+ * @summary Resumen de hábitos para una fecha (con racha y cumplimiento)
+ */
+export const GetResumenHabitosParams = zod.object({
+  "fecha": zod.date()
+})
+
+export const getResumenHabitosResponseRachaMin = 0;
+
+
+
+export const GetResumenHabitosResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "racha": zod.number().min(getResumenHabitosResponseRachaMin),
+  "completado": zod.boolean()
+})
+export const GetResumenHabitosResponse = zod.array(GetResumenHabitosResponseItem)
+
+
+/**
+ * @summary Racha actual de un hábito
+ */
+
+
+
+export const GetRachaHabitoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const getRachaHabitoResponseRachaMin = 0;
+
+
+
+export const GetRachaHabitoResponse = zod.object({
+  "id": zod.number(),
+  "racha": zod.number().min(getRachaHabitoResponseRachaMin)
+})
+
+
+/**
+ * @summary Obtiene un hábito
+ */
+
+
+
+export const GetHabitoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetHabitoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activo": zod.boolean(),
+  "creado_en": zod.string()
+})
+
+
+/**
+ * @summary Actualiza un hábito
+ */
+
+
+
+export const UpdateHabitoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const UpdateHabitoBody = zod.object({
+  "nombre": zod.string().optional(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const UpdateHabitoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "activo": zod.boolean(),
+  "creado_en": zod.string()
+})
+
+
+/**
+ * @summary Elimina un hábito
+ */
+
+
+
+export const DeleteHabitoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteHabitoResponse = zod.void()
+
+
+/**
+ * @summary Marca o desmarca un hábito en una fecha
+ */
+
+
+
+export const ToggleHabitoFechaParams = zod.object({
+  "id": zod.coerce.number().min(1),
+  "fecha": zod.date()
+})
+
+export const ToggleHabitoFechaResponse = zod.object({
+  "habito_id": zod.number(),
+  "fecha": zod.coerce.date(),
+  "completado": zod.boolean()
+})
 
 
 /**

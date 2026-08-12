@@ -20,6 +20,10 @@ tags:
     description: Categorías de gastos variables
   - name: kilometraje
     description: Registros de kilometraje
+  - name: moto
+    description: Estado y mantenimiento de la moto
+  - name: habitos
+    description: Hábitos diarios y registro de cumplimiento
   - name: resumen
     description: Resumen financiero
 paths:
@@ -395,6 +399,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Kilometraje"
+        "400":
+          description: El odómetro no puede retroceder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /kilometraje/resumen:
+    get:
+      operationId: getKilometrajeResumen
+      tags: [kilometraje]
+      summary: Resumen del kilometraje (odómetro actual y cantidad de registros)
+      responses:
+        "200":
+          description: Resumen de kilometraje
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KilometrajeResumen"
   /kilometraje/{id}:
     get:
       operationId: getKilometraje
@@ -430,6 +452,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Kilometraje"
+        "400":
+          description: El valor rompe el orden cronológico del odómetro
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           $ref: "#/components/responses/NotFound"
     delete:
@@ -441,6 +469,198 @@ paths:
       responses:
         "204":
           description: Registro eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /moto/estado-aceite:
+    get:
+      operationId: getMotoEstadoAceite
+      tags: [moto]
+      summary: Estado del aceite de la moto
+      responses:
+        "200":
+          description: Estado del aceite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstadoAceite"
+  /moto/cambio-aceite:
+    post:
+      operationId: postMotoCambioAceite
+      tags: [moto]
+      summary: Registra un cambio de aceite
+      responses:
+        "200":
+          description: Estado del aceite actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstadoAceite"
+  /moto/config:
+    put:
+      operationId: putMotoConfig
+      tags: [moto]
+      summary: Actualiza la configuración del aceite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MotoConfigUpdate"
+      responses:
+        "200":
+          description: Estado del aceite actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstadoAceite"
+  /habitos:
+    get:
+      operationId: listHabitos
+      tags: [habitos]
+      summary: Lista hábitos
+      responses:
+        "200":
+          description: Lista de hábitos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Habito"
+    post:
+      operationId: createHabito
+      tags: [habitos]
+      summary: Crea un hábito
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitoInput"
+      responses:
+        "201":
+          description: Hábito creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habito"
+        "400":
+          description: Nombre duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /habitos/resumen/{fecha}:
+    get:
+      operationId: getResumenHabitos
+      tags: [habitos]
+      summary: Resumen de hábitos para una fecha (con racha y cumplimiento)
+      parameters:
+        - name: fecha
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Resumen de hábitos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HabitoResumenItem"
+  /habitos/{id}/racha:
+    get:
+      operationId: getRachaHabito
+      tags: [habitos]
+      summary: Racha actual de un hábito
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Racha del hábito
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Racha"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /habitos/{id}:
+    get:
+      operationId: getHabito
+      tags: [habitos]
+      summary: Obtiene un hábito
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Hábito
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habito"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateHabito
+      tags: [habitos]
+      summary: Actualiza un hábito
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitoUpdate"
+      responses:
+        "200":
+          description: Hábito actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habito"
+        "400":
+          description: Nombre duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteHabito
+      tags: [habitos]
+      summary: Elimina un hábito
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Hábito eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /habitos/{id}/check/{fecha}:
+    post:
+      operationId: toggleHabitoFecha
+      tags: [habitos]
+      summary: Marca o desmarca un hábito en una fecha
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: fecha
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Estado de cumplimiento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckHabitoResult"
         "404":
           $ref: "#/components/responses/NotFound"
   /resumen/mes-actual:
@@ -708,6 +928,16 @@ components:
           minimum: 0
         nota:
           type: string
+    KilometrajeResumen:
+      type: object
+      properties:
+        km_actuales:
+          type: number
+          minimum: 0
+        registros:
+          type: number
+          minimum: 0
+      required: [km_actuales, registros]
     ResumenMensual:
       type: object
       properties:
@@ -740,4 +970,117 @@ components:
         porcentaje:
           type: number
       required: [id, nombre, icono, color, cantidad, total, porcentaje]
+    EstadoAceite:
+      type: object
+      properties:
+        km_actuales:
+          type: number
+          minimum: 0
+        km_ultimo_cambio:
+          type: number
+          minimum: 0
+        km_proximo_cambio:
+          type: number
+          minimum: 0
+        km_restantes:
+          type: number
+        alerta:
+          type: boolean
+        porcentaje_vida_aceite:
+          type: number
+        intervalo_km:
+          type: number
+          minimum: 1
+        alerta_km_antes:
+          type: number
+          minimum: 0
+      required: [km_actuales, km_ultimo_cambio, km_proximo_cambio, km_restantes, alerta, porcentaje_vida_aceite, intervalo_km, alerta_km_antes]
+    MotoConfigUpdate:
+      type: object
+      properties:
+        km_ultimo_cambio:
+          type: number
+          minimum: 0
+        intervalo_km:
+          type: number
+          minimum: 1
+        alerta_km_antes:
+          type: number
+          minimum: 0
+    Habito:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activo:
+          type: boolean
+        creado_en:
+          type: string
+      required: [id, nombre, icono, color, activo, creado_en]
+    HabitoInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activo:
+          type: boolean
+      required: [nombre]
+    HabitoUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        activo:
+          type: boolean
+    HabitoResumenItem:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        icono:
+          type: string
+        color:
+          type: string
+        racha:
+          type: number
+          minimum: 0
+        completado:
+          type: boolean
+      required: [id, nombre, icono, color, racha, completado]
+    CheckHabitoResult:
+      type: object
+      properties:
+        habito_id:
+          type: number
+        fecha:
+          type: string
+          format: date
+        completado:
+          type: boolean
+      required: [habito_id, fecha, completado]
+    Racha:
+      type: object
+      properties:
+        id:
+          type: number
+        racha:
+          type: number
+          minimum: 0
+      required: [id, racha]
 

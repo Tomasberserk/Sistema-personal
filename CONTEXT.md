@@ -45,15 +45,43 @@ pero con el rediseño Cosmos + categorías ya terminado:
 - Papa: 70k/semana (no siempre)
 - Recorrido amigo: 10k (no siempre)
 
+## Estado actual del módulo de Moto (reminder de aceite — COMPLETADO)
+- Tabla `moto_config` (singleton id=1): km_ultimo_cambio, intervalo_km (default 2000), alerta_km_antes (default 200)
+- `GET /api/moto/estado-aceite` → km_actuales, km_ultimo_cambio, km_proximo_cambio, km_restantes,
+  alerta, porcentaje_vida_aceite, intervalo_km, alerta_km_antes
+- `POST /api/moto/cambio-aceite` → resetea km_ultimo_cambio al odómetro actual
+- `PUT /api/moto/config` → edita intervalo, alerta y km del último cambio
+- Página `/moto` (navegación): anillo de % de vida (verde >50, amarillo 20-50, rojo <20), banner de alerta,
+  botón "Registrar cambio de aceite" y card de configuración en estilo Cosmos
+- Cliente regenerado: `useGetMotoEstadoAceite`, `usePostMotoCambioAceite`, `usePutMotoConfig`
+- KilometrajePage invalida el estado del aceite al registrar/editar km
+- `GET /api/kilometraje/resumen` devuelve km_actuales (última lectura del odómetro) + registros;
+  KilometrajePage muestra "Odómetro actual" con ese valor (ya no suma). POST/PATCH validan que el
+  odómetro no retroceda (400 con detalle claro); permite igualar el último valor.
+
 ---
 
-## SIGUIENTE TAREA - Módulo Habitos
-El módulo de Finanzas con categorías + estilo Cosmos ya está terminado.
-La próxima tarea natural es el **módulo de Hábitos**:
+## Estado actual del módulo de Hábitos (COMPLETADO)
+- Tablas `habitos` (id, nombre único, icono emoji, color hex, activo 0/1, creado_en) y
+  `registro_habitos` (habito_id FK ON DELETE CASCADE, fecha, completado, UNIQUE(habito_id, fecha))
+- Endpoints: CRUD `/api/habitos`, `GET /api/habitos/resumen/{fecha}` (solo activos: racha + completado del
+  día), `GET /api/habitos/{id}/racha`, `POST /api/habitos/{id}/check/{fecha}` (toggle marca/desmarca)
+- La racha se calcula hacia atrás desde la fecha consultada (hoy por defecto); para fechas pasadas
+  `resumen/{fecha}` usa esa fecha como punto de partida
+- `require_row.allowed_tables` incluye `habitos` y `registro_habitos` (reusa create/update/delete_item)
+- Página `/habitos`: navegación de fechas (chevrons + botón Hoy), avance del día con barra %, cards por
+  hábito con emoji, 🔥 racha y check circular que se enciende con el color del hábito; sección "Tus hábitos"
+  con editar/eliminar/pausar; modal nuevo/editar con picker de emoji, swatches de color y toggle activo
+- Cliente regenerado: `useListHabitos`, `useCreateHabito`, `useUpdateHabito`, `useDeleteHabito`,
+  `useGetResumenHabitos`, `useGetRachaHabito`, `useToggleHabitoFecha`
+- Nav (desktop + móvil): ícono Flame "Hábitos"
 
-- Check diario por hábito
-- Racha (streak)
-- Categorías personalizables con iconos custom
+---
+
+## SIGUIENTE TAREA - Módulo Rutina / Cronograma semanal
+Los módulos Finanzas (Cosmos), Moto y Hábitos están terminados.
+La próxima tarea natural es el **cronograma semanal** (bloques de tiempo editables):
+
 - Reutilizar la plantilla: tabla en backend/main.py, patch en lib/api-spec/openapi.yaml,
   regenerar cliente (`pnpm --filter @workspace/api-spec run codegen`), y UI Cosmos en artifacts/jarvis/
 
@@ -61,12 +89,7 @@ La próxima tarea natural es el **módulo de Hábitos**:
 
 ## MODULOS PENDIENTES
 
-### 2. Habitos
-- Check diario por habito
-- Racha (streak)
-- Categorias personalizables con iconos custom
-
-### 3. Rutina / Cronograma semanal
+### 2. Rutina / Cronograma semanal
 - Bloques de tiempo editables
 - 5-6am paseo y carrera con perra
 - 7-7:30am desayuno
@@ -78,21 +101,16 @@ La próxima tarea natural es el **módulo de Hábitos**:
 - 6pm-11:30pm SENA
 - 12:30am llegada a casa
 
-### 4. Moto
-- Registro de kilometraje
-- Recordatorio aceite cada 2.000-2.500 km (60k COP)
-- Alerta 5-6 dias antes de que toque cambio
-
-### 5. Fechas especiales
+### 3. Fechas especiales
 - Cumpleanos, aniversarios, recordatorios automaticos
 
-### 6. SENA
+### 4. SENA
 - Entregas pendientes, horario de clases, ficha y materias
 
-### 7. Metas
+### 5. Metas
 - Objetivos con progreso (ahorro, km, habitos)
 
-### 8. Bot Telegram (fase final)
+### 6. Bot Telegram (fase final)
 - Registrar gastos por chat
 - Consultar habitos
 - Recordatorios automaticos

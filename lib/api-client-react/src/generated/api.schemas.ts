@@ -189,6 +189,13 @@ export interface KilometrajeUpdate {
   nota?: string;
 }
 
+export interface KilometrajeResumen {
+  /** @minimum 0 */
+  km_actuales: number;
+  /** @minimum 0 */
+  registros: number;
+}
+
 export interface ResumenMensual {
   mes: string;
   total_ingresos: number;
@@ -205,6 +212,76 @@ export interface ResumenCategoria {
   cantidad: number;
   total: number;
   porcentaje: number;
+}
+
+export interface EstadoAceite {
+  /** @minimum 0 */
+  km_actuales: number;
+  /** @minimum 0 */
+  km_ultimo_cambio: number;
+  /** @minimum 0 */
+  km_proximo_cambio: number;
+  km_restantes: number;
+  alerta: boolean;
+  porcentaje_vida_aceite: number;
+  /** @minimum 1 */
+  intervalo_km: number;
+  /** @minimum 0 */
+  alerta_km_antes: number;
+}
+
+export interface MotoConfigUpdate {
+  /** @minimum 0 */
+  km_ultimo_cambio?: number;
+  /** @minimum 1 */
+  intervalo_km?: number;
+  /** @minimum 0 */
+  alerta_km_antes?: number;
+}
+
+export interface Habito {
+  id: number;
+  nombre: string;
+  icono: string;
+  color: string;
+  activo: boolean;
+  creado_en: string;
+}
+
+export interface HabitoInput {
+  nombre: string;
+  icono?: string;
+  color?: string;
+  activo?: boolean;
+}
+
+export interface HabitoUpdate {
+  nombre?: string;
+  icono?: string;
+  color?: string;
+  activo?: boolean;
+}
+
+export interface HabitoResumenItem {
+  id: number;
+  nombre: string;
+  icono: string;
+  color: string;
+  /** @minimum 0 */
+  racha: number;
+  completado: boolean;
+}
+
+export interface CheckHabitoResult {
+  habito_id: number;
+  fecha: string;
+  completado: boolean;
+}
+
+export interface Racha {
+  id: number;
+  /** @minimum 0 */
+  racha: number;
 }
 
 /**
