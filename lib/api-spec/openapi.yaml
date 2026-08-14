@@ -24,6 +24,10 @@ tags:
     description: Estado y mantenimiento de la moto
   - name: habitos
     description: Hábitos diarios y registro de cumplimiento
+  - name: medios-pago
+    description: Medios de pago y ubicaciones de dinero
+  - name: transferencias
+    description: Transferencias de dinero entre medios
   - name: rutina
     description: Rutina y cronograma semanal
   - name: resumen
@@ -490,6 +494,12 @@ paths:
       operationId: postMotoCambioAceite
       tags: [moto]
       summary: Registra un cambio de aceite
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CambioAceiteInput"
       responses:
         "200":
           description: Estado del aceite actualizado
@@ -497,6 +507,158 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EstadoAceite"
+  /medios-pago:
+    get:
+      operationId: listMediosPago
+      tags: [medios-pago]
+      summary: Lista medios de pago con sus saldos calculados
+      responses:
+        "200":
+          description: Lista de medios de pago con saldos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MedioPagoSaldo"
+    post:
+      operationId: createMedioPago
+      tags: [medios-pago]
+      summary: Crea un medio de pago
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MedioPagoInput"
+      responses:
+        "201":
+          description: Medio de pago creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioPago"
+        "400":
+          description: Nombre duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /medios-pago/{id}:
+    get:
+      operationId: getMedioPago
+      tags: [medios-pago]
+      summary: Obtiene un medio de pago
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Medio de pago
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioPago"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateMedioPago
+      tags: [medios-pago]
+      summary: Actualiza un medio de pago
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MedioPagoUpdate"
+      responses:
+        "200":
+          description: Medio de pago actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioPago"
+        "400":
+          description: Error de validación o nombre duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteMedioPago
+      tags: [medios-pago]
+      summary: Elimina un medio de pago
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Medio de pago eliminado
+        "400":
+          description: No se puede eliminar si tiene transacciones asociadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /transferencias:
+    get:
+      operationId: listTransferencias
+      tags: [transferencias]
+      summary: Lista transferencias entre medios
+      responses:
+        "200":
+          description: Lista de transferencias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransferenciaMedio"
+    post:
+      operationId: createTransferencia
+      tags: [transferencias]
+      summary: Registra una transferencia entre dos medios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferenciaMedioInput"
+      responses:
+        "201":
+          description: Transferencia registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferenciaMedio"
+        "400":
+          description: Error de validación (ej. origen igual a destino)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Medio de pago no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transferencias/{id}:
+    delete:
+      operationId: deleteTransferencia
+      tags: [transferencias]
+      summary: Elimina una transferencia
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Transferencia eliminada
+        "404":
+          $ref: "#/components/responses/NotFound"
   /moto/config:
     put:
       operationId: putMotoConfig
@@ -868,6 +1030,8 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
         nota:
           type: string
       required: [id, fecha, fuente, monto, nota]
@@ -883,6 +1047,8 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
         nota:
           type: string
       required: [fecha, fuente, monto, nota]
@@ -898,6 +1064,138 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
+        nota:
+          type: string
+    MedioPago:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        tipo:
+          type: string
+          enum: [efectivo_billetes, efectivo_monedas, cuenta_bancaria, billetera_digital, tarjeta, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        saldo_inicial:
+          type: number
+          minimum: 0
+        activo:
+          type: boolean
+      required: [id, nombre, tipo, icono, color, saldo_inicial, activo]
+    MedioPagoInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        tipo:
+          type: string
+          enum: [efectivo_billetes, efectivo_monedas, cuenta_bancaria, billetera_digital, tarjeta, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        saldo_inicial:
+          type: number
+          minimum: 0
+        activo:
+          type: boolean
+      required: [nombre, tipo]
+    MedioPagoUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+        tipo:
+          type: string
+          enum: [efectivo_billetes, efectivo_monedas, cuenta_bancaria, billetera_digital, tarjeta, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        saldo_inicial:
+          type: number
+          minimum: 0
+        activo:
+          type: boolean
+    MedioPagoSaldo:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        tipo:
+          type: string
+          enum: [efectivo_billetes, efectivo_monedas, cuenta_bancaria, billetera_digital, tarjeta, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        saldo_inicial:
+          type: number
+        saldo_actual:
+          type: number
+        total_ingresos:
+          type: number
+        total_gastos:
+          type: number
+        total_transferencias_recibidas:
+          type: number
+        total_transferencias_enviadas:
+          type: number
+        activo:
+          type: boolean
+      required: [id, nombre, tipo, icono, color, saldo_inicial, saldo_actual, total_ingresos, total_gastos, total_transferencias_recibidas, total_transferencias_enviadas, activo]
+    TransferenciaMedio:
+      type: object
+      properties:
+        id:
+          type: number
+        fecha:
+          type: string
+          format: date
+        origen_id:
+          type: number
+        destino_id:
+          type: number
+        monto:
+          type: number
+          minimum: 0.01
+        nota:
+          type: string
+      required: [id, fecha, origen_id, destino_id, monto, nota]
+    TransferenciaMedioInput:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        origen_id:
+          type: number
+        destino_id:
+          type: number
+        monto:
+          type: number
+          minimum: 0.01
+        nota:
+          type: string
+      required: [fecha, origen_id, destino_id, monto]
+    CambioAceiteInput:
+      type: object
+      properties:
+        costo:
+          type: number
+          minimum: 0
+        medio_pago_id:
+          type: number
+        crear_gasto:
+          type: boolean
         nota:
           type: string
     GastoFijo:
@@ -994,6 +1292,8 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
         nota:
           type: string
       required: [id, fecha, categoria_id, monto, nota]
@@ -1009,6 +1309,8 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
         nota:
           type: string
       required: [fecha, categoria_id, monto]
@@ -1024,6 +1326,8 @@ components:
         monto:
           type: number
           minimum: 0
+        medio_pago_id:
+          type: number
         nota:
           type: string
     Kilometraje:
@@ -1086,6 +1390,12 @@ components:
           type: number
         saldo:
           type: number
+        saldo_total_medios:
+          type: number
+        saldos_medios:
+          type: array
+          items:
+            $ref: "#/components/schemas/MedioPagoSaldo"
       required: [mes, total_ingresos, total_gastos_fijos, total_gastos_variables, saldo]
     ResumenCategoria:
       type: object

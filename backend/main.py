@@ -23,13 +23,16 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "jarvis.sqlite3"
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-IS_POSTGRES = bool(DATABASE_URL)
+def _is_postgres() -> bool:
+    url = os.environ.get("DATABASE_URL", "")
+    return url.startswith("postgres://") or url.startswith("postgresql://")
+
+IS_POSTGRES = _is_postgres()
 
 if IS_POSTGRES and not _HAS_PSYCOPG2:
     raise RuntimeError(
-        "DATABASE_URL estÃ¡ definida pero falta psycopg2. "
-        "InstalÃ¡ psycopg2-binary (agregado a requirements.txt)."
+        "DATABASE_URL está definida como PostgreSQL pero falta psycopg2. "
+        "Instalá psycopg2-binary (agregado a requirements.txt)."
     )
 
 _INTEGRITY_ERRORS: tuple[type[BaseException], ...] = (sqlite3.IntegrityError,)
@@ -38,62 +41,85 @@ if _HAS_PSYCOPG2:
 
 Fuente = Literal["Didi", "papa", "amigo", "otro"]
 TipoGastoFijo = Literal["mensual", "por_kilometraje"]
+TipoMedioPago = Literal[
+    "efectivo_billetes",
+    "efectivo_monedas",
+    "cuenta_bancaria",
+    "billetera_digital",
+    "tarjeta",
+    "otro",
+]
 
 DEFAULT_CATEGORIAS = [
-    ("Comida", "ðŸ”", "#e85d4a"),
-    ("Transporte", "ðŸ›µ", "#5d8ae8"),
-    ("Gasolina", "â›½", "#e8a85d"),
-    ("Entretenimiento", "ðŸŽ®", "#a85de8"),
-    ("Ropa", "ðŸ‘•", "#5de8c4"),
-    ("Medicina", "ðŸ’Š", "#e85d8a"),
-    ("Regalos", "ðŸŽ", "#e8d95d"),
-    ("Hogar", "ðŸ ", "#5de87a"),
-    ("Tecnologia", "ðŸ“±", "#5dc4e8"),
-    ("Aseo personal", "ðŸ§´", "#e8755d"),
+    ("Comida", "🍔", "#e85d4a"),
+    ("Transporte", "🛵", "#5d8ae8"),
+    ("Gasolina", "⛽", "#e8a85d"),
+    ("Entretenimiento", "🎮", "#a85de8"),
+    ("Ropa", "👕", "#5de8c4"),
+    ("Medicina", "💊", "#e85d8a"),
+    ("Regalos", "🎁", "#e8d95d"),
+    ("Hogar", "🏠", "#5de87a"),
+    ("Tecnologia", "📱", "#5dc4e8"),
+    ("Aseo personal", "🧴", "#e8755d"),
+]
+
+DEFAULT_MEDIOS_PAGO = [
+    ("Efectivo (Billetes)", "efectivo_billetes", "💵", "#5de87a", 0.0),
+    ("Efectivo (Monedas)", "efectivo_monedas", "🪙", "#e8d95d", 0.0),
+    ("Bancolombia", "cuenta_bancaria", "🏦", "#e85d4a", 0.0),
+    ("Nequi", "billetera_digital", "📱", "#a85de8", 0.0),
 ]
 
 DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 
-DEFAULT_BLOQUES = [
-    *[
-        (d, "05:00", "06:00", "Paseo y carrera", "", "#5d8ae8", "ðŸ•")
-        for d in range(7)
-    ],
-    *[
-        (d, "07:00", "07:30", "Desayuno", "", "#e8a85d", "ðŸ³")
-        for d in range(7)
-    ],
-    *[
-        (d, "08:30", "11:00", "Gym", "", "#e85d4a", "ðŸ’ª")
-        for d in (0, 1, 3, 4)
-    ],
-    *[
-        (d, "11:00", "12:00", "SENA/Didi", "", "#a85de8", "ðŸ“š")
-        for d in range(5)
-    ],
-    *[
-        (d, "12:00", "13:00", "Almuerzo", "", "#5de87a", "ðŸ½ï¸")
-        for d in range(7)
-    ],
-    *[
-        (d, "13:30", "17:00", "Tiempo libre", "", "#e8d95d", "ðŸ•")
-        for d in range(5)
-    ],
-    *[
-        (d, "17:00", "17:30", "PreparaciÃ³n SENA", "", "#5dc4e8", "ðŸ›")
-        for d in range(5)
-    ],
-    *[
-        (d, "18:00", "23:30", "SENA", "", "#e85d8a", "ðŸ«")
-        for d in range(5)
-    ],
-]
+
+class MedioPagoInput(BaseModel):
+    nombre: str = Field(min_length=1)
+    tipo: TipoMedioPago
+    icono: str = "💵"
+    color: str = "#5de87a"
+    saldo_inicial: float = Field(default=0.0, ge=0)
+    activo: bool = True
+
+
+class MedioPagoUpdate(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1)
+    tipo: TipoMedioPago | None = None
+    icono: str | None = None
+    color: str | None = None
+    saldo_inicial: float | None = Field(default=None, ge=0)
+    activo: bool | None = None
+
+
+class MedioPago(MedioPagoInput):
+    id: int
+
+
+class MedioPagoSaldo(MedioPago):
+    saldo_actual: float
+    total_ingresos: float
+    total_gastos: float
+    total_transferencias_recibidas: float
+    total_transferencias_enviadas: float
+
+
+class TransferenciaMedioInput(BaseModel):
+    fecha: date
+    origen_id: int = Field(ge=1)
+    destino_id: int = Field(ge=1)
+    monto: float = Field(gt=0)
+    nota: str = ""
+
+
+class TransferenciaMedio(TransferenciaMedioInput):
+    id: int
 
 
 class IngresoInput(BaseModel):
     fecha: date
     fuente: Fuente
     monto: float = Field(ge=0)
+    medio_pago_id: int | None = Field(default=None, ge=1)
     nota: str = ""
 
 
@@ -101,6 +127,7 @@ class IngresoUpdate(BaseModel):
     fecha: date | None = None
     fuente: Fuente | None = None
     monto: float | None = Field(default=None, ge=0)
+    medio_pago_id: int | None = Field(default=None, ge=1)
     nota: str | None = None
 
 
@@ -129,7 +156,7 @@ class GastoFijo(GastoFijoInput):
 
 class CategoriaInput(BaseModel):
     nombre: str = Field(min_length=1)
-    icono: str = "ðŸ·ï¸"
+    icono: str = "🏷️"
     color: str = "#333333"
     activa: bool = True
 
@@ -149,6 +176,7 @@ class GastoVariableInput(BaseModel):
     fecha: date
     categoria_id: int = Field(ge=1)
     monto: float = Field(ge=0)
+    medio_pago_id: int | None = Field(default=None, ge=1)
     nota: str = ""
 
 
@@ -156,6 +184,7 @@ class GastoVariableUpdate(BaseModel):
     fecha: date | None = None
     categoria_id: int | None = Field(default=None, ge=1)
     monto: float | None = Field(default=None, ge=0)
+    medio_pago_id: int | None = Field(default=None, ge=1)
     nota: str | None = None
 
 
@@ -260,6 +289,8 @@ class ResumenMensual(BaseModel):
     total_gastos_fijos: float
     total_gastos_variables: float
     saldo: float
+    saldo_total_medios: float = 0.0
+    saldos_medios: list[MedioPagoSaldo] = []
 
 
 class ResumenCategoria(BaseModel):
@@ -270,6 +301,13 @@ class ResumenCategoria(BaseModel):
     cantidad: int
     total: float
     porcentaje: float
+
+
+class CambioAceiteInput(BaseModel):
+    costo: float | None = Field(default=None, ge=0)
+    medio_pago_id: int | None = Field(default=None, ge=1)
+    crear_gasto: bool = False
+    nota: str = ""
 
 
 class MotoConfigUpdate(BaseModel):
@@ -283,9 +321,15 @@ class EstadoAceite(BaseModel):
     km_ultimo_cambio: int
     km_proximo_cambio: int
     km_restantes: int
+    alerta: bool
+    porcentaje_vida_aceite: float
+    intervalo_km: int
+    alerta_km_antes: int
+
+
 def _normalize_sql(sql: str) -> str:
     """Asegura el placeholder correcto según el motor (%s para PostgreSQL, ? para SQLite)."""
-    if IS_POSTGRES:
+    if _is_postgres():
         return sql.replace("?", "%s")
     return sql.replace("%s", "?")
 
@@ -399,8 +443,8 @@ class _SqliteConnection:
 
 
 def get_connection() -> Any:
-    if IS_POSTGRES:
-        url = DATABASE_URL
+    if _is_postgres():
+        url = os.environ.get("DATABASE_URL", "")
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
         connection = psycopg2.connect(url)
@@ -421,11 +465,30 @@ POSTGRES_SCHEMA = """
         color TEXT NOT NULL DEFAULT '#333333',
         activa BOOLEAN NOT NULL DEFAULT TRUE
     );
+    CREATE TABLE IF NOT EXISTS medios_pago (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE,
+        tipo TEXT NOT NULL CHECK (tipo IN ('efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro')),
+        icono TEXT NOT NULL DEFAULT '💵',
+        color TEXT NOT NULL DEFAULT '#5de87a',
+        saldo_inicial DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (saldo_inicial >= 0),
+        activo BOOLEAN NOT NULL DEFAULT TRUE
+    );
+    CREATE TABLE IF NOT EXISTS transferencias_medios (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        origen_id INTEGER NOT NULL REFERENCES medios_pago(id),
+        destino_id INTEGER NOT NULL REFERENCES medios_pago(id),
+        monto DOUBLE PRECISION NOT NULL CHECK (monto > 0),
+        nota TEXT NOT NULL DEFAULT '',
+        CHECK (origen_id <> destino_id)
+    );
     CREATE TABLE IF NOT EXISTS ingresos (
         id SERIAL PRIMARY KEY,
         fecha TEXT NOT NULL,
         fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
         monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
+        medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS gastos_fijos (
@@ -440,6 +503,7 @@ POSTGRES_SCHEMA = """
         fecha TEXT NOT NULL,
         categoria_id INTEGER NOT NULL REFERENCES categorias(id),
         monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
+        medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS kilometraje (
@@ -490,11 +554,30 @@ SQLITE_SCHEMA = """
         color TEXT NOT NULL DEFAULT '#333333',
         activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
     );
+    CREATE TABLE IF NOT EXISTS medios_pago (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL UNIQUE,
+        tipo TEXT NOT NULL CHECK (tipo IN ('efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro')),
+        icono TEXT NOT NULL DEFAULT '💵',
+        color TEXT NOT NULL DEFAULT '#5de87a',
+        saldo_inicial REAL NOT NULL DEFAULT 0.0 CHECK (saldo_inicial >= 0),
+        activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+    );
+    CREATE TABLE IF NOT EXISTS transferencias_medios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        origen_id INTEGER NOT NULL REFERENCES medios_pago(id),
+        destino_id INTEGER NOT NULL REFERENCES medios_pago(id),
+        monto REAL NOT NULL CHECK (monto > 0),
+        nota TEXT NOT NULL DEFAULT '',
+        CHECK (origen_id <> destino_id)
+    );
     CREATE TABLE IF NOT EXISTS ingresos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL,
         fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
         monto REAL NOT NULL CHECK (monto >= 0),
+        medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS gastos_fijos (
@@ -509,6 +592,7 @@ SQLITE_SCHEMA = """
         fecha TEXT NOT NULL,
         categoria_id INTEGER NOT NULL REFERENCES categorias(id),
         monto REAL NOT NULL CHECK (monto >= 0),
+        medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS kilometraje (
@@ -554,7 +638,7 @@ SQLITE_SCHEMA = """
 
 def init_db() -> None:
     with closing(get_connection()) as connection:
-        connection.executescript(POSTGRES_SCHEMA if IS_POSTGRES else SQLITE_SCHEMA)
+        connection.executescript(POSTGRES_SCHEMA if _is_postgres() else SQLITE_SCHEMA)
         categoria_count = connection.execute(
             "SELECT COUNT(*) FROM categorias"
         ).fetchone()[0]
@@ -566,7 +650,32 @@ def init_db() -> None:
                 """,
                 DEFAULT_CATEGORIAS,
             )
-        if not IS_POSTGRES:
+        medio_count = connection.execute(
+            "SELECT COUNT(*) FROM medios_pago"
+        ).fetchone()[0]
+        if medio_count == 0:
+            connection.executemany(
+                """
+                INSERT INTO medios_pago (nombre, tipo, icono, color, saldo_inicial, activo)
+                VALUES (%s, %s, %s, %s, %s, TRUE)
+                """,
+                DEFAULT_MEDIOS_PAGO,
+            )
+        if not _is_postgres():
+            # Migraciones de columnas si no existen
+            ing_cols = [row["name"] for row in connection.execute("PRAGMA table_info(ingresos)").fetchall()]
+            if "medio_pago_id" not in ing_cols:
+                try:
+                    connection.execute("ALTER TABLE ingresos ADD COLUMN medio_pago_id INTEGER REFERENCES medios_pago(id)")
+                except Exception:
+                    pass
+            gv_cols = [row["name"] for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()]
+            if "medio_pago_id" not in gv_cols:
+                try:
+                    connection.execute("ALTER TABLE gastos_variables ADD COLUMN medio_pago_id INTEGER REFERENCES medios_pago(id)")
+                except Exception:
+                    pass
+        if not _is_postgres():
             columns = [
                 row["name"]
                 for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()
@@ -602,7 +711,7 @@ def init_db() -> None:
                            o.fecha,
                            COALESCE(
                                (SELECT c.id FROM categorias c
-                                WHERE lower(c.nombre) = lower(trim(o.categoria))),
+                                 WHERE lower(c.nombre) = lower(trim(o.categoria))),
                                (SELECT MIN(id) FROM categorias)
                            ),
                            o.monto,
@@ -635,23 +744,11 @@ def init_db() -> None:
                 """,
                 (0, 2000, 200),
             )
-        bloque_count = connection.execute(
-            "SELECT COUNT(*) AS n FROM bloques_rutina"
-        ).fetchone()["n"]
-        if bloque_count == 0:
-            connection.executemany(
-                """
-                INSERT INTO bloques_rutina
-                    (dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, activo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
-                """,
-                DEFAULT_BLOQUES,
-            )
         connection.commit()
 
 
 def _norm_bool(value: Any) -> Any:
-    if IS_POSTGRES:
+    if _is_postgres():
         return bool(value)
     return int(value)
 
@@ -672,6 +769,8 @@ def require_row(connection: Any, table: str, item_id: int) -> Any:
         "habitos",
         "registro_habitos",
         "bloques_rutina",
+        "medios_pago",
+        "transferencias_medios",
     }
     if table not in allowed_tables:
         raise ValueError("Tabla no permitida")
@@ -699,10 +798,10 @@ def create_item(table: str, fields: dict[str, Any]) -> dict[str, Any]:
     with closing(get_connection()) as connection:
         cursor = connection.execute(
             f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
-            + (" RETURNING id" if IS_POSTGRES else ""),
+            + (" RETURNING id" if _is_postgres() else ""),
             values,
         )
-        if IS_POSTGRES:
+        if _is_postgres():
             row = cursor.fetchone()
             new_id = int(row[0])
         else:
@@ -860,6 +959,7 @@ def startup() -> None:
 
 
 @app.get("/api/healthz")
+@app.get("/api/health")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
@@ -1109,7 +1209,7 @@ def moto_estado_aceite() -> dict[str, Any]:
 
 
 @app.post("/api/moto/cambio-aceite", response_model=EstadoAceite)
-def moto_cambio_aceite() -> dict[str, Any]:
+def moto_cambio_aceite(payload: CambioAceiteInput | None = None) -> dict[str, Any]:
     with closing(get_connection()) as connection:
         km_row = connection.execute(
             "SELECT km_actuales FROM kilometraje ORDER BY fecha DESC, id DESC LIMIT 1"
@@ -1119,6 +1219,30 @@ def moto_cambio_aceite() -> dict[str, Any]:
             "UPDATE moto_config SET km_ultimo_cambio = %s WHERE id = 1",
             (km_actuales,),
         )
+        if payload and payload.crear_gasto and payload.costo and payload.costo > 0:
+            # Buscar categoría 'Transporte' o la primera disponible
+            cat_row = connection.execute(
+                "SELECT id FROM categorias WHERE lower(nombre) IN ('transporte', 'moto', 'gasolina') LIMIT 1"
+            ).fetchone()
+            cat_id = cat_row["id"] if cat_row else 1
+            today_str = date.today().isoformat()
+            nota_gasto = payload.nota or f"Cambio de aceite ({km_actuales} km)"
+            if payload.medio_pago_id:
+                connection.execute(
+                    """
+                    INSERT INTO gastos_variables (fecha, categoria_id, monto, medio_pago_id, nota)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (today_str, cat_id, payload.costo, payload.medio_pago_id, nota_gasto),
+                )
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO gastos_variables (fecha, categoria_id, monto, nota)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (today_str, cat_id, payload.costo, nota_gasto),
+                )
         connection.commit()
     return build_estado_aceite()
 
@@ -1333,6 +1457,135 @@ def delete_bloque_rutina(item_id: int) -> Response:
     return Response(status_code=204)
 
 
+@app.get("/api/medios-pago", response_model=list[MedioPagoSaldo])
+def list_medios_pago() -> list[dict[str, Any]]:
+    return build_saldos_medios()
+
+
+@app.post("/api/medios-pago", response_model=MedioPago, status_code=201)
+def create_medio_pago(payload: MedioPagoInput) -> dict[str, Any]:
+    try:
+        result = create_item(
+            "medios_pago",
+            {**payload.model_dump(), "activo": _norm_bool(payload.activo)},
+        )
+    except _INTEGRITY_ERRORS:
+        raise HTTPException(status_code=400, detail="Ya existe un medio de pago con ese nombre")
+    result["activo"] = bool(result["activo"])
+    return result
+
+
+@app.get("/api/medios-pago/{item_id}", response_model=MedioPago)
+def get_medio_pago(item_id: int) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "medios_pago", item_id)
+        return {**row_to_dict(row), "activo": bool(row["activo"])}
+
+
+@app.patch("/api/medios-pago/{item_id}", response_model=MedioPago)
+def update_medio_pago(item_id: int, payload: MedioPagoUpdate) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    if "activo" in fields and fields["activo"] is not None:
+        fields["activo"] = _norm_bool(fields["activo"])
+    try:
+        result = update_item("medios_pago", item_id, fields)
+    except _INTEGRITY_ERRORS:
+        raise HTTPException(status_code=400, detail="Ya existe un medio de pago con ese nombre")
+    result["activo"] = bool(result["activo"])
+    return result
+
+
+@app.delete("/api/medios-pago/{item_id}", status_code=204)
+def delete_medio_pago(item_id: int) -> Response:
+    try:
+        delete_item("medios_pago", item_id)
+    except _INTEGRITY_ERRORS:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar el medio de pago: tiene movimientos o transferencias asociadas",
+        )
+    return Response(status_code=204)
+
+
+@app.get("/api/transferencias", response_model=list[TransferenciaMedio])
+def list_transferencias() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT * FROM transferencias_medios ORDER BY fecha DESC, id DESC"
+        ).fetchall()
+        return [row_to_dict(row) for row in rows]
+
+
+@app.post("/api/transferencias", response_model=TransferenciaMedio, status_code=201)
+def create_transferencia(payload: TransferenciaMedioInput) -> dict[str, Any]:
+    if payload.origen_id == payload.destino_id:
+        raise HTTPException(status_code=400, detail="El medio de origen y destino deben ser diferentes")
+    with closing(get_connection()) as connection:
+        require_row(connection, "medios_pago", payload.origen_id)
+        require_row(connection, "medios_pago", payload.destino_id)
+    return create_item(
+        "transferencias_medios",
+        {**payload.model_dump(), "fecha": payload.fecha.isoformat()},
+    )
+
+
+@app.delete("/api/transferencias/{item_id}", status_code=204)
+def delete_transferencia(item_id: int) -> Response:
+    delete_item("transferencias_medios", item_id)
+    return Response(status_code=204)
+
+
+def build_saldos_medios() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        medios = connection.execute(
+            "SELECT * FROM medios_pago ORDER BY activo DESC, id"
+        ).fetchall()
+        
+        # Totales por medio
+        ingresos_rows = connection.execute(
+            "SELECT medio_pago_id, SUM(monto) as total FROM ingresos WHERE medio_pago_id IS NOT NULL GROUP BY medio_pago_id"
+        ).fetchall()
+        ing_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in ingresos_rows}
+
+        gastos_rows = connection.execute(
+            "SELECT medio_pago_id, SUM(monto) as total FROM gastos_variables WHERE medio_pago_id IS NOT NULL GROUP BY medio_pago_id"
+        ).fetchall()
+        gastos_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in gastos_rows}
+
+        trans_in = connection.execute(
+            "SELECT destino_id, SUM(monto) as total FROM transferencias_medios GROUP BY destino_id"
+        ).fetchall()
+        in_map = {row["destino_id"]: float(row["total"] or 0) for row in trans_in}
+
+        trans_out = connection.execute(
+            "SELECT origen_id, SUM(monto) as total FROM transferencias_medios GROUP BY origen_id"
+        ).fetchall()
+        out_map = {row["origen_id"]: float(row["total"] or 0) for row in trans_out}
+
+        result = []
+        for m in medios:
+            m_id = m["id"]
+            ini = float(m["saldo_inicial"] or 0)
+            tot_ing = ing_map.get(m_id, 0.0)
+            tot_gas = gastos_map.get(m_id, 0.0)
+            t_in = in_map.get(m_id, 0.0)
+            t_out = out_map.get(m_id, 0.0)
+            saldo_act = ini + tot_ing - tot_gas + t_in - t_out
+            result.append(
+                {
+                    **row_to_dict(m),
+                    "activo": bool(m["activo"]),
+                    "saldo_inicial": ini,
+                    "saldo_actual": saldo_act,
+                    "total_ingresos": tot_ing,
+                    "total_gastos": tot_gas,
+                    "total_transferencias_recibidas": t_in,
+                    "total_transferencias_enviadas": t_out,
+                }
+            )
+        return result
+
+
 @app.get("/api/resumen/mes-actual", response_model=ResumenMensual)
 def resumen_mes_actual() -> dict[str, Any]:
     current_month = datetime.now().strftime("%Y-%m")
@@ -1356,12 +1609,18 @@ def resumen_mes_actual() -> dict[str, Any]:
             WHERE activo = TRUE AND tipo = 'mensual'
             """
         ).fetchone()[0]
+    
+    saldos_medios = build_saldos_medios()
+    saldo_total_medios = sum(m["saldo_actual"] for m in saldos_medios if m["activo"])
+
     return {
         "mes": current_month,
         "total_ingresos": float(ingresos),
         "total_gastos_fijos": float(fijos),
         "total_gastos_variables": float(variables),
         "saldo": float(ingresos - fijos - variables),
+        "saldo_total_medios": float(saldo_total_medios),
+        "saldos_medios": saldos_medios,
     }
 
 

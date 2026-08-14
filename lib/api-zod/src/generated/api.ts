@@ -29,6 +29,7 @@ export const ListIngresosResponseItem = zod.object({
   "fecha": zod.coerce.date(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
   "monto": zod.number().min(listIngresosResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 export const ListIngresosResponse = zod.array(ListIngresosResponseItem)
@@ -45,6 +46,7 @@ export const CreateIngresoBody = zod.object({
   "fecha": zod.coerce.date(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
   "monto": zod.number().min(createIngresoBodyMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -57,6 +59,7 @@ export const CreateIngresoResponse = zod.object({
   "fecha": zod.coerce.date(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
   "monto": zod.number().min(createIngresoResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -80,6 +83,7 @@ export const GetIngresoResponse = zod.object({
   "fecha": zod.coerce.date(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
   "monto": zod.number().min(getIngresoResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -102,6 +106,7 @@ export const UpdateIngresoBody = zod.object({
   "fecha": zod.coerce.date().optional(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']).optional(),
   "monto": zod.number().min(updateIngresoBodyMontoMin).optional(),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string().optional()
 })
 
@@ -114,6 +119,7 @@ export const UpdateIngresoResponse = zod.object({
   "fecha": zod.coerce.date(),
   "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
   "monto": zod.number().min(updateIngresoResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -258,6 +264,7 @@ export const ListGastosVariablesResponseItem = zod.object({
   "fecha": zod.coerce.date(),
   "categoria_id": zod.number().min(1),
   "monto": zod.number().min(listGastosVariablesResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 export const ListGastosVariablesResponse = zod.array(ListGastosVariablesResponseItem)
@@ -275,6 +282,7 @@ export const CreateGastoVariableBody = zod.object({
   "fecha": zod.coerce.date(),
   "categoria_id": zod.number().min(1),
   "monto": zod.number().min(createGastoVariableBodyMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string().optional()
 })
 
@@ -288,6 +296,7 @@ export const CreateGastoVariableResponse = zod.object({
   "fecha": zod.coerce.date(),
   "categoria_id": zod.number().min(1),
   "monto": zod.number().min(createGastoVariableResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -312,6 +321,7 @@ export const GetGastoVariableResponse = zod.object({
   "fecha": zod.coerce.date(),
   "categoria_id": zod.number().min(1),
   "monto": zod.number().min(getGastoVariableResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -335,6 +345,7 @@ export const UpdateGastoVariableBody = zod.object({
   "fecha": zod.coerce.date().optional(),
   "categoria_id": zod.number().min(1).optional(),
   "monto": zod.number().min(updateGastoVariableBodyMontoMin).optional(),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string().optional()
 })
 
@@ -348,6 +359,7 @@ export const UpdateGastoVariableResponse = zod.object({
   "fecha": zod.coerce.date(),
   "categoria_id": zod.number().min(1),
   "monto": zod.number().min(updateGastoVariableResponseMontoMin),
+  "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
 })
 
@@ -607,6 +619,17 @@ export const GetMotoEstadoAceiteResponse = zod.object({
 /**
  * @summary Registra un cambio de aceite
  */
+export const postMotoCambioAceiteBodyCostoMin = 0;
+
+
+
+export const PostMotoCambioAceiteBody = zod.object({
+  "costo": zod.number().min(postMotoCambioAceiteBodyCostoMin).optional(),
+  "medio_pago_id": zod.number().optional(),
+  "crear_gasto": zod.boolean().optional(),
+  "nota": zod.string().optional()
+})
+
 export const postMotoCambioAceiteResponseKmActualesMin = 0;
 
 export const postMotoCambioAceiteResponseKmUltimoCambioMin = 0;
@@ -628,6 +651,193 @@ export const PostMotoCambioAceiteResponse = zod.object({
   "intervalo_km": zod.number().min(1),
   "alerta_km_antes": zod.number().min(postMotoCambioAceiteResponseAlertaKmAntesMin)
 })
+
+
+/**
+ * @summary Lista medios de pago con sus saldos calculados
+ */
+export const ListMediosPagoResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "saldo_inicial": zod.number(),
+  "saldo_actual": zod.number(),
+  "total_ingresos": zod.number(),
+  "total_gastos": zod.number(),
+  "total_transferencias_recibidas": zod.number(),
+  "total_transferencias_enviadas": zod.number(),
+  "activo": zod.boolean()
+})
+export const ListMediosPagoResponse = zod.array(ListMediosPagoResponseItem)
+
+
+/**
+ * @summary Crea un medio de pago
+ */
+export const createMedioPagoBodySaldoInicialMin = 0;
+
+
+
+export const CreateMedioPagoBody = zod.object({
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "saldo_inicial": zod.number().min(createMedioPagoBodySaldoInicialMin).optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const createMedioPagoResponseSaldoInicialMin = 0;
+
+
+
+export const CreateMedioPagoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "saldo_inicial": zod.number().min(createMedioPagoResponseSaldoInicialMin),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Obtiene un medio de pago
+ */
+
+
+
+export const GetMedioPagoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const getMedioPagoResponseSaldoInicialMin = 0;
+
+
+
+export const GetMedioPagoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "saldo_inicial": zod.number().min(getMedioPagoResponseSaldoInicialMin),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Actualiza un medio de pago
+ */
+
+
+
+export const UpdateMedioPagoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const updateMedioPagoBodySaldoInicialMin = 0;
+
+
+
+export const UpdateMedioPagoBody = zod.object({
+  "nombre": zod.string().optional(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']).optional(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "saldo_inicial": zod.number().min(updateMedioPagoBodySaldoInicialMin).optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const updateMedioPagoResponseSaldoInicialMin = 0;
+
+
+
+export const UpdateMedioPagoResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "saldo_inicial": zod.number().min(updateMedioPagoResponseSaldoInicialMin),
+  "activo": zod.boolean()
+})
+
+
+/**
+ * @summary Elimina un medio de pago
+ */
+
+
+
+export const DeleteMedioPagoParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteMedioPagoResponse = zod.void()
+
+
+/**
+ * @summary Lista transferencias entre medios
+ */
+export const listTransferenciasResponseMontoMin = 0.01;
+
+
+
+export const ListTransferenciasResponseItem = zod.object({
+  "id": zod.number(),
+  "fecha": zod.coerce.date(),
+  "origen_id": zod.number(),
+  "destino_id": zod.number(),
+  "monto": zod.number().min(listTransferenciasResponseMontoMin),
+  "nota": zod.string()
+})
+export const ListTransferenciasResponse = zod.array(ListTransferenciasResponseItem)
+
+
+/**
+ * @summary Registra una transferencia entre dos medios
+ */
+export const createTransferenciaBodyMontoMin = 0.01;
+
+
+
+export const CreateTransferenciaBody = zod.object({
+  "fecha": zod.coerce.date(),
+  "origen_id": zod.number(),
+  "destino_id": zod.number(),
+  "monto": zod.number().min(createTransferenciaBodyMontoMin),
+  "nota": zod.string().optional()
+})
+
+export const createTransferenciaResponseMontoMin = 0.01;
+
+
+
+export const CreateTransferenciaResponse = zod.object({
+  "id": zod.number(),
+  "fecha": zod.coerce.date(),
+  "origen_id": zod.number(),
+  "destino_id": zod.number(),
+  "monto": zod.number().min(createTransferenciaResponseMontoMin),
+  "nota": zod.string()
+})
+
+
+/**
+ * @summary Elimina una transferencia
+ */
+
+
+
+export const DeleteTransferenciaParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteTransferenciaResponse = zod.void()
 
 
 /**
@@ -1031,7 +1241,22 @@ export const GetResumenMesActualResponse = zod.object({
   "total_ingresos": zod.number(),
   "total_gastos_fijos": zod.number(),
   "total_gastos_variables": zod.number(),
-  "saldo": zod.number()
+  "saldo": zod.number(),
+  "saldo_total_medios": zod.number().optional(),
+  "saldos_medios": zod.array(zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "tipo": zod.enum(['efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "saldo_inicial": zod.number(),
+  "saldo_actual": zod.number(),
+  "total_ingresos": zod.number(),
+  "total_gastos": zod.number(),
+  "total_transferencias_recibidas": zod.number(),
+  "total_transferencias_enviadas": zod.number(),
+  "activo": zod.boolean()
+})).optional()
 })
 
 

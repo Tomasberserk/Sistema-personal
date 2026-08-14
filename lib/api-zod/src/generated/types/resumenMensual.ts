@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MedioPagoSaldo } from './medioPagoSaldo';
 
 export interface ResumenMensual {
   mes: string;
@@ -12,4 +13,6 @@ export interface ResumenMensual {
   total_gastos_fijos: number;
   total_gastos_variables: number;
   saldo: number;
+  saldo_total_medios?: number;
+  saldos_medios?: MedioPagoSaldo[];
 }

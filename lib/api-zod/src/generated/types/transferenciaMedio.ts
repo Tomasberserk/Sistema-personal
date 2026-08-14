@@ -5,13 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { IngresoInputFuente } from './ingresoInputFuente';
 
-export interface IngresoInput {
+export interface TransferenciaMedio {
+  id: number;
   fecha: Date;
-  fuente: IngresoInputFuente;
-  /** @minimum 0 */
+  origen_id: number;
+  destino_id: number;
+  /** @minimum 0.01 */
   monto: number;
-  medio_pago_id?: number;
   nota: string;
 }

@@ -6,13 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface GastoVariable {
-  id: number;
+export interface TransferenciaMedioInput {
   fecha: Date;
-  /** @minimum 1 */
-  categoria_id: number;
-  /** @minimum 0 */
+  origen_id: number;
+  destino_id: number;
+  /** @minimum 0.01 */
   monto: number;
-  medio_pago_id?: number;
-  nota: string;
+  nota?: string;
 }

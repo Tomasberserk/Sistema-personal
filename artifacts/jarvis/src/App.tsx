@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
   Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight,
   CircleDollarSign, Clock, Droplets, Flame, Gauge, LayoutGrid, List, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
-  Trash2, TrendingUp, TriangleAlert, Wrench, X,
+  Trash2, TrendingUp, TriangleAlert, Wrench, X, Wallet, ArrowRightLeft, Landmark, CreditCard,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -24,8 +24,10 @@ import {
   getListHabitosQueryKey, getGetResumenHabitosQueryKey,
   useListBloquesRutina, useCreateBloqueRutina, useGetRutinaSemana, useGetRutinaDia, useUpdateBloqueRutina, useDeleteBloqueRutina,
   getListBloquesRutinaQueryKey, getGetRutinaSemanaQueryKey, getGetRutinaDiaQueryKey,
+  useListMediosPago, useCreateMedioPago, useUpdateMedioPago, useDeleteMedioPago, getListMediosPagoQueryKey,
+  useListTransferencias, useCreateTransferencia, useDeleteTransferencia, getListTransferenciasQueryKey,
 } from '@workspace/api-client-react';
-import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, ResumenCategoria } from '@workspace/api-client-react';
+import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -266,15 +268,18 @@ function CategoryBars({ data }: { data: ResumenCategoria[] }) {
 
 function Dashboard() {
   const queryClient = useQueryClient();
-  const [modal, setModal] = useState<ModalKind>(null);
+  const [modal, setModal] = useState<ModalKind | 'transferencia'>(null);
   const [editing, setEditing] = useState<AnyRecord | null>(null);
   const ingresos = useListIngresos(); const fijos = useListGastosFijos(); const variables = useListGastosVariables();
   const categorias = useListCategorias();
+  const medios = useListMediosPago();
   const summary = useGetResumenMesActual();
   const porCategoria = useGetResumenMensualPorCategoria();
   const createIngreso = useCreateIngreso(); const updateIngreso = useUpdateIngreso(); const deleteIngreso = useDeleteIngreso();
   const createFijo = useCreateGastoFijo(); const updateFijo = useUpdateGastoFijo(); const deleteFijo = useDeleteGastoFijo();
   const createVariable = useCreateGastoVariable(); const updateVariable = useUpdateGastoVariable(); const deleteVariable = useDeleteGastoVariable();
+  const createTransferencia = useCreateTransferencia();
+
   const ids = {
     ingreso: editing && 'fuente' in editing ? editing.id : undefined,
     fijo: editing && 'activo' in editing ? editing.id : undefined,
@@ -284,21 +289,34 @@ function Dashboard() {
   const fijosList = asList<GastoFijo>(fijos.data);
   const variablesList = asList<GastoVariable>(variables.data);
   const categoriasList = asList<Categoria>(categorias.data);
+  const mediosList = asList<MedioPagoSaldo>(medios.data);
   const pieData = asList<ResumenCategoria>(porCategoria.data);
   const catMap = useMemo(() => new Map(categoriasList.map((c) => [c.id, c])), [categoriasList]);
+  const medioMap = useMemo(() => new Map(mediosList.map((m) => [m.id, m])), [mediosList]);
   const catsForModal = useMemo(() => categoriasList.filter((c) => c.activa), [categoriasList]);
   const totals = useMemo(() => ({
     income: ingresosList.filter((x) => x.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((a, x) => a + x.monto, 0),
     fixed: fijosList.filter((x) => x.activo).reduce((a, x) => a + x.monto, 0),
     variable: variablesList.filter((x) => x.fecha.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((a, x) => a + x.monto, 0),
   }), [ingresosList, fijosList, variablesList]);
-  const sum = summary.data ?? { total_ingresos: totals.income, total_gastos_fijos: totals.fixed, total_gastos_variables: totals.variable, saldo: totals.income - totals.fixed - totals.variable };
+  const sum = summary.data ?? {
+    total_ingresos: totals.income,
+    total_gastos_fijos: totals.fixed,
+    total_gastos_variables: totals.variable,
+    saldo: totals.income - totals.fixed - totals.variable,
+    saldo_total_medios: mediosList.filter((m) => m.activo).reduce((acc, m) => acc + m.saldo_actual, 0),
+    saldos_medios: mediosList,
+  };
+  const totalEnMedios = sum.saldo_total_medios ?? mediosList.filter((m) => m.activo).reduce((acc, m) => acc + m.saldo_actual, 0);
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListIngresosQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListGastosFijosQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListGastosVariablesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetResumenMensualPorCategoriaQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListTransferenciasQueryKey() });
   };
   const close = () => { setModal(null); setEditing(null); };
   const submit = (data: Record<string, unknown>) => {
@@ -306,6 +324,15 @@ function Dashboard() {
     if (modal === 'ingreso') editing ? updateIngreso.mutate({ id: editing.id, data: data as never }, { onSuccess: done }) : createIngreso.mutate({ data: data as never }, { onSuccess: done });
     if (modal === 'variable') editing ? updateVariable.mutate({ id: editing.id, data: data as never }, { onSuccess: done }) : createVariable.mutate({ data: data as never }, { onSuccess: done });
     if (modal === 'fijo') editing ? updateFijo.mutate({ id: editing.id, data: data as never }, { onSuccess: done }) : createFijo.mutate({ data: data as never }, { onSuccess: done });
+    if (modal === 'transferencia') {
+      createTransferencia.mutate(
+        { data: data as never },
+        {
+          onSuccess: () => { done(); toast.success('Transferencia realizada'); },
+          onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo registrar la transferencia'),
+        }
+      );
+    }
   };
   const remove = (kind: ModalKind, id: number) => {
     if (!window.confirm('¿Eliminar este registro?')) return;
@@ -318,11 +345,50 @@ function Dashboard() {
     <div className="relative z-10 min-h-[100dvh]">
       <Topbar eyebrow={`visión de ${monthLabel}`} title="Que tu dinero te siga el paso." onAdd={() => setModal('ingreso')} />
       <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Metric label="Saldo del mes" value={money(sum.saldo)} icon={<TrendingUp size={19} />} tone="green" note={sum.saldo >= 0 ? 'Vas construyendo margen' : 'Ajusta el ritmo esta semana'} />
-          <Metric label="Ingresos" value={money(sum.total_ingresos)} icon={<ArrowUpRight size={19} />} tone="warm" note={`${ingresosList.length} registros este mes`} />
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Metric label="Dinero disponible" value={money(totalEnMedios)} icon={<Wallet size={19} />} tone="green" note="Saldo real en todos tus medios" />
+          <Metric label="Saldo del mes" value={money(sum.saldo)} icon={<TrendingUp size={19} />} note={sum.saldo >= 0 ? 'Margen positivo del mes' : 'Ajusta el ritmo esta semana'} />
+          <Metric label="Ingresos" value={money(sum.total_ingresos)} icon={<ArrowUpRight size={19} />} tone="warm" note={`${ingresosList.length} entradas este mes`} />
           <Metric label="Gastos" value={money(sum.total_gastos_fijos + sum.total_gastos_variables)} icon={<ArrowDownLeft size={19} />} note={`${money(sum.total_gastos_fijos)} fijos · ${money(sum.total_gastos_variables)} variables`} />
         </div>
+
+        {/* Sección Medios de Dinero */}
+        <section className="cosmos-card px-5 py-6 sm:px-7">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="cosmos-eyebrow mb-1">donde está tu plata</div>
+              <h2 className="cosmos-title text-xl font-bold">Medios de dinero y cuentas</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setModal('transferencia')} data-testid="button-open-transferencia" className="cosmos-button-secondary !py-2 !px-3 text-xs">
+                <ArrowRightLeft size={14} /> Mover entre cuentas
+              </button>
+            </div>
+          </div>
+          {medios.isLoading ? <LoadingRows /> : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {mediosList.map((m) => (
+                <div key={m.id} data-testid={`card-medio-${m.id}`} className="rounded-2xl border border-white/5 bg-white/4 p-4 transition hover:bg-white/7">
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl text-xl" style={{ backgroundColor: `${m.color}22` }}>
+                      {m.icono}
+                    </div>
+                    <span className="text-xs uppercase tracking-wider text-white/40">{m.tipo.replace('_', ' ')}</span>
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-white/60">{m.nombre}</div>
+                    <div className="cosmos-number text-lg font-bold text-white mt-0.5">{money(m.saldo_actual)}</div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-[11px] text-white/45">
+                    <span>+{money(m.total_ingresos)}</span>
+                    <span className="text-white/30">|</span>
+                    <span>-{money(m.total_gastos)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="cosmos-card px-5 py-6 sm:px-7">
           <div className="mb-6 flex items-center justify-between">
@@ -344,13 +410,17 @@ function Dashboard() {
 
         <div className="grid gap-5 lg:grid-cols-2">
           <ListCard title="Ingresos" kicker="dinero que llegó" action={() => { setEditing(null); setModal('ingreso'); }}>
-            {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primera jornada para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><ArrowUpRight size={17} /></div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{sourceLabel[x.fuente]}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>)}</div>}
+            {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primera jornada para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => {
+              const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
+              return <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><ArrowUpRight size={17} /></div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{sourceLabel[x.fuente]} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>;
+            })}</div>}
           </ListCard>
 
           <ListCard title="Gastos variables" kicker="lo que cambia" action={() => { setEditing(null); setModal('variable'); }}>
             {variables.isLoading ? <LoadingRows /> : !variablesList.length ? <EmptyState title="Dale nombre a cada salida" copy="Comida, gasolina, una reparación: todo cuenta para entender tu ruta." action="Registrar gasto variable" onClick={() => setModal('variable')} testId="button-empty-variable" /> : <div className="space-y-1">{variablesList.slice(0, 8).map((x) => {
               const cat = catMap.get(x.categoria_id) ?? FALLBACK_CAT;
-              return <div key={x.id} data-testid={`row-variable-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${cat.color}26` }}>{cat.icono}</div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{cat.nombre}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-semibold" style={{ color: cat.color }}>-{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('variable'); }} onDelete={() => remove('variable', x.id)} /></div></div>;
+              const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
+              return <div key={x.id} data-testid={`row-variable-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${cat.color}26` }}>{cat.icono}</div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{cat.nombre} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-semibold" style={{ color: cat.color }}>-{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('variable'); }} onDelete={() => remove('variable', x.id)} /></div></div>;
             })}</div>}</ListCard>
         </div>
 
@@ -359,7 +429,25 @@ function Dashboard() {
         </ListCard>
       </div>
       <DetailPrefetchers ids={ids} />
-      {modal && <RecordModal kind={modal} record={editing} categorias={catsForModal} pending={createIngreso.isPending || updateIngreso.isPending || createVariable.isPending || updateVariable.isPending || createFijo.isPending || updateFijo.isPending} onClose={close} onSubmit={submit} />}
+      {modal === 'transferencia' && (
+        <TransferenciaModal
+          medios={mediosList}
+          pending={createTransferencia.isPending}
+          onClose={close}
+          onSubmit={submit}
+        />
+      )}
+      {modal && modal !== 'transferencia' && (
+        <RecordModal
+          kind={modal}
+          record={editing}
+          categorias={catsForModal}
+          medios={mediosList}
+          pending={createIngreso.isPending || updateIngreso.isPending || createVariable.isPending || updateVariable.isPending || createFijo.isPending || updateFijo.isPending}
+          onClose={close}
+          onSubmit={submit}
+        />
+      )}
     </div>
   </Shell>;
 }
@@ -389,25 +477,55 @@ function KilometrajePage() {
 function MotoPage() {
   const queryClient = useQueryClient();
   const estado = useGetMotoEstadoAceite();
+  const medios = useListMediosPago();
   const changeOil = usePostMotoCambioAceite();
   const saveConfig = usePutMotoConfig();
+  const [modalOil, setModalOil] = useState(false);
   const [form, setForm] = useState({ intervalo_km: '2000', alerta_km_antes: '200', km_ultimo_cambio: '0' });
+  const [oilForm, setOilForm] = useState({ costo: '60000', medio_pago_id: '', crear_gasto: true, nota: '' });
   const initialized = useRef(false);
+  const mediosList = asList<MedioPagoSaldo>(medios.data);
   const applyEstado = (data: EstadoAceite) => setForm({ intervalo_km: String(data.intervalo_km), alerta_km_antes: String(data.alerta_km_antes), km_ultimo_cambio: String(data.km_ultimo_cambio) });
   useEffect(() => {
     if (!initialized.current && estado.data) { initialized.current = true; applyEstado(estado.data); }
   }, [estado.data]);
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetMotoEstadoAceiteQueryKey() });
+  useEffect(() => {
+    if (mediosList.length > 0 && !oilForm.medio_pago_id) {
+      setOilForm((curr) => ({ ...curr, medio_pago_id: String(mediosList[0].id) }));
+    }
+  }, [mediosList, oilForm.medio_pago_id]);
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetMotoEstadoAceiteQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListGastosVariablesQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetResumenMensualPorCategoriaQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+  };
   const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
   const e = estado.data;
   const pct = e?.porcentaje_vida_aceite ?? 0;
   const tone = oilTone(pct);
-  const registerChange = () => {
-    if (!window.confirm('¿Registrar un cambio de aceite en el odómetro actual?')) return;
-    changeOil.mutate(undefined, {
-      onSuccess: (data) => { applyEstado(data); invalidate(); toast.success('Cambio de aceite registrado'); },
-      onError: () => toast.error('No se pudo registrar el cambio de aceite'),
-    });
+  const confirmChange = (event: React.FormEvent) => {
+    event.preventDefault();
+    changeOil.mutate(
+      {
+        data: {
+          costo: oilForm.crear_gasto ? Number(oilForm.costo) : undefined,
+          medio_pago_id: (oilForm.crear_gasto && Number(oilForm.medio_pago_id)) ? Number(oilForm.medio_pago_id) : undefined,
+          crear_gasto: oilForm.crear_gasto,
+          nota: oilForm.nota,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          applyEstado(data);
+          invalidate();
+          setModalOil(false);
+          toast.success(oilForm.crear_gasto ? 'Cambio de aceite y gasto registrados' : 'Cambio de aceite registrado');
+        },
+        onError: () => toast.error('No se pudo registrar el cambio de aceite'),
+      }
+    );
   };
   const save = (event: React.FormEvent) => {
     event.preventDefault();
@@ -464,13 +582,85 @@ function MotoPage() {
                   <Stat label="Próximo cambio" value={`${e.km_proximo_cambio.toLocaleString('es-MX')} km`} />
                   <Stat label="Km restantes" value={e.km_restantes <= 0 ? '0 km' : `${e.km_restantes.toLocaleString('es-MX')} km`} accent={tone.color} />
                 </div>
-                <button onClick={registerChange} disabled={changeOil.isPending} data-testid="button-cambio-aceite" className="cosmos-button-primary">
-                  {changeOil.isPending ? <Timer size={17} className="animate-spin" /> : <Wrench size={17} />}
-                  {changeOil.isPending ? 'Registrando…' : 'Registrar cambio de aceite'}
+                <button onClick={() => setModalOil(true)} disabled={changeOil.isPending} data-testid="button-cambio-aceite" className="cosmos-button-primary">
+                  <Wrench size={17} />
+                  Registrar cambio de aceite
                 </button>
               </div>
             </div>
           </section>
+
+          {modalOil && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+              <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+                <div className="mb-6 flex items-start justify-between">
+                  <div>
+                    <div className="cosmos-eyebrow mb-1">moto / mantenimiento</div>
+                    <h2 className="cosmos-title text-2xl font-bold">Registrar cambio de aceite</h2>
+                  </div>
+                  <button onClick={() => setModalOil(false)} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+                </div>
+                <form onSubmit={confirmChange} className="space-y-4">
+                  <div className="rounded-xl bg-white/5 p-4 text-sm text-white/70">
+                    Se actualizará el odómetro del último cambio al kilometraje actual: <strong className="text-white">{e.km_actuales.toLocaleString('es-MX')} km</strong>.
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-white/5 p-3 text-sm font-medium text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={oilForm.crear_gasto}
+                      onChange={(ev) => setOilForm((c) => ({ ...c, crear_gasto: ev.target.checked }))}
+                      className="h-4 w-4 accent-white"
+                    />
+                    Registrar automáticamente como gasto en finanzas
+                  </label>
+                  {oilForm.crear_gasto && (
+                    <>
+                      <label className="block">
+                        <span className="cosmos-field-label">Costo del cambio (COP)</span>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          step="1000"
+                          className="cosmos-input"
+                          value={oilForm.costo}
+                          onChange={(ev) => setOilForm((c) => ({ ...c, costo: ev.target.value }))}
+                          placeholder="60000"
+                        />
+                      </label>
+                      {mediosList.length > 0 && (
+                        <label className="block">
+                          <span className="cosmos-field-label">¿De qué cuenta se pagó?</span>
+                          <select
+                            className="cosmos-select"
+                            value={oilForm.medio_pago_id}
+                            onChange={(ev) => setOilForm((c) => ({ ...c, medio_pago_id: ev.target.value }))}
+                          >
+                            {mediosList.map((m) => (
+                              <option key={m.id} value={m.id}>{m.icono} {m.nombre}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <label className="block">
+                        <span className="cosmos-field-label">Nota o marca del aceite (opcional)</span>
+                        <input
+                          className="cosmos-input"
+                          value={oilForm.nota}
+                          onChange={(ev) => setOilForm((c) => ({ ...c, nota: ev.target.value }))}
+                          placeholder="Ej. Motul 10W-40 semisintético"
+                        />
+                      </label>
+                    </>
+                  )}
+                  <button disabled={changeOil.isPending} type="submit" className="cosmos-button-primary w-full !py-3.5">
+                    {changeOil.isPending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
+                    {changeOil.isPending ? 'Guardando…' : 'Confirmar cambio'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
 
           <section className="cosmos-card p-6 sm:p-8">
             <div className="mb-6 flex items-center justify-between gap-3">
@@ -952,11 +1142,74 @@ function CategoryPills({ categories, value, onSelect }: { categories: Categoria[
   );
 }
 
-function RecordModal({ kind, record, categorias, pending, onClose, onSubmit }: { kind: Exclude<ModalKind, null>; record: AnyRecord | null; categorias?: Categoria[]; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: MedioPagoSaldo[]; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+  const activos = medios.filter((m) => m.activo);
+  const [form, setForm] = useState({
+    fecha: dateValue(),
+    origen_id: String(activos[0]?.id ?? ''),
+    destino_id: String(activos[1]?.id ?? activos[0]?.id ?? ''),
+    monto: '',
+    nota: '',
+  });
+  const set = (key: string, value: string) => setForm((curr) => ({ ...curr, [key]: value }));
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const origen = Number(form.origen_id);
+    const destino = Number(form.destino_id);
+    const monto = Number(form.monto);
+    if (!origen || !destino) { toast.error('Selecciona cuentas de origen y destino'); return; }
+    if (origen === destino) { toast.error('El medio de origen y destino no pueden ser el mismo'); return; }
+    if (!monto || monto <= 0) { toast.error('Ingresa un monto mayor a 0'); return; }
+    onSubmit({ fecha: form.fecha, origen_id: origen, destino_id: destino, monto, nota: form.nota });
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <div className="cosmos-eyebrow mb-1">jarvis / transferencias</div>
+            <h2 className="cosmos-title text-2xl font-bold">Mover entre cuentas</h2>
+          </div>
+          <button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="cosmos-field-label">Desde (Origen)</span>
+              <select className="cosmos-select" value={form.origen_id} onChange={(e) => set('origen_id', e.target.value)}>
+                {activos.map((m) => (
+                  <option key={m.id} value={m.id}>{m.icono} {m.nombre} ({money(m.saldo_actual)})</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="cosmos-field-label">Hacia (Destino)</span>
+              <select className="cosmos-select" value={form.destino_id} onChange={(e) => set('destino_id', e.target.value)}>
+                {activos.map((m) => (
+                  <option key={m.id} value={m.id}>{m.icono} {m.nombre} ({money(m.saldo_actual)})</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <span className="block"><span className="cosmos-field-label">Monto a transferir</span><input required min="0.01" step="0.01" type="number" className="cosmos-input" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" /></span>
+          <span className="block"><span className="cosmos-field-label">Nota o motivo (opcional)</span><input className="cosmos-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Ej. Retiro cajero, recarga Nequi..." /></span>
+          <button disabled={pending} type="submit" data-testid="button-save-transferencia" className="cosmos-button-primary w-full !py-3.5">
+            {pending ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRightLeft size={17} />}
+            {pending ? 'Transfiriendo…' : 'Completar transferencia'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function RecordModal({ kind, record, categorias, medios, pending, onClose, onSubmit }: { kind: Exclude<ModalKind, null>; record: AnyRecord | null; categorias?: Categoria[]; medios?: MedioPagoSaldo[]; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
   const isIngreso = kind === 'ingreso'; const isVariable = kind === 'variable'; const isFijo = kind === 'fijo'; const isKm = kind === 'km';
   const r = record as Partial<Ingreso & GastoVariable & GastoFijo & Kilometraje> | null;
   const [form, setForm] = useState<Record<string, string | boolean>>({
     fecha: dateValue(r?.fecha), fuente: r?.fuente ?? 'Didi', monto: String(r?.monto ?? ''),
+    medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
     nota: r?.nota ?? '', categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: r?.nombre ?? '',
     tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
   });
@@ -964,11 +1217,12 @@ function RecordModal({ kind, record, categorias, pending, onClose, onSubmit }: {
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const base = { ...form };
+    const medioId = Number(base.medio_pago_id) || undefined;
     if (isVariable) {
       if (!Number(base.categoria_id)) { toast.error('Elige una categoría para este gasto'); return; }
-      onSubmit({ fecha: base.fecha, categoria_id: Number(base.categoria_id), monto: Number(base.monto), nota: String(base.nota) });
+      onSubmit({ fecha: base.fecha, categoria_id: Number(base.categoria_id), monto: Number(base.monto), medio_pago_id: medioId, nota: String(base.nota) });
     }
-    else if (isIngreso) onSubmit({ fecha: base.fecha, fuente: base.fuente, monto: Number(base.monto), nota: String(base.nota) });
+    else if (isIngreso) onSubmit({ fecha: base.fecha, fuente: base.fuente, monto: Number(base.monto), medio_pago_id: medioId, nota: String(base.nota) });
     else if (isFijo) onSubmit({ nombre: base.nombre, monto: Number(base.monto), tipo: base.tipo, activo: Boolean(base.activo) });
     else onSubmit({ fecha: base.fecha, km_actuales: Number(base.km_actuales), nota: String(base.nota) });
   };
@@ -992,6 +1246,16 @@ function RecordModal({ kind, record, categorias, pending, onClose, onSubmit }: {
             )}
             <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={String(form.fecha)} onChange={(e) => set('fecha', e.target.value)} data-testid={`input-${kind}-fecha`} /></span>
             {isIngreso && <span className="block"><span className="cosmos-field-label">Fuente</span><select className="cosmos-select" value={String(form.fuente)} onChange={(e) => set('fuente', e.target.value)} data-testid="select-ingreso-fuente"><option value="Didi">Didi</option><option value="papa">Papá</option><option value="amigo">Amigo</option><option value="otro">Otro</option></select></span>}
+            {(isIngreso || isVariable) && medios && medios.length > 0 && (
+              <label className="block">
+                <span className="cosmos-field-label">{isIngreso ? '¿Dónde entró el dinero?' : '¿De dónde salió el dinero?'}</span>
+                <select className="cosmos-select" value={String(form.medio_pago_id)} onChange={(e) => set('medio_pago_id', e.target.value)}>
+                  {medios.map((m) => (
+                    <option key={m.id} value={m.id}>{m.icono} {m.nombre}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {isKm ? <span className="block"><span className="cosmos-field-label">Kilómetros actuales</span><input required min="0" step="0.1" type="number" className="cosmos-input" value={String(form.km_actuales)} onChange={(e) => set('km_actuales', e.target.value)} data-testid="input-km-actuales" placeholder="0" /></span> : <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-monto" placeholder="0" /></span>}
             {!isKm && <span className="block"><span className="cosmos-field-label">Nota (opcional)</span><input className="cosmos-input" value={String(form.nota)} onChange={(e) => set('nota', e.target.value)} placeholder="Un detalle, la ruta, la hora..." /></span>}
           </>}

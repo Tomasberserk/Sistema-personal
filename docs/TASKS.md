@@ -4,86 +4,61 @@ Este archivo contiene tareas ejecutables. Las tareas deben realizarse en orden s
 
 ## P0 — Consolidación
 
-### T001 — Auditoría del repositorio
+### T001 — Auditoría del repositorio [COMPLETADA]
 
 **Objetivo:** producir un inventario real de frontend, backend, rutas API, tablas, seeds, componentes y documentación.
 
-**Reglas:**
-- Inspeccionar código real.
-- No asumir que la documentación antigua está actualizada.
-- Identificar duplicaciones y funcionalidades sin uso.
+**Resultado:** Inventario completado y fuente rectora consolidada en `docs/DOCUMENTO_RECTOR.md` y `CONTEXT.md`.
 
-**Resultado esperado:** informe de hallazgos y lista de cambios recomendados.
-
-### T002 — Eliminar/replantear rutina hardcodeada
+### T002 — Eliminar/replantear rutina hardcodeada [COMPLETADA]
 
 **Objetivo:** impedir que el sistema imponga una rutina personal genérica.
 
-**Debe revisarse:**
-- seed de `bloques_rutina`,
-- comportamiento cuando la tabla está vacía,
-- UI de rutina,
-- endpoints relacionados,
-- cualquier documentación que diga que la rutina seed es "real" o deseada.
+**Resultado:** Se retiró `DEFAULT_BLOQUES` y la inicialización forzada en `init_db()`. Las instalaciones nuevas inician vacías y los bloques los crea el usuario manualmente. Validado con tests de no regresión.
 
-**Resultado esperado:** una instalación nueva no recibe una rutina inventada por el sistema.
-
-### T003 — Verificar PostgreSQL/Supabase
+### T003 — Verificar PostgreSQL/Supabase [COMPLETADA]
 
 **Objetivo:** comprobar que la capa PostgreSQL funciona de forma equivalente a SQLite en los flujos relevantes.
 
-**Validar:**
-- conexión,
-- inicialización,
-- schemas,
-- CRUD,
-- claves foráneas,
-- booleanos,
-- fechas,
-- transacciones,
-- endpoints principales.
+**Resultado:** Se desacopló la detección estática de base de datos (`_is_postgres()` dinámico), se validaron schemas idénticos, RETURNING ids, placeholders y suite completa de tests automatizados (`test_sqlite_suite.py` y `test_rutina.py`).
 
-**Resultado esperado:** evidencia de pruebas y cualquier corrección necesaria.
-
-### T004 — Diseñar medios de dinero dentro de Finanzas
+### T004 — Diseñar medios de dinero dentro de Finanzas [COMPLETADA]
 
 **Objetivo:** permitir distinguir dónde están los recursos sin crear un módulo independiente.
 
-**Conceptos mínimos:**
-- efectivo/billetes,
-- efectivo/monedas,
-- cuenta bancaria,
-- tarjeta,
-- billetera digital,
-- otros.
+**Resultado:** Diseñado en ADR-004 e implementado con tabla `medios_pago` y `transferencias_medios`.
 
-**Regla:** transferencia entre medios ≠ gasto.
-
-Antes de modificar schema, documentar el modelo y revisar compatibilidad con datos existentes.
-
-### T005 — Actualizar contratos API y cliente
+### T005 — Actualizar contratos API y cliente [COMPLETADA]
 
 **Objetivo:** mantener OpenAPI y cliente frontend sincronizados después de cambios de backend.
 
-**Resultado esperado:** cliente regenerado y frontend compilable.
+**Resultado:** OpenAPI alineado, frontend TypeScript/React en `artifacts/jarvis` pasando `typecheck` y `vite build` al 100% sin errores.
 
 ## P1 — Conexión
 
-### T006 — Conectar Moto y Finanzas
+### T006 — Conectar Moto y Finanzas [COMPLETADA]
 
-Diseñar cómo mantenimiento y combustible pueden producir o relacionarse con movimientos financieros sin duplicar información.
+**Objetivo:** Diseñar cómo mantenimiento y combustible pueden producir o relacionarse con movimientos financieros sin duplicar información.
 
-### T007 — Conectar ingresos y medios de dinero
+**Resultado:** El cambio de aceite ahora permite registrar opcionalmente el gasto variable en finanzas con selección de medio de pago y nota.
 
-Registrar dónde entra un ingreso y actualizar el saldo correspondiente.
+### T007 — Conectar ingresos y medios de dinero [COMPLETADA]
 
-### T008 — Conectar transferencias
+**Objetivo:** Registrar dónde entra un ingreso y actualizar el saldo correspondiente.
 
-Permitir mover dinero entre medios sin contarlo como ingreso o gasto.
+**Resultado:** Ingresos y Gastos Variables soportan `medio_pago_id`, actualizando el balance real de cada cuenta (Efectivo, Nequi, Bancos, etc.).
 
-### T009 — Revisar Dashboard
+### T008 — Conectar transferencias [COMPLETADA]
 
-Mostrar relaciones útiles y no simplemente más widgets.
+**Objetivo:** Permitir mover dinero entre medios sin contarlo como ingreso o gasto.
+
+**Resultado:** Implementado endpoint `/api/transferencias` y UI modal en Dashboard que transfiere saldo entre medios sin alterar el resumen mensual de ingresos ni gastos.
+
+### T009 — Revisar Dashboard [COMPLETADA]
+
+**Objetivo:** Mostrar relaciones útiles y no simplemente más widgets.
+
+**Resultado:** Dashboard rediseñado con tarjeta de métrica de "Dinero disponible", desglose visual por medio de pago/cuenta con balances reales, trazabilidad de medio en listas de ingresos y gastos, y botón rápido para mover entre cuentas.
 
 ## P2 — Sistema manual completo
 

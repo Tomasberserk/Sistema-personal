@@ -6,12 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface GastoVariableUpdate {
-  fecha?: Date;
-  /** @minimum 1 */
-  categoria_id?: number;
+export interface CambioAceiteInput {
   /** @minimum 0 */
-  monto?: number;
+  costo?: number;
   medio_pago_id?: number;
+  crear_gasto?: boolean;
   nota?: string;
 }

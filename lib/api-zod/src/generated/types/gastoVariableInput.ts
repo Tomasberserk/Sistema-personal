@@ -12,5 +12,6 @@ export interface GastoVariableInput {
   categoria_id: number;
   /** @minimum 0 */
   monto: number;
+  medio_pago_id?: number;
   nota?: string;
 }

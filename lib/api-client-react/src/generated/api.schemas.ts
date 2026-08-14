@@ -29,6 +29,7 @@ export interface Ingreso {
   fuente: IngresoFuente;
   /** @minimum 0 */
   monto: number;
+  medio_pago_id?: number;
   nota: string;
 }
 
@@ -47,6 +48,7 @@ export interface IngresoInput {
   fuente: IngresoInputFuente;
   /** @minimum 0 */
   monto: number;
+  medio_pago_id?: number;
   nota: string;
 }
 
@@ -65,6 +67,128 @@ export interface IngresoUpdate {
   fuente?: IngresoUpdateFuente;
   /** @minimum 0 */
   monto?: number;
+  medio_pago_id?: number;
+  nota?: string;
+}
+
+export type MedioPagoTipo = typeof MedioPagoTipo[keyof typeof MedioPagoTipo];
+
+
+export const MedioPagoTipo = {
+  efectivo_billetes: 'efectivo_billetes',
+  efectivo_monedas: 'efectivo_monedas',
+  cuenta_bancaria: 'cuenta_bancaria',
+  billetera_digital: 'billetera_digital',
+  tarjeta: 'tarjeta',
+  otro: 'otro',
+} as const;
+
+export interface MedioPago {
+  id: number;
+  nombre: string;
+  tipo: MedioPagoTipo;
+  icono: string;
+  color: string;
+  /** @minimum 0 */
+  saldo_inicial: number;
+  activo: boolean;
+}
+
+export type MedioPagoInputTipo = typeof MedioPagoInputTipo[keyof typeof MedioPagoInputTipo];
+
+
+export const MedioPagoInputTipo = {
+  efectivo_billetes: 'efectivo_billetes',
+  efectivo_monedas: 'efectivo_monedas',
+  cuenta_bancaria: 'cuenta_bancaria',
+  billetera_digital: 'billetera_digital',
+  tarjeta: 'tarjeta',
+  otro: 'otro',
+} as const;
+
+export interface MedioPagoInput {
+  nombre: string;
+  tipo: MedioPagoInputTipo;
+  icono?: string;
+  color?: string;
+  /** @minimum 0 */
+  saldo_inicial?: number;
+  activo?: boolean;
+}
+
+export type MedioPagoUpdateTipo = typeof MedioPagoUpdateTipo[keyof typeof MedioPagoUpdateTipo];
+
+
+export const MedioPagoUpdateTipo = {
+  efectivo_billetes: 'efectivo_billetes',
+  efectivo_monedas: 'efectivo_monedas',
+  cuenta_bancaria: 'cuenta_bancaria',
+  billetera_digital: 'billetera_digital',
+  tarjeta: 'tarjeta',
+  otro: 'otro',
+} as const;
+
+export interface MedioPagoUpdate {
+  nombre?: string;
+  tipo?: MedioPagoUpdateTipo;
+  icono?: string;
+  color?: string;
+  /** @minimum 0 */
+  saldo_inicial?: number;
+  activo?: boolean;
+}
+
+export type MedioPagoSaldoTipo = typeof MedioPagoSaldoTipo[keyof typeof MedioPagoSaldoTipo];
+
+
+export const MedioPagoSaldoTipo = {
+  efectivo_billetes: 'efectivo_billetes',
+  efectivo_monedas: 'efectivo_monedas',
+  cuenta_bancaria: 'cuenta_bancaria',
+  billetera_digital: 'billetera_digital',
+  tarjeta: 'tarjeta',
+  otro: 'otro',
+} as const;
+
+export interface MedioPagoSaldo {
+  id: number;
+  nombre: string;
+  tipo: MedioPagoSaldoTipo;
+  icono: string;
+  color: string;
+  saldo_inicial: number;
+  saldo_actual: number;
+  total_ingresos: number;
+  total_gastos: number;
+  total_transferencias_recibidas: number;
+  total_transferencias_enviadas: number;
+  activo: boolean;
+}
+
+export interface TransferenciaMedio {
+  id: number;
+  fecha: string;
+  origen_id: number;
+  destino_id: number;
+  /** @minimum 0.01 */
+  monto: number;
+  nota: string;
+}
+
+export interface TransferenciaMedioInput {
+  fecha: string;
+  origen_id: number;
+  destino_id: number;
+  /** @minimum 0.01 */
+  monto: number;
+  nota?: string;
+}
+
+export interface CambioAceiteInput {
+  /** @minimum 0 */
+  costo?: number;
+  medio_pago_id?: number;
+  crear_gasto?: boolean;
   nota?: string;
 }
 
@@ -146,6 +270,7 @@ export interface GastoVariable {
   categoria_id: number;
   /** @minimum 0 */
   monto: number;
+  medio_pago_id?: number;
   nota: string;
 }
 
@@ -155,6 +280,7 @@ export interface GastoVariableInput {
   categoria_id: number;
   /** @minimum 0 */
   monto: number;
+  medio_pago_id?: number;
   nota?: string;
 }
 
@@ -164,6 +290,7 @@ export interface GastoVariableUpdate {
   categoria_id?: number;
   /** @minimum 0 */
   monto?: number;
+  medio_pago_id?: number;
   nota?: string;
 }
 
@@ -202,6 +329,8 @@ export interface ResumenMensual {
   total_gastos_fijos: number;
   total_gastos_variables: number;
   saldo: number;
+  saldo_total_medios?: number;
+  saldos_medios?: MedioPagoSaldo[];
 }
 
 export interface ResumenCategoria {

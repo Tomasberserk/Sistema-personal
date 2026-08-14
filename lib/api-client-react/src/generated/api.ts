@@ -23,6 +23,7 @@ import type {
   BloqueRutina,
   BloqueRutinaInput,
   BloqueRutinaUpdate,
+  CambioAceiteInput,
   Categoria,
   CategoriaInput,
   CategoriaUpdate,
@@ -48,11 +49,17 @@ import type {
   KilometrajeInput,
   KilometrajeResumen,
   KilometrajeUpdate,
+  MedioPago,
+  MedioPagoInput,
+  MedioPagoSaldo,
+  MedioPagoUpdate,
   MotoConfigUpdate,
   NotFoundResponse,
   Racha,
   ResumenCategoria,
-  ResumenMensual
+  ResumenMensual,
+  TransferenciaMedio,
+  TransferenciaMedioInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2165,14 +2172,14 @@ export const getPostMotoCambioAceiteUrl = () => {
 /**
  * @summary Registra un cambio de aceite
  */
-export const postMotoCambioAceite = async ( options?: Parameters<typeof customFetch>[1]): Promise<EstadoAceite> => {
+export const postMotoCambioAceite = async (cambioAceiteInput?: CambioAceiteInput, options?: Parameters<typeof customFetch>[1]): Promise<EstadoAceite> => {
 
   return customFetch<EstadoAceite>(getPostMotoCambioAceiteUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cambioAceiteInput)
   }
 );}
 
@@ -2181,8 +2188,8 @@ export const postMotoCambioAceite = async ( options?: Parameters<typeof customFe
 
 
 export const getPostMotoCambioAceiteMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,{data?: BodyType<CambioAceiteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,{data?: BodyType<CambioAceiteInput>}, TContext> => {
 
 const mutationKey = ['postMotoCambioAceite'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2194,10 +2201,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postMotoCambioAceite>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postMotoCambioAceite>>, {data?: BodyType<CambioAceiteInput>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  postMotoCambioAceite(requestOptions)
+          return  postMotoCambioAceite(data,requestOptions)
         }
 
 
@@ -2208,21 +2215,608 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostMotoCambioAceiteMutationResult = NonNullable<Awaited<ReturnType<typeof postMotoCambioAceite>>>
-
+    export type PostMotoCambioAceiteMutationBody = BodyType<CambioAceiteInput> | undefined
     export type PostMotoCambioAceiteMutationError = ErrorType<unknown>
 
     /**
  * @summary Registra un cambio de aceite
  */
 export const usePostMotoCambioAceite = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postMotoCambioAceite>>, TError,{data?: BodyType<CambioAceiteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof postMotoCambioAceite>>,
         TError,
-        void,
+        {data?: BodyType<CambioAceiteInput>},
         TContext
       > => {
       return useMutation(getPostMotoCambioAceiteMutationOptions(options));
+    }
+
+export const getListMediosPagoUrl = () => {
+
+
+
+
+  return `/api/medios-pago`
+}
+
+/**
+ * @summary Lista medios de pago con sus saldos calculados
+ */
+export const listMediosPago = async ( options?: Parameters<typeof customFetch>[1]): Promise<MedioPagoSaldo[]> => {
+
+  return customFetch<MedioPagoSaldo[]>(getListMediosPagoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMediosPagoQueryKey = () => {
+    return [
+    `/api/medios-pago`
+    ] as const;
+    }
+
+
+export const getListMediosPagoQueryOptions = <TData = Awaited<ReturnType<typeof listMediosPago>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMediosPago>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMediosPagoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMediosPago>>> = ({ signal }) => listMediosPago({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMediosPago>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMediosPagoQueryResult = NonNullable<Awaited<ReturnType<typeof listMediosPago>>>
+export type ListMediosPagoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista medios de pago con sus saldos calculados
+ */
+
+export function useListMediosPago<TData = Awaited<ReturnType<typeof listMediosPago>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMediosPago>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMediosPagoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMedioPagoUrl = () => {
+
+
+
+
+  return `/api/medios-pago`
+}
+
+/**
+ * @summary Crea un medio de pago
+ */
+export const createMedioPago = async (medioPagoInput: MedioPagoInput, options?: Parameters<typeof customFetch>[1]): Promise<MedioPago> => {
+
+  return customFetch<MedioPago>(getCreateMedioPagoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(medioPagoInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMedioPagoMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMedioPago>>, TError,{data: BodyType<MedioPagoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMedioPago>>, TError,{data: BodyType<MedioPagoInput>}, TContext> => {
+
+const mutationKey = ['createMedioPago'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMedioPago>>, {data: BodyType<MedioPagoInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMedioPago(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMedioPagoMutationResult = NonNullable<Awaited<ReturnType<typeof createMedioPago>>>
+    export type CreateMedioPagoMutationBody = BodyType<MedioPagoInput>
+    export type CreateMedioPagoMutationError = ErrorType<Error>
+
+    /**
+ * @summary Crea un medio de pago
+ */
+export const useCreateMedioPago = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMedioPago>>, TError,{data: BodyType<MedioPagoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMedioPago>>,
+        TError,
+        {data: BodyType<MedioPagoInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMedioPagoMutationOptions(options));
+    }
+
+export const getGetMedioPagoUrl = (id: number,) => {
+
+
+
+
+  return `/api/medios-pago/${id}`
+}
+
+/**
+ * @summary Obtiene un medio de pago
+ */
+export const getMedioPago = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<MedioPago> => {
+
+  return customFetch<MedioPago>(getGetMedioPagoUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMedioPagoQueryKey = (id: number,) => {
+    return [
+    `/api/medios-pago/${id}`
+    ] as const;
+    }
+
+
+export const getGetMedioPagoQueryOptions = <TData = Awaited<ReturnType<typeof getMedioPago>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMedioPago>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMedioPagoQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMedioPago>>> = ({ signal }) => getMedioPago(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMedioPago>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMedioPagoQueryResult = NonNullable<Awaited<ReturnType<typeof getMedioPago>>>
+export type GetMedioPagoQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene un medio de pago
+ */
+
+export function useGetMedioPago<TData = Awaited<ReturnType<typeof getMedioPago>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMedioPago>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMedioPagoQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateMedioPagoUrl = (id: number,) => {
+
+
+
+
+  return `/api/medios-pago/${id}`
+}
+
+/**
+ * @summary Actualiza un medio de pago
+ */
+export const updateMedioPago = async (id: number,
+    medioPagoUpdate: MedioPagoUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MedioPago> => {
+
+  return customFetch<MedioPago>(getUpdateMedioPagoUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(medioPagoUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMedioPagoMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMedioPago>>, TError,{id: number;data: BodyType<MedioPagoUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMedioPago>>, TError,{id: number;data: BodyType<MedioPagoUpdate>}, TContext> => {
+
+const mutationKey = ['updateMedioPago'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMedioPago>>, {id: number;data: BodyType<MedioPagoUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMedioPago(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMedioPagoMutationResult = NonNullable<Awaited<ReturnType<typeof updateMedioPago>>>
+    export type UpdateMedioPagoMutationBody = BodyType<MedioPagoUpdate>
+    export type UpdateMedioPagoMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Actualiza un medio de pago
+ */
+export const useUpdateMedioPago = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMedioPago>>, TError,{id: number;data: BodyType<MedioPagoUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMedioPago>>,
+        TError,
+        {id: number;data: BodyType<MedioPagoUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMedioPagoMutationOptions(options));
+    }
+
+export const getDeleteMedioPagoUrl = (id: number,) => {
+
+
+
+
+  return `/api/medios-pago/${id}`
+}
+
+/**
+ * @summary Elimina un medio de pago
+ */
+export const deleteMedioPago = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMedioPagoUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMedioPagoMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMedioPago>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMedioPago>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMedioPago'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMedioPago>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMedioPago(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMedioPagoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMedioPago>>>
+
+    export type DeleteMedioPagoMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Elimina un medio de pago
+ */
+export const useDeleteMedioPago = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMedioPago>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMedioPago>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMedioPagoMutationOptions(options));
+    }
+
+export const getListTransferenciasUrl = () => {
+
+
+
+
+  return `/api/transferencias`
+}
+
+/**
+ * @summary Lista transferencias entre medios
+ */
+export const listTransferencias = async ( options?: Parameters<typeof customFetch>[1]): Promise<TransferenciaMedio[]> => {
+
+  return customFetch<TransferenciaMedio[]>(getListTransferenciasUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransferenciasQueryKey = () => {
+    return [
+    `/api/transferencias`
+    ] as const;
+    }
+
+
+export const getListTransferenciasQueryOptions = <TData = Awaited<ReturnType<typeof listTransferencias>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransferencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransferenciasQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransferencias>>> = ({ signal }) => listTransferencias({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransferencias>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransferenciasQueryResult = NonNullable<Awaited<ReturnType<typeof listTransferencias>>>
+export type ListTransferenciasQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista transferencias entre medios
+ */
+
+export function useListTransferencias<TData = Awaited<ReturnType<typeof listTransferencias>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransferencias>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransferenciasQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTransferenciaUrl = () => {
+
+
+
+
+  return `/api/transferencias`
+}
+
+/**
+ * @summary Registra una transferencia entre dos medios
+ */
+export const createTransferencia = async (transferenciaMedioInput: TransferenciaMedioInput, options?: Parameters<typeof customFetch>[1]): Promise<TransferenciaMedio> => {
+
+  return customFetch<TransferenciaMedio>(getCreateTransferenciaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferenciaMedioInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTransferenciaMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransferencia>>, TError,{data: BodyType<TransferenciaMedioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTransferencia>>, TError,{data: BodyType<TransferenciaMedioInput>}, TContext> => {
+
+const mutationKey = ['createTransferencia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTransferencia>>, {data: BodyType<TransferenciaMedioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTransferencia(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTransferenciaMutationResult = NonNullable<Awaited<ReturnType<typeof createTransferencia>>>
+    export type CreateTransferenciaMutationBody = BodyType<TransferenciaMedioInput>
+    export type CreateTransferenciaMutationError = ErrorType<Error>
+
+    /**
+ * @summary Registra una transferencia entre dos medios
+ */
+export const useCreateTransferencia = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransferencia>>, TError,{data: BodyType<TransferenciaMedioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTransferencia>>,
+        TError,
+        {data: BodyType<TransferenciaMedioInput>},
+        TContext
+      > => {
+      return useMutation(getCreateTransferenciaMutationOptions(options));
+    }
+
+export const getDeleteTransferenciaUrl = (id: number,) => {
+
+
+
+
+  return `/api/transferencias/${id}`
+}
+
+/**
+ * @summary Elimina una transferencia
+ */
+export const deleteTransferencia = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTransferenciaUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTransferenciaMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransferencia>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTransferencia>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteTransferencia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTransferencia>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTransferencia(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTransferenciaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTransferencia>>>
+
+    export type DeleteTransferenciaMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Elimina una transferencia
+ */
+export const useDeleteTransferencia = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransferencia>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTransferencia>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteTransferenciaMutationOptions(options));
     }
 
 export const getPutMotoConfigUrl = () => {
