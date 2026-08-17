@@ -62,9 +62,15 @@ Este archivo contiene tareas ejecutables. Las tareas deben realizarse en orden s
 
 ## P2 — Sistema manual completo
 
-### T010 — Fechas especiales
+### T010 — Fechas especiales y Recordatorios Universales [COMPLETADA]
 
-Diseñar y construir cumpleaños, aniversarios y recordatorios.
+**Objetivo:** Diseñar y construir cumpleaños, aniversarios y recordatorios universales (puntuales o recurrentes con alertas).
+
+**Resultado:**
+- Creadas tablas `fechas_especiales` (con cálculo dinámico de días restantes y edad/aniversario) y `recordatorios` (con soporte para eventos puntuales con anticipación o recurrentes tipo "cada 2 horas", y canales push/in_app).
+- Eliminados los seeds hardcodeados de gastos fijos personales (`Cuota moto`, `Plan Claro`) en `init_db()` para garantizar un estado inicial limpio en cualquier cuenta nueva.
+- Desarrollada la vista interactiva `FechasPage` en React con cuentas regresivas, gestión de alarmas y disparador de notificaciones del navegador/móvil (Web Push Notification API).
+- OpenAPI sincronizado y frontend build verificado al 100%.
 
 ### T011 — SENA / estudio
 

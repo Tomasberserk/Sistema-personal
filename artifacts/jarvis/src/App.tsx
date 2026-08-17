@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
   Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight,
   CircleDollarSign, Clock, Droplets, Flame, Gauge, LayoutGrid, List, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
-  Trash2, TrendingUp, TriangleAlert, Wrench, X, Wallet, ArrowRightLeft, Landmark, CreditCard,
+  Trash2, TrendingUp, TriangleAlert, Wrench, X, Wallet, ArrowRightLeft, Landmark, CreditCard, Bell, Gift, Sparkles, AlertCircle,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -26,8 +26,10 @@ import {
   getListBloquesRutinaQueryKey, getGetRutinaSemanaQueryKey, getGetRutinaDiaQueryKey,
   useListMediosPago, useCreateMedioPago, useUpdateMedioPago, useDeleteMedioPago, getListMediosPagoQueryKey,
   useListTransferencias, useCreateTransferencia, useDeleteTransferencia, getListTransferenciasQueryKey,
+  useListFechasEspeciales, useCreateFechaEspecial, useUpdateFechaEspecial, useDeleteFechaEspecial, getListFechasEspecialesQueryKey,
+  useListRecordatorios, useCreateRecordatorio, useUpdateRecordatorio, useDeleteRecordatorio, getListRecordatoriosQueryKey,
 } from '@workspace/api-client-react';
-import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
+import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -98,6 +100,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Kilometraje" testId="link-kilometraje" />
           <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="link-habitos" />
           <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="link-rutina" />
+          <NavItem href="/fechas" active={location === '/fechas'} icon={<Gift size={18} />} label="Fechas & Alarmas" testId="link-fechas" />
           <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={18} />} label="Moto" testId="link-moto" />
           <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={18} />} label="Categorías" testId="link-categorias" />
         </nav>
@@ -110,13 +113,13 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="md:pl-[236px]">{children}</main>
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[70px] items-center justify-around border-t border-white/5 bg-[#0a0a0a]/85 px-6 backdrop-blur-xl md:hidden">
-        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={20} />} label="Resumen" testId="mobile-link-resumen" />
-        <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={20} />} label="Km" testId="mobile-link-kilometraje" />
-        <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={20} />} label="Hábitos" testId="mobile-link-habitos" />
-        <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={20} />} label="Rutina" testId="mobile-link-rutina" />
-        <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={20} />} label="Moto" testId="mobile-link-moto" />
-        <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={20} />} label="Cat." testId="mobile-link-categorias" />
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[70px] items-center justify-around border-t border-white/5 bg-[#0a0a0a]/85 px-4 backdrop-blur-xl md:hidden">
+        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Resumen" testId="mobile-link-resumen" />
+        <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Km" testId="mobile-link-kilometraje" />
+        <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="mobile-link-habitos" />
+        <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="mobile-link-rutina" />
+        <NavItem href="/fechas" active={location === '/fechas'} icon={<Gift size={18} />} label="Fechas" testId="mobile-link-fechas" />
+        <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={18} />} label="Moto" testId="mobile-link-moto" />
       </nav>
     </div>
   );
@@ -1266,12 +1269,598 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   );
 }
 
+function FechasPage() {
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<'fechas' | 'recordatorios'>('fechas');
+  const [modalFecha, setModalFecha] = useState(false);
+  const [modalRecordatorio, setModalRecordatorio] = useState(false);
+  const [editingFecha, setEditingFecha] = useState<FechaEspecial | null>(null);
+  const [editingRecordatorio, setEditingRecordatorio] = useState<Recordatorio | null>(null);
+
+  const fechasList = useListFechasEspeciales();
+  const recordatoriosList = useListRecordatorios();
+
+  const createFecha = useCreateFechaEspecial();
+  const updateFecha = useUpdateFechaEspecial();
+  const deleteFecha = useDeleteFechaEspecial();
+
+  const createRec = useCreateRecordatorio();
+  const updateRec = useUpdateRecordatorio();
+  const deleteRec = useDeleteRecordatorio();
+
+  const fechas = asList<FechaEspecial>(fechasList.data);
+  const recordatorios = asList<Recordatorio>(recordatoriosList.data);
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getListFechasEspecialesQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListRecordatoriosQueryKey() });
+  };
+
+  const handleRequestPush = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Este navegador no soporta notificaciones Web Push.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      toast.success('¡Notificaciones activadas en este dispositivo!');
+      new Notification('Jarvis Sistema Personal', {
+        body: 'Notificaciones y recordatorios sincronizados con éxito.',
+        icon: '/favicon.ico',
+      });
+    } else {
+      toast.error('Permiso de notificaciones denegado.');
+    }
+  };
+
+  const removeF = (f: FechaEspecial) => {
+    if (!window.confirm(`¿Eliminar "${f.nombre}"?`)) return;
+    deleteFecha.mutate({ id: f.id }, { onSuccess: invalidate });
+  };
+
+  const removeR = (r: Recordatorio) => {
+    if (!window.confirm(`¿Eliminar recordatorio "${r.titulo}"?`)) return;
+    deleteRec.mutate({ id: r.id }, { onSuccess: invalidate });
+  };
+
+  const toggleRecordatorioActivo = (r: Recordatorio) => {
+    updateRec.mutate(
+      { id: r.id, data: { activo: !r.activo } },
+      { onSuccess: invalidate }
+    );
+  };
+
+  return (
+    <Shell>
+      <div className="relative z-10 min-h-[100dvh]">
+        <Topbar
+          eyebrow="eventos, cumpleaños & alarmas"
+          title="Fechas & Recordatorios"
+          onAdd={() => {
+            if (tab === 'fechas') {
+              setEditingFecha(null);
+              setModalFecha(true);
+            } else {
+              setEditingRecordatorio(null);
+              setModalRecordatorio(true);
+            }
+          }}
+        />
+
+        <div className="mx-auto max-w-[1180px] space-y-6 px-5 pb-28 sm:px-8 md:px-10">
+          {/* Header controls & Push permission button */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 rounded-2xl bg-white/5 p-1.5 backdrop-blur-md">
+              <button
+                onClick={() => setTab('fechas')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${tab === 'fechas' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}
+              >
+                <Gift size={16} /> Fechas especiales ({fechas.length})
+              </button>
+              <button
+                onClick={() => setTab('recordatorios')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${tab === 'recordatorios' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}
+              >
+                <Bell size={16} /> Recordatorios & Alarmas ({recordatorios.length})
+              </button>
+            </div>
+
+            <button
+              onClick={handleRequestPush}
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/4 px-4 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/8"
+            >
+              <Bell size={14} className="text-[#5de8c4]" /> Activar alertas en PC / Móvil
+            </button>
+          </div>
+
+          {/* TAB 1: FECHAS ESPECIALES */}
+          {tab === 'fechas' && (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {fechasList.isLoading ? (
+                  <LoadingRows />
+                ) : fechas.length === 0 ? (
+                  <div className="col-span-full">
+                    <EmptyState
+                      title="Sin fechas especiales"
+                      copy="Añade cumpleaños, aniversarios o eventos para tener cuenta regresiva y recordatorios automáticos."
+                      action="Registrar fecha especial"
+                      onClick={() => {
+                        setEditingFecha(null);
+                        setModalFecha(true);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  fechas.map((f) => (
+                    <div
+                      key={f.id}
+                      className="cosmos-card group flex flex-col justify-between p-5 transition hover:border-white/20"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
+                            style={{ backgroundColor: `${f.color}25` }}
+                          >
+                            {f.icono}
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-white">{f.nombre}</h3>
+                            <div className="text-xs text-white/50">
+                              {dateLabel(f.fecha)} · {f.tipo === 'cumpleanos' ? '🎂 Cumpleaños' : f.tipo === 'aniversario' ? '💍 Aniversario' : '✨ Evento'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+                          <button
+                            onClick={() => {
+                              setEditingFecha(f);
+                              setModalFecha(true);
+                            }}
+                            className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => removeF(f)}
+                            className="rounded-lg p-1.5 text-white/60 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-4">
+                        <div>
+                          <div className="cosmos-eyebrow">próximo en</div>
+                          <div className="cosmos-number text-lg font-bold text-white">
+                            {f.dias_restantes === 0 ? '¡HOY! 🎉' : f.dias_restantes === 1 ? 'Mañana' : `${f.dias_restantes} días`}
+                          </div>
+                        </div>
+                        {f.edad_o_aniversario != null && (
+                          <div className="text-right">
+                            <div className="cosmos-eyebrow">cumple</div>
+                            <div className="text-sm font-semibold text-[#5de8c4]">
+                              {f.edad_o_aniversario} años
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {f.nota && (
+                        <p className="mt-3 text-xs italic text-white/40">"{f.nota}"</p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: RECORDATORIOS & ALARMAS */}
+          {tab === 'recordatorios' && (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {recordatoriosList.isLoading ? (
+                  <LoadingRows />
+                ) : recordatorios.length === 0 ? (
+                  <div className="col-span-full">
+                    <EmptyState
+                      title="Sin alarmas ni recordatorios activos"
+                      copy="Crea recordatorios puntuales o recurrentes (tomar agua cada 2 horas, reuniones, etc.)."
+                      action="Crear recordatorio"
+                      onClick={() => {
+                        setEditingRecordatorio(null);
+                        setModalRecordatorio(true);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  recordatorios.map((r) => (
+                    <div
+                      key={r.id}
+                      className="cosmos-card group flex flex-col justify-between p-5 transition hover:border-white/20"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-11 w-11 items-center justify-center rounded-2xl text-xl ${r.activo ? 'bg-[#5de8c4]/15 text-[#5de8c4]' : 'bg-white/5 text-white/30'}`}
+                          >
+                            <Bell size={20} />
+                          </div>
+                          <div>
+                            <h3 className={`text-base font-bold ${r.activo ? 'text-white' : 'text-white/40 line-through'}`}>
+                              {r.titulo}
+                            </h3>
+                            <div className="text-xs text-white/50">
+                              {r.tipo === 'recurrente' ? `🔁 Cada ${r.regla_recurrencia?.replace('INTERVAL_HOURS:', '') || '2'} horas` : `⏰ ${r.fecha_disparo.replace('T', ' ')}`}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+                          <button
+                            onClick={() => {
+                              setEditingRecordatorio(r);
+                              setModalRecordatorio(true);
+                            }}
+                            className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            onClick={() => removeR(r)}
+                            className="rounded-lg p-1.5 text-white/60 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {r.descripcion && (
+                        <p className="mt-3 text-xs text-white/60">{r.descripcion}</p>
+                      )}
+
+                      <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-4">
+                        <div className="text-xs text-white/45">
+                          {r.anticipacion_minutos > 0 ? `Avisar ${r.anticipacion_minutos} min antes` : 'Aviso al momento'}
+                        </div>
+                        <button
+                          onClick={() => toggleRecordatorioActivo(r)}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${r.activo ? 'bg-[#5de8c4]/20 text-[#5de8c4]' : 'bg-white/10 text-white/40'}`}
+                        >
+                          {r.activo ? 'Activo' : 'Pausado'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modales */}
+        {modalFecha && (
+          <FechaModal
+            record={editingFecha}
+            pending={createFecha.isPending || updateFecha.isPending}
+            onClose={() => {
+              setModalFecha(false);
+              setEditingFecha(null);
+            }}
+            onSubmit={(data) => {
+              const done = () => {
+                invalidate();
+                setModalFecha(false);
+                setEditingFecha(null);
+                toast.success('Fecha especial guardada');
+              };
+              if (editingFecha) {
+                updateFecha.mutate({ id: editingFecha.id, data: data as never }, { onSuccess: done });
+              } else {
+                createFecha.mutate({ data: data as never }, { onSuccess: done });
+              }
+            }}
+          />
+        )}
+
+        {modalRecordatorio && (
+          <RecordatorioModal
+            record={editingRecordatorio}
+            pending={createRec.isPending || updateRec.isPending}
+            onClose={() => {
+              setModalRecordatorio(false);
+              setEditingRecordatorio(null);
+            }}
+            onSubmit={(data) => {
+              const done = () => {
+                invalidate();
+                setModalRecordatorio(false);
+                setEditingRecordatorio(null);
+                toast.success('Recordatorio guardado');
+              };
+              if (editingRecordatorio) {
+                updateRec.mutate({ id: editingRecordatorio.id, data: data as never }, { onSuccess: done });
+              } else {
+                createRec.mutate({ data: data as never }, { onSuccess: done });
+              }
+            }}
+          />
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+function FechaModal({
+  record,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  record: FechaEspecial | null;
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (data: Record<string, unknown>) => void;
+}) {
+  const [form, setForm] = useState({
+    nombre: record?.nombre ?? '',
+    fecha: record?.fecha ?? new Date().toISOString().slice(0, 10),
+    tipo: record?.tipo ?? 'cumpleanos',
+    icono: record?.icono ?? '🎂',
+    color: record?.color ?? '#e85d8a',
+    recordar_dias_antes: String(record?.recordar_dias_antes ?? 1),
+    nota: record?.nota ?? '',
+  });
+
+  const set = (key: string, value: string) => setForm((curr) => ({ ...curr, [key]: value }));
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nombre.trim()) return;
+    onSubmit({
+      ...form,
+      recordar_dias_antes: Number(form.recordar_dias_antes) || 0,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <div className="cosmos-eyebrow mb-1">jarvis / evento</div>
+            <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar fecha especial' : 'Nueva fecha especial'}</h2>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          <label className="block">
+            <span className="cosmos-field-label">Nombre de la persona o evento</span>
+            <input
+              required
+              className="cosmos-input"
+              value={form.nombre}
+              onChange={(e) => set('nombre', e.target.value)}
+              placeholder="Ej. Mamá, Aniversario con mi novia, Grado..."
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="cosmos-field-label">Fecha</span>
+              <input
+                required
+                type="date"
+                className="cosmos-input"
+                value={form.fecha}
+                onChange={(e) => set('fecha', e.target.value)}
+              />
+            </label>
+
+            <label className="block">
+              <span className="cosmos-field-label">Tipo de evento</span>
+              <select
+                className="cosmos-select"
+                value={form.tipo}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const ico = val === 'cumpleanos' ? '🎂' : val === 'aniversario' ? '💍' : '✨';
+                  setForm((c) => ({ ...c, tipo: val as any, icono: ico }));
+                }}
+              >
+                <option value="cumpleanos">🎂 Cumpleaños</option>
+                <option value="aniversario">💍 Aniversario</option>
+                <option value="evento">✨ Evento especial</option>
+                <option value="otro">📌 Otro</option>
+              </select>
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="cosmos-field-label">Avisar con cuántos días de anticipación</span>
+            <input
+              type="number"
+              min="0"
+              className="cosmos-input"
+              value={form.recordar_dias_antes}
+              onChange={(e) => set('recordar_dias_antes', e.target.value)}
+              placeholder="1"
+            />
+          </label>
+
+          <label className="block">
+            <span className="cosmos-field-label">Nota o idea de regalo (opcional)</span>
+            <input
+              className="cosmos-input"
+              value={form.nota}
+              onChange={(e) => set('nota', e.target.value)}
+              placeholder="Ej. Le gustan los perfumes o libros"
+            />
+          </label>
+
+          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5">
+            {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
+            {pending ? 'Guardando…' : 'Guardar fecha especial'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function RecordatorioModal({
+  record,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  record: Recordatorio | null;
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (data: Record<string, unknown>) => void;
+}) {
+  const [form, setForm] = useState({
+    titulo: record?.titulo ?? '',
+    descripcion: record?.descripcion ?? '',
+    tipo: record?.tipo ?? 'puntual',
+    fecha_disparo: record?.fecha_disparo ?? new Date().toISOString().slice(0, 16),
+    horas_intervalo: record?.regla_recurrencia?.replace('INTERVAL_HOURS:', '') ?? '2',
+    anticipacion_minutos: String(record?.anticipacion_minutos ?? 0),
+    canal: record?.canal ?? 'todos',
+    activo: record?.activo ?? true,
+  });
+
+  const set = (key: string, value: any) => setForm((c) => ({ ...c, [key]: value }));
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.titulo.trim()) return;
+    const regla = form.tipo === 'recurrente' ? `INTERVAL_HOURS:${form.horas_intervalo}` : undefined;
+    onSubmit({
+      titulo: form.titulo.trim(),
+      descripcion: form.descripcion.trim(),
+      tipo: form.tipo,
+      fecha_disparo: form.fecha_disparo,
+      regla_recurrencia: regla,
+      anticipacion_minutos: Number(form.anticipacion_minutos) || 0,
+      canal: form.canal,
+      activo: form.activo,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <div className="cosmos-eyebrow mb-1">jarvis / alarma</div>
+            <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar recordatorio' : 'Nuevo recordatorio'}</h2>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          <label className="block">
+            <span className="cosmos-field-label">¿Qué deseas que te recuerde?</span>
+            <input
+              required
+              className="cosmos-input"
+              value={form.titulo}
+              onChange={(e) => set('titulo', e.target.value)}
+              placeholder="Ej. Tomar agua, Enviar reporte del SENA, Llamar al doctor..."
+            />
+          </label>
+
+          <label className="block">
+            <span className="cosmos-field-label">Tipo de recordatorio</span>
+            <select
+              className="cosmos-select"
+              value={form.tipo}
+              onChange={(e) => set('tipo', e.target.value)}
+            >
+              <option value="puntual">⏰ Puntual (Fecha y hora exacta)</option>
+              <option value="recurrente">🔁 Recurrente (Cada X horas)</option>
+            </select>
+          </label>
+
+          {form.tipo === 'recurrente' ? (
+            <label className="block">
+              <span className="cosmos-field-label">Recordar cada cuántas horas</span>
+              <select
+                className="cosmos-select"
+                value={form.horas_intervalo}
+                onChange={(e) => set('horas_intervalo', e.target.value)}
+              >
+                <option value="1">Cada 1 hora</option>
+                <option value="2">Cada 2 horas (Recomendado para agua)</option>
+                <option value="3">Cada 3 horas</option>
+                <option value="4">Cada 4 horas</option>
+                <option value="8">Cada 8 horas</option>
+              </select>
+            </label>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="cosmos-field-label">Fecha y Hora</span>
+                <input
+                  required
+                  type="datetime-local"
+                  className="cosmos-input"
+                  value={form.fecha_disparo}
+                  onChange={(e) => set('fecha_disparo', e.target.value)}
+                />
+              </label>
+
+              <label className="block">
+                <span className="cosmos-field-label">Anticipación de aviso</span>
+                <select
+                  className="cosmos-select"
+                  value={form.anticipacion_minutos}
+                  onChange={(e) => set('anticipacion_minutos', e.target.value)}
+                >
+                  <option value="0">Al momento exacto</option>
+                  <option value="15">15 minutos antes</option>
+                  <option value="30">30 minutos antes</option>
+                  <option value="60">1 hora antes</option>
+                  <option value="120">2 horas antes</option>
+                  <option value="1440">1 día antes</option>
+                </select>
+              </label>
+            </div>
+          )}
+
+          <label className="block">
+            <span className="cosmos-field-label">Descripción o detalles adicionales</span>
+            <input
+              className="cosmos-input"
+              value={form.descripcion}
+              onChange={(e) => set('descripcion', e.target.value)}
+              placeholder="Ej. Con el enlace de Meet o tomar 500ml"
+            />
+          </label>
+
+          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5">
+            {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
+            {pending ? 'Guardando…' : 'Guardar recordatorio'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return <QueryClientProvider client={queryClient}><TooltipProvider><Switch>
     <Route path="/" component={Dashboard} />
     <Route path="/kilometraje" component={KilometrajePage} />
     <Route path="/habitos" component={HabitosPage} />
     <Route path="/rutina" component={RutinaPage} />
+    <Route path="/fechas" component={FechasPage} />
     <Route path="/moto" component={MotoPage} />
     <Route path="/categorias" component={CategoriesPage} />
     <Route component={() => <Shell><div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center"><div><h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1><Link href="/" data-testid="link-back-home" className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4">Volver al resumen</Link></div></div></Shell>} />

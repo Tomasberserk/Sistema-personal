@@ -464,6 +464,169 @@ export interface DiaRutina {
   bloques: BloqueRutina[];
 }
 
+export type FechaEspecialInputTipo = typeof FechaEspecialInputTipo[keyof typeof FechaEspecialInputTipo];
+
+
+export const FechaEspecialInputTipo = {
+  cumpleanos: 'cumpleanos',
+  aniversario: 'aniversario',
+  evento: 'evento',
+  otro: 'otro',
+} as const;
+
+export interface FechaEspecialInput {
+  nombre: string;
+  fecha: string;
+  tipo?: FechaEspecialInputTipo;
+  icono?: string;
+  color?: string;
+  /** @minimum 0 */
+  recordar_dias_antes?: number;
+  nota?: string;
+}
+
+export type FechaEspecialUpdateTipo = typeof FechaEspecialUpdateTipo[keyof typeof FechaEspecialUpdateTipo];
+
+
+export const FechaEspecialUpdateTipo = {
+  cumpleanos: 'cumpleanos',
+  aniversario: 'aniversario',
+  evento: 'evento',
+  otro: 'otro',
+} as const;
+
+export interface FechaEspecialUpdate {
+  nombre?: string;
+  fecha?: string;
+  tipo?: FechaEspecialUpdateTipo;
+  icono?: string;
+  color?: string;
+  /** @minimum 0 */
+  recordar_dias_antes?: number;
+  nota?: string;
+}
+
+export type FechaEspecialTipo = typeof FechaEspecialTipo[keyof typeof FechaEspecialTipo];
+
+
+export const FechaEspecialTipo = {
+  cumpleanos: 'cumpleanos',
+  aniversario: 'aniversario',
+  evento: 'evento',
+  otro: 'otro',
+} as const;
+
+export interface FechaEspecial {
+  id: number;
+  nombre: string;
+  fecha: string;
+  tipo: FechaEspecialTipo;
+  icono: string;
+  color: string;
+  recordar_dias_antes: number;
+  nota: string;
+  dias_restantes: number;
+  edad_o_aniversario?: number | null;
+}
+
+export type RecordatorioInputTipo = typeof RecordatorioInputTipo[keyof typeof RecordatorioInputTipo];
+
+
+export const RecordatorioInputTipo = {
+  puntual: 'puntual',
+  recurrente: 'recurrente',
+  fecha_especial: 'fecha_especial',
+  relacionado: 'relacionado',
+} as const;
+
+export type RecordatorioInputCanal = typeof RecordatorioInputCanal[keyof typeof RecordatorioInputCanal];
+
+
+export const RecordatorioInputCanal = {
+  push: 'push',
+  in_app: 'in_app',
+  todos: 'todos',
+} as const;
+
+export interface RecordatorioInput {
+  titulo: string;
+  descripcion?: string;
+  tipo?: RecordatorioInputTipo;
+  fecha_disparo: string;
+  regla_recurrencia?: string | null;
+  /** @minimum 0 */
+  anticipacion_minutos?: number;
+  canal?: RecordatorioInputCanal;
+  modulo_origen?: string | null;
+  referencia_id?: number | null;
+  activo?: boolean;
+}
+
+export type RecordatorioUpdateTipo = typeof RecordatorioUpdateTipo[keyof typeof RecordatorioUpdateTipo];
+
+
+export const RecordatorioUpdateTipo = {
+  puntual: 'puntual',
+  recurrente: 'recurrente',
+  fecha_especial: 'fecha_especial',
+  relacionado: 'relacionado',
+} as const;
+
+export type RecordatorioUpdateCanal = typeof RecordatorioUpdateCanal[keyof typeof RecordatorioUpdateCanal];
+
+
+export const RecordatorioUpdateCanal = {
+  push: 'push',
+  in_app: 'in_app',
+  todos: 'todos',
+} as const;
+
+export interface RecordatorioUpdate {
+  titulo?: string;
+  descripcion?: string;
+  tipo?: RecordatorioUpdateTipo;
+  fecha_disparo?: string;
+  regla_recurrencia?: string | null;
+  /** @minimum 0 */
+  anticipacion_minutos?: number;
+  canal?: RecordatorioUpdateCanal;
+  activo?: boolean;
+}
+
+export type RecordatorioTipo = typeof RecordatorioTipo[keyof typeof RecordatorioTipo];
+
+
+export const RecordatorioTipo = {
+  puntual: 'puntual',
+  recurrente: 'recurrente',
+  fecha_especial: 'fecha_especial',
+  relacionado: 'relacionado',
+} as const;
+
+export type RecordatorioCanal = typeof RecordatorioCanal[keyof typeof RecordatorioCanal];
+
+
+export const RecordatorioCanal = {
+  push: 'push',
+  in_app: 'in_app',
+  todos: 'todos',
+} as const;
+
+export interface Recordatorio {
+  id: number;
+  titulo: string;
+  descripcion?: string;
+  tipo: RecordatorioTipo;
+  fecha_disparo: string;
+  regla_recurrencia?: string | null;
+  anticipacion_minutos?: number;
+  canal: RecordatorioCanal;
+  modulo_origen?: string | null;
+  referencia_id?: number | null;
+  activo: boolean;
+  disparado: boolean;
+}
+
 /**
  * Recurso no encontrado
  */

@@ -327,6 +327,66 @@ class EstadoAceite(BaseModel):
     alerta_km_antes: int
 
 
+TipoFechaEspecial = Literal["cumpleanos", "aniversario", "evento", "otro"]
+TipoRecordatorio = Literal["puntual", "recurrente", "fecha_especial", "relacionado"]
+CanalNotificacion = Literal["push", "in_app", "todos"]
+
+
+class FechaEspecialInput(BaseModel):
+    nombre: str = Field(min_length=1)
+    fecha: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")  # YYYY-MM-DD
+    tipo: TipoFechaEspecial = "cumpleanos"
+    icono: str = "🎂"
+    color: str = "#e85d8a"
+    recordar_dias_antes: int = Field(default=1, ge=0)
+    nota: str = ""
+
+
+class FechaEspecialUpdate(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1)
+    fecha: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    tipo: TipoFechaEspecial | None = None
+    icono: str | None = None
+    color: str | None = None
+    recordar_dias_antes: int | None = Field(default=None, ge=0)
+    nota: str | None = None
+
+
+class FechaEspecial(FechaEspecialInput):
+    id: int
+    dias_restantes: int
+    edad_o_aniversario: int | None = None
+
+
+class RecordatorioInput(BaseModel):
+    titulo: str = Field(min_length=1)
+    descripcion: str = ""
+    tipo: TipoRecordatorio = "puntual"
+    fecha_disparo: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
+    regla_recurrencia: str | None = None  # ej. 'INTERVAL_HOURS:2', 'DAILY', 'WEEKLY:0,2,4'
+    anticipacion_minutos: int = Field(default=0, ge=0)
+    canal: CanalNotificacion = "todos"
+    modulo_origen: str | None = None
+    referencia_id: int | None = None
+    activo: bool = True
+
+
+class RecordatorioUpdate(BaseModel):
+    titulo: str | None = Field(default=None, min_length=1)
+    descripcion: str | None = None
+    tipo: TipoRecordatorio | None = None
+    fecha_disparo: str | None = None
+    regla_recurrencia: str | None = None
+    anticipacion_minutos: int | None = Field(default=None, ge=0)
+    canal: CanalNotificacion | None = None
+    activo: bool | None = None
+
+
+class Recordatorio(RecordatorioInput):
+    id: int
+    disparado: bool = False
+
+
 def _normalize_sql(sql: str) -> str:
     """Asegura el placeholder correcto según el motor (%s para PostgreSQL, ? para SQLite)."""
     if _is_postgres():
@@ -544,6 +604,30 @@ POSTGRES_SCHEMA = """
         icono TEXT NOT NULL DEFAULT '⏰',
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
+    CREATE TABLE IF NOT EXISTS fechas_especiales (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        tipo TEXT NOT NULL CHECK (tipo IN ('cumpleanos', 'aniversario', 'evento', 'otro')),
+        icono TEXT NOT NULL DEFAULT '🎂',
+        color TEXT NOT NULL DEFAULT '#e85d8a',
+        recordar_dias_antes INTEGER NOT NULL DEFAULT 1 CHECK (recordar_dias_antes >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS recordatorios (
+        id SERIAL PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        tipo TEXT NOT NULL CHECK (tipo IN ('puntual', 'recurrente', 'fecha_especial', 'relacionado')),
+        fecha_disparo TEXT NOT NULL,
+        regla_recurrencia TEXT,
+        anticipacion_minutos INTEGER NOT NULL DEFAULT 0 CHECK (anticipacion_minutos >= 0),
+        canal TEXT NOT NULL DEFAULT 'todos' CHECK (canal IN ('push', 'in_app', 'todos')),
+        modulo_origen TEXT,
+        referencia_id INTEGER,
+        activo BOOLEAN NOT NULL DEFAULT TRUE,
+        disparado BOOLEAN NOT NULL DEFAULT FALSE
+    );
 """
 
 SQLITE_SCHEMA = """
@@ -633,6 +717,30 @@ SQLITE_SCHEMA = """
         icono TEXT NOT NULL DEFAULT '⏰',
         activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
     );
+    CREATE TABLE IF NOT EXISTS fechas_especiales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        tipo TEXT NOT NULL CHECK (tipo IN ('cumpleanos', 'aniversario', 'evento', 'otro')),
+        icono TEXT NOT NULL DEFAULT '🎂',
+        color TEXT NOT NULL DEFAULT '#e85d8a',
+        recordar_dias_antes INTEGER NOT NULL DEFAULT 1 CHECK (recordar_dias_antes >= 0),
+        nota TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS recordatorios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        tipo TEXT NOT NULL CHECK (tipo IN ('puntual', 'recurrente', 'fecha_especial', 'relacionado')),
+        fecha_disparo TEXT NOT NULL,
+        regla_recurrencia TEXT,
+        anticipacion_minutos INTEGER NOT NULL DEFAULT 0 CHECK (anticipacion_minutos >= 0),
+        canal TEXT NOT NULL DEFAULT 'todos' CHECK (canal IN ('push', 'in_app', 'todos')),
+        modulo_origen TEXT,
+        referencia_id INTEGER,
+        activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+        disparado INTEGER NOT NULL DEFAULT 0 CHECK (disparado IN (0, 1))
+    );
 """
 
 
@@ -675,64 +783,6 @@ def init_db() -> None:
                     connection.execute("ALTER TABLE gastos_variables ADD COLUMN medio_pago_id INTEGER REFERENCES medios_pago(id)")
                 except Exception:
                     pass
-        if not _is_postgres():
-            columns = [
-                row["name"]
-                for row in connection.execute("PRAGMA table_info(gastos_variables)").fetchall()
-            ]
-            if "categoria" in columns and "categoria_id" not in columns:
-                connection.execute("ALTER TABLE gastos_variables RENAME TO gastos_variables_old")
-                connection.execute(
-                    """
-                    CREATE TABLE gastos_variables (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        fecha TEXT NOT NULL,
-                        categoria_id INTEGER NOT NULL REFERENCES categorias(id),
-                        monto REAL NOT NULL CHECK (monto >= 0),
-                        nota TEXT NOT NULL DEFAULT ''
-                    )
-                    """
-                )
-                connection.execute(
-                    """
-                    INSERT INTO categorias (nombre, icono, color, activa)
-                    SELECT DISTINCT o.categoria, '🏷️', '#dddddd', 1
-                    FROM gastos_variables_old o
-                    WHERE trim(o.categoria) <> ''
-                    AND NOT EXISTS (
-                        SELECT 1 FROM categorias c WHERE lower(c.nombre) = lower(trim(o.categoria))
-                    )
-                    """
-                )
-                connection.execute(
-                    """
-                    INSERT INTO gastos_variables (id, fecha, categoria_id, monto, nota)
-                    SELECT o.id,
-                           o.fecha,
-                           COALESCE(
-                               (SELECT c.id FROM categorias c
-                                 WHERE lower(c.nombre) = lower(trim(o.categoria))),
-                               (SELECT MIN(id) FROM categorias)
-                           ),
-                           o.monto,
-                           COALESCE(o.nota, '')
-                    FROM gastos_variables_old o
-                    """
-                )
-                connection.execute("DROP TABLE gastos_variables_old")
-        existing = connection.execute("SELECT COUNT(*) FROM gastos_fijos").fetchone()[0]
-        if existing == 0:
-            connection.executemany(
-                """
-                INSERT INTO gastos_fijos (nombre, monto, tipo, activo)
-                VALUES (%s, %s, %s, TRUE)
-                """,
-                [
-                    ("Cuota moto", 390000, "mensual"),
-                    ("Aceite moto", 60000, "por_kilometraje"),
-                    ("Plan Claro", 45000, "mensual"),
-                ],
-            )
         moto = connection.execute(
             "SELECT 1 FROM moto_config WHERE id = 1"
         ).fetchone()
@@ -771,6 +821,8 @@ def require_row(connection: Any, table: str, item_id: int) -> Any:
         "bloques_rutina",
         "medios_pago",
         "transferencias_medios",
+        "fechas_especiales",
+        "recordatorios",
     }
     if table not in allowed_tables:
         raise ValueError("Tabla no permitida")
@@ -1663,3 +1715,104 @@ def resumen_mes_actual_por_categoria() -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def _calcular_fechas_especiales(rows: list[Any]) -> list[dict[str, Any]]:
+    today = date.today()
+    result = []
+    for r in rows:
+        d = row_to_dict(r)
+        fecha_str = d["fecha"]
+        try:
+            f_orig = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+            # Próximo cumpleaños / aniversario este año o el siguiente
+            f_next = date(today.year, f_orig.month, f_orig.day)
+            if f_next < today:
+                f_next = date(today.year + 1, f_orig.month, f_orig.day)
+            dias_restantes = (f_next - today).days
+            edad = f_next.year - f_orig.year if f_orig.year < today.year else None
+        except Exception:
+            dias_restantes = 0
+            edad = None
+
+        result.append({
+            **d,
+            "dias_restantes": dias_restantes,
+            "edad_o_aniversario": edad,
+        })
+    # Ordenar por proximidad
+    result.sort(key=lambda x: x["dias_restantes"])
+    return result
+
+
+@app.get("/api/fechas-especiales", response_model=list[FechaEspecial])
+def list_fechas_especiales() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute("SELECT * FROM fechas_especiales ORDER BY id ASC").fetchall()
+        return _calcular_fechas_especiales(rows)
+
+
+@app.post("/api/fechas-especiales", response_model=FechaEspecial, status_code=201)
+def create_fecha_especial(payload: FechaEspecialInput) -> dict[str, Any]:
+    created = create_item("fechas_especiales", payload.model_dump())
+    with closing(get_connection()) as connection:
+        rows = [require_row(connection, "fechas_especiales", created["id"])]
+        return _calcular_fechas_especiales(rows)[0]
+
+
+@app.get("/api/fechas-especiales/{item_id}", response_model=FechaEspecial)
+def get_fecha_especial(item_id: int) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "fechas_especiales", item_id)
+        return _calcular_fechas_especiales([row])[0]
+
+
+@app.patch("/api/fechas-especiales/{item_id}", response_model=FechaEspecial)
+def update_fecha_especial(item_id: int, payload: FechaEspecialUpdate) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    update_item("fechas_especiales", item_id, fields)
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "fechas_especiales", item_id)
+        return _calcular_fechas_especiales([row])[0]
+
+
+@app.delete("/api/fechas-especiales/{item_id}", status_code=204)
+def delete_fecha_especial(item_id: int) -> Response:
+    delete_item("fechas_especiales", item_id)
+    return Response(status_code=204)
+
+
+@app.get("/api/recordatorios", response_model=list[Recordatorio])
+def list_recordatorios() -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        rows = connection.execute("SELECT * FROM recordatorios ORDER BY activo DESC, fecha_disparo ASC, id ASC").fetchall()
+        return [{**row_to_dict(r), "activo": bool(r["activo"]), "disparado": bool(r["disparado"])} for r in rows]
+
+
+@app.post("/api/recordatorios", response_model=Recordatorio, status_code=201)
+def create_recordatorio(payload: RecordatorioInput) -> dict[str, Any]:
+    created = create_item("recordatorios", {**payload.model_dump(), "activo": _norm_bool(payload.activo), "disparado": _norm_bool(False)})
+    return {**created, "activo": bool(created["activo"]), "disparado": bool(created["disparado"])}
+
+
+@app.get("/api/recordatorios/{item_id}", response_model=Recordatorio)
+def get_recordatorio(item_id: int) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        row = require_row(connection, "recordatorios", item_id)
+        return {**row_to_dict(row), "activo": bool(row["activo"]), "disparado": bool(row["disparado"])}
+
+
+@app.patch("/api/recordatorios/{item_id}", response_model=Recordatorio)
+def update_recordatorio(item_id: int, payload: RecordatorioUpdate) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    if "activo" in fields and fields["activo"] is not None:
+        fields["activo"] = _norm_bool(fields["activo"])
+    updated = update_item("recordatorios", item_id, fields)
+    return {**updated, "activo": bool(updated["activo"]), "disparado": bool(updated["disparado"])}
+
+
+@app.delete("/api/recordatorios/{item_id}", status_code=204)
+def delete_recordatorio(item_id: int) -> Response:
+    delete_item("recordatorios", item_id)
+    return Response(status_code=204)
+

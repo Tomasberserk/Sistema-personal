@@ -30,6 +30,10 @@ tags:
     description: Transferencias de dinero entre medios
   - name: rutina
     description: Rutina y cronograma semanal
+  - name: fechas-especiales
+    description: Cumpleaños, aniversarios y eventos especiales
+  - name: recordatorios
+    description: Recordatorios y notificaciones universales
   - name: resumen
     description: Resumen financiero
 paths:
@@ -986,6 +990,188 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ResumenCategoria"
+  /fechas-especiales:
+    get:
+      operationId: listFechasEspeciales
+      tags: [fechas-especiales]
+      summary: Lista todas las fechas especiales ordenadas por proximidad
+      responses:
+        "200":
+          description: Lista de fechas especiales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FechaEspecial"
+    post:
+      operationId: createFechaEspecial
+      tags: [fechas-especiales]
+      summary: Registra una nueva fecha especial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FechaEspecialInput"
+      responses:
+        "201":
+          description: Fecha especial creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FechaEspecial"
+        "400":
+          description: Error en la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /fechas-especiales/{id}:
+    get:
+      operationId: getFechaEspecial
+      tags: [fechas-especiales]
+      summary: Obtiene una fecha especial por ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Fecha especial
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FechaEspecial"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateFechaEspecial
+      tags: [fechas-especiales]
+      summary: Actualiza una fecha especial
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FechaEspecialUpdate"
+      responses:
+        "200":
+          description: Fecha especial actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FechaEspecial"
+        "400":
+          description: Error en la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteFechaEspecial
+      tags: [fechas-especiales]
+      summary: Elimina una fecha especial
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Fecha especial eliminada
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /recordatorios:
+    get:
+      operationId: listRecordatorios
+      tags: [recordatorios]
+      summary: Lista todos los recordatorios
+      responses:
+        "200":
+          description: Lista de recordatorios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recordatorio"
+    post:
+      operationId: createRecordatorio
+      tags: [recordatorios]
+      summary: Registra un nuevo recordatorio o alarma
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordatorioInput"
+      responses:
+        "201":
+          description: Recordatorio creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recordatorio"
+        "400":
+          description: Error en la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /recordatorios/{id}:
+    get:
+      operationId: getRecordatorio
+      tags: [recordatorios]
+      summary: Obtiene un recordatorio por ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Recordatorio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recordatorio"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateRecordatorio
+      tags: [recordatorios]
+      summary: Actualiza un recordatorio
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordatorioUpdate"
+      responses:
+        "200":
+          description: Recordatorio actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recordatorio"
+        "400":
+          description: Error en la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteRecordatorio
+      tags: [recordatorios]
+      summary: Elimina un recordatorio
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Recordatorio eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   parameters:
     Id:
@@ -1605,4 +1791,156 @@ components:
           items:
             $ref: "#/components/schemas/BloqueRutina"
       required: [dia_semana, bloques]
+    FechaEspecialInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        fecha:
+          type: string
+        tipo:
+          type: string
+          enum: [cumpleanos, aniversario, evento, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        recordar_dias_antes:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+      required: [nombre, fecha]
+    FechaEspecialUpdate:
+      type: object
+      properties:
+        nombre:
+          type: string
+        fecha:
+          type: string
+        tipo:
+          type: string
+          enum: [cumpleanos, aniversario, evento, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        recordar_dias_antes:
+          type: number
+          minimum: 0
+        nota:
+          type: string
+    FechaEspecial:
+      type: object
+      properties:
+        id:
+          type: number
+        nombre:
+          type: string
+        fecha:
+          type: string
+        tipo:
+          type: string
+          enum: [cumpleanos, aniversario, evento, otro]
+        icono:
+          type: string
+        color:
+          type: string
+        recordar_dias_antes:
+          type: number
+        nota:
+          type: string
+        dias_restantes:
+          type: number
+        edad_o_aniversario:
+          type: number
+          nullable: true
+      required: [id, nombre, fecha, tipo, icono, color, recordar_dias_antes, nota, dias_restantes]
+    RecordatorioInput:
+      type: object
+      properties:
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        tipo:
+          type: string
+          enum: [puntual, recurrente, fecha_especial, relacionado]
+        fecha_disparo:
+          type: string
+        regla_recurrencia:
+          type: string
+          nullable: true
+        anticipacion_minutos:
+          type: number
+          minimum: 0
+        canal:
+          type: string
+          enum: [push, in_app, todos]
+        modulo_origen:
+          type: string
+          nullable: true
+        referencia_id:
+          type: number
+          nullable: true
+        activo:
+          type: boolean
+      required: [titulo, fecha_disparo]
+    RecordatorioUpdate:
+      type: object
+      properties:
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        tipo:
+          type: string
+          enum: [puntual, recurrente, fecha_especial, relacionado]
+        fecha_disparo:
+          type: string
+        regla_recurrencia:
+          type: string
+          nullable: true
+        anticipacion_minutos:
+          type: number
+          minimum: 0
+        canal:
+          type: string
+          enum: [push, in_app, todos]
+        activo:
+          type: boolean
+    Recordatorio:
+      type: object
+      properties:
+        id:
+          type: number
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        tipo:
+          type: string
+          enum: [puntual, recurrente, fecha_especial, relacionado]
+        fecha_disparo:
+          type: string
+        regla_recurrencia:
+          type: string
+          nullable: true
+        anticipacion_minutos:
+          type: number
+        canal:
+          type: string
+          enum: [push, in_app, todos]
+        modulo_origen:
+          type: string
+          nullable: true
+        referencia_id:
+          type: number
+          nullable: true
+        activo:
+          type: boolean
+        disparado:
+          type: boolean
+      required: [id, titulo, tipo, fecha_disparo, canal, activo, disparado]
+
 

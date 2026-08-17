@@ -31,6 +31,9 @@ import type {
   DiaRutina,
   Error,
   EstadoAceite,
+  FechaEspecial,
+  FechaEspecialInput,
+  FechaEspecialUpdate,
   GastoFijo,
   GastoFijoInput,
   GastoFijoUpdate,
@@ -56,6 +59,9 @@ import type {
   MotoConfigUpdate,
   NotFoundResponse,
   Racha,
+  Recordatorio,
+  RecordatorioInput,
+  RecordatorioUpdate,
   ResumenCategoria,
   ResumenMensual,
   TransferenciaMedio,
@@ -4160,4 +4166,740 @@ export function useGetResumenMensualPorCategoria<TData = Awaited<ReturnType<type
 
 
 
+
+export const getListFechasEspecialesUrl = () => {
+
+
+
+
+  return `/api/fechas-especiales`
+}
+
+/**
+ * @summary Lista todas las fechas especiales ordenadas por proximidad
+ */
+export const listFechasEspeciales = async ( options?: Parameters<typeof customFetch>[1]): Promise<FechaEspecial[]> => {
+
+  return customFetch<FechaEspecial[]>(getListFechasEspecialesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFechasEspecialesQueryKey = () => {
+    return [
+    `/api/fechas-especiales`
+    ] as const;
+    }
+
+
+export const getListFechasEspecialesQueryOptions = <TData = Awaited<ReturnType<typeof listFechasEspeciales>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFechasEspeciales>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFechasEspecialesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFechasEspeciales>>> = ({ signal }) => listFechasEspeciales({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFechasEspeciales>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFechasEspecialesQueryResult = NonNullable<Awaited<ReturnType<typeof listFechasEspeciales>>>
+export type ListFechasEspecialesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista todas las fechas especiales ordenadas por proximidad
+ */
+
+export function useListFechasEspeciales<TData = Awaited<ReturnType<typeof listFechasEspeciales>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFechasEspeciales>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFechasEspecialesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFechaEspecialUrl = () => {
+
+
+
+
+  return `/api/fechas-especiales`
+}
+
+/**
+ * @summary Registra una nueva fecha especial
+ */
+export const createFechaEspecial = async (fechaEspecialInput: FechaEspecialInput, options?: Parameters<typeof customFetch>[1]): Promise<FechaEspecial> => {
+
+  return customFetch<FechaEspecial>(getCreateFechaEspecialUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(fechaEspecialInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFechaEspecialMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFechaEspecial>>, TError,{data: BodyType<FechaEspecialInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFechaEspecial>>, TError,{data: BodyType<FechaEspecialInput>}, TContext> => {
+
+const mutationKey = ['createFechaEspecial'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFechaEspecial>>, {data: BodyType<FechaEspecialInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFechaEspecial(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFechaEspecialMutationResult = NonNullable<Awaited<ReturnType<typeof createFechaEspecial>>>
+    export type CreateFechaEspecialMutationBody = BodyType<FechaEspecialInput>
+    export type CreateFechaEspecialMutationError = ErrorType<Error>
+
+    /**
+ * @summary Registra una nueva fecha especial
+ */
+export const useCreateFechaEspecial = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFechaEspecial>>, TError,{data: BodyType<FechaEspecialInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFechaEspecial>>,
+        TError,
+        {data: BodyType<FechaEspecialInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFechaEspecialMutationOptions(options));
+    }
+
+export const getGetFechaEspecialUrl = (id: number,) => {
+
+
+
+
+  return `/api/fechas-especiales/${id}`
+}
+
+/**
+ * @summary Obtiene una fecha especial por ID
+ */
+export const getFechaEspecial = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<FechaEspecial> => {
+
+  return customFetch<FechaEspecial>(getGetFechaEspecialUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFechaEspecialQueryKey = (id: number,) => {
+    return [
+    `/api/fechas-especiales/${id}`
+    ] as const;
+    }
+
+
+export const getGetFechaEspecialQueryOptions = <TData = Awaited<ReturnType<typeof getFechaEspecial>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFechaEspecial>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFechaEspecialQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFechaEspecial>>> = ({ signal }) => getFechaEspecial(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFechaEspecial>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFechaEspecialQueryResult = NonNullable<Awaited<ReturnType<typeof getFechaEspecial>>>
+export type GetFechaEspecialQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene una fecha especial por ID
+ */
+
+export function useGetFechaEspecial<TData = Awaited<ReturnType<typeof getFechaEspecial>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFechaEspecial>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFechaEspecialQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateFechaEspecialUrl = (id: number,) => {
+
+
+
+
+  return `/api/fechas-especiales/${id}`
+}
+
+/**
+ * @summary Actualiza una fecha especial
+ */
+export const updateFechaEspecial = async (id: number,
+    fechaEspecialUpdate: FechaEspecialUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FechaEspecial> => {
+
+  return customFetch<FechaEspecial>(getUpdateFechaEspecialUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(fechaEspecialUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFechaEspecialMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFechaEspecial>>, TError,{id: number;data: BodyType<FechaEspecialUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFechaEspecial>>, TError,{id: number;data: BodyType<FechaEspecialUpdate>}, TContext> => {
+
+const mutationKey = ['updateFechaEspecial'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFechaEspecial>>, {id: number;data: BodyType<FechaEspecialUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFechaEspecial(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFechaEspecialMutationResult = NonNullable<Awaited<ReturnType<typeof updateFechaEspecial>>>
+    export type UpdateFechaEspecialMutationBody = BodyType<FechaEspecialUpdate>
+    export type UpdateFechaEspecialMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Actualiza una fecha especial
+ */
+export const useUpdateFechaEspecial = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFechaEspecial>>, TError,{id: number;data: BodyType<FechaEspecialUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFechaEspecial>>,
+        TError,
+        {id: number;data: BodyType<FechaEspecialUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateFechaEspecialMutationOptions(options));
+    }
+
+export const getDeleteFechaEspecialUrl = (id: number,) => {
+
+
+
+
+  return `/api/fechas-especiales/${id}`
+}
+
+/**
+ * @summary Elimina una fecha especial
+ */
+export const deleteFechaEspecial = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteFechaEspecialUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteFechaEspecialMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteFechaEspecial>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteFechaEspecial>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteFechaEspecial'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteFechaEspecial>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteFechaEspecial(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteFechaEspecialMutationResult = NonNullable<Awaited<ReturnType<typeof deleteFechaEspecial>>>
+
+    export type DeleteFechaEspecialMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Elimina una fecha especial
+ */
+export const useDeleteFechaEspecial = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteFechaEspecial>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteFechaEspecial>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteFechaEspecialMutationOptions(options));
+    }
+
+export const getListRecordatoriosUrl = () => {
+
+
+
+
+  return `/api/recordatorios`
+}
+
+/**
+ * @summary Lista todos los recordatorios
+ */
+export const listRecordatorios = async ( options?: Parameters<typeof customFetch>[1]): Promise<Recordatorio[]> => {
+
+  return customFetch<Recordatorio[]>(getListRecordatoriosUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecordatoriosQueryKey = () => {
+    return [
+    `/api/recordatorios`
+    ] as const;
+    }
+
+
+export const getListRecordatoriosQueryOptions = <TData = Awaited<ReturnType<typeof listRecordatorios>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecordatorios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecordatoriosQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecordatorios>>> = ({ signal }) => listRecordatorios({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecordatorios>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRecordatoriosQueryResult = NonNullable<Awaited<ReturnType<typeof listRecordatorios>>>
+export type ListRecordatoriosQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista todos los recordatorios
+ */
+
+export function useListRecordatorios<TData = Awaited<ReturnType<typeof listRecordatorios>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecordatorios>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRecordatoriosQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateRecordatorioUrl = () => {
+
+
+
+
+  return `/api/recordatorios`
+}
+
+/**
+ * @summary Registra un nuevo recordatorio o alarma
+ */
+export const createRecordatorio = async (recordatorioInput: RecordatorioInput, options?: Parameters<typeof customFetch>[1]): Promise<Recordatorio> => {
+
+  return customFetch<Recordatorio>(getCreateRecordatorioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recordatorioInput)
+  }
+);}
+
+
+
+
+
+export const getCreateRecordatorioMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecordatorio>>, TError,{data: BodyType<RecordatorioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRecordatorio>>, TError,{data: BodyType<RecordatorioInput>}, TContext> => {
+
+const mutationKey = ['createRecordatorio'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRecordatorio>>, {data: BodyType<RecordatorioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRecordatorio(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRecordatorioMutationResult = NonNullable<Awaited<ReturnType<typeof createRecordatorio>>>
+    export type CreateRecordatorioMutationBody = BodyType<RecordatorioInput>
+    export type CreateRecordatorioMutationError = ErrorType<Error>
+
+    /**
+ * @summary Registra un nuevo recordatorio o alarma
+ */
+export const useCreateRecordatorio = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecordatorio>>, TError,{data: BodyType<RecordatorioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRecordatorio>>,
+        TError,
+        {data: BodyType<RecordatorioInput>},
+        TContext
+      > => {
+      return useMutation(getCreateRecordatorioMutationOptions(options));
+    }
+
+export const getGetRecordatorioUrl = (id: number,) => {
+
+
+
+
+  return `/api/recordatorios/${id}`
+}
+
+/**
+ * @summary Obtiene un recordatorio por ID
+ */
+export const getRecordatorio = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Recordatorio> => {
+
+  return customFetch<Recordatorio>(getGetRecordatorioUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecordatorioQueryKey = (id: number,) => {
+    return [
+    `/api/recordatorios/${id}`
+    ] as const;
+    }
+
+
+export const getGetRecordatorioQueryOptions = <TData = Awaited<ReturnType<typeof getRecordatorio>>, TError = ErrorType<NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecordatorio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecordatorioQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecordatorio>>> = ({ signal }) => getRecordatorio(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecordatorio>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecordatorioQueryResult = NonNullable<Awaited<ReturnType<typeof getRecordatorio>>>
+export type GetRecordatorioQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Obtiene un recordatorio por ID
+ */
+
+export function useGetRecordatorio<TData = Awaited<ReturnType<typeof getRecordatorio>>, TError = ErrorType<NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecordatorio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecordatorioQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateRecordatorioUrl = (id: number,) => {
+
+
+
+
+  return `/api/recordatorios/${id}`
+}
+
+/**
+ * @summary Actualiza un recordatorio
+ */
+export const updateRecordatorio = async (id: number,
+    recordatorioUpdate: RecordatorioUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Recordatorio> => {
+
+  return customFetch<Recordatorio>(getUpdateRecordatorioUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recordatorioUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateRecordatorioMutationOptions = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecordatorio>>, TError,{id: number;data: BodyType<RecordatorioUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRecordatorio>>, TError,{id: number;data: BodyType<RecordatorioUpdate>}, TContext> => {
+
+const mutationKey = ['updateRecordatorio'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRecordatorio>>, {id: number;data: BodyType<RecordatorioUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRecordatorio(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRecordatorioMutationResult = NonNullable<Awaited<ReturnType<typeof updateRecordatorio>>>
+    export type UpdateRecordatorioMutationBody = BodyType<RecordatorioUpdate>
+    export type UpdateRecordatorioMutationError = ErrorType<Error | NotFoundResponse>
+
+    /**
+ * @summary Actualiza un recordatorio
+ */
+export const useUpdateRecordatorio = <TError = ErrorType<Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecordatorio>>, TError,{id: number;data: BodyType<RecordatorioUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRecordatorio>>,
+        TError,
+        {id: number;data: BodyType<RecordatorioUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateRecordatorioMutationOptions(options));
+    }
+
+export const getDeleteRecordatorioUrl = (id: number,) => {
+
+
+
+
+  return `/api/recordatorios/${id}`
+}
+
+/**
+ * @summary Elimina un recordatorio
+ */
+export const deleteRecordatorio = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteRecordatorioUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteRecordatorioMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRecordatorio>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteRecordatorio>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteRecordatorio'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteRecordatorio>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteRecordatorio(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteRecordatorioMutationResult = NonNullable<Awaited<ReturnType<typeof deleteRecordatorio>>>
+
+    export type DeleteRecordatorioMutationError = ErrorType<NotFoundResponse>
+
+    /**
+ * @summary Elimina un recordatorio
+ */
+export const useDeleteRecordatorio = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRecordatorio>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteRecordatorio>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteRecordatorioMutationOptions(options));
+    }
 

@@ -1275,3 +1275,263 @@ export const GetResumenMensualPorCategoriaResponseItem = zod.object({
 export const GetResumenMensualPorCategoriaResponse = zod.array(GetResumenMensualPorCategoriaResponseItem)
 
 
+/**
+ * @summary Lista todas las fechas especiales ordenadas por proximidad
+ */
+export const ListFechasEspecialesResponseItem = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "fecha": zod.string(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "recordar_dias_antes": zod.number(),
+  "nota": zod.string(),
+  "dias_restantes": zod.number(),
+  "edad_o_aniversario": zod.number().nullish()
+})
+export const ListFechasEspecialesResponse = zod.array(ListFechasEspecialesResponseItem)
+
+
+/**
+ * @summary Registra una nueva fecha especial
+ */
+export const createFechaEspecialBodyRecordarDiasAntesMin = 0;
+
+
+
+export const CreateFechaEspecialBody = zod.object({
+  "nombre": zod.string(),
+  "fecha": zod.string(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']).optional(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "recordar_dias_antes": zod.number().min(createFechaEspecialBodyRecordarDiasAntesMin).optional(),
+  "nota": zod.string().optional()
+})
+
+export const CreateFechaEspecialResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "fecha": zod.string(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "recordar_dias_antes": zod.number(),
+  "nota": zod.string(),
+  "dias_restantes": zod.number(),
+  "edad_o_aniversario": zod.number().nullish()
+})
+
+
+/**
+ * @summary Obtiene una fecha especial por ID
+ */
+
+
+
+export const GetFechaEspecialParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetFechaEspecialResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "fecha": zod.string(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "recordar_dias_antes": zod.number(),
+  "nota": zod.string(),
+  "dias_restantes": zod.number(),
+  "edad_o_aniversario": zod.number().nullish()
+})
+
+
+/**
+ * @summary Actualiza una fecha especial
+ */
+
+
+
+export const UpdateFechaEspecialParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const updateFechaEspecialBodyRecordarDiasAntesMin = 0;
+
+
+
+export const UpdateFechaEspecialBody = zod.object({
+  "nombre": zod.string().optional(),
+  "fecha": zod.string().optional(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']).optional(),
+  "icono": zod.string().optional(),
+  "color": zod.string().optional(),
+  "recordar_dias_antes": zod.number().min(updateFechaEspecialBodyRecordarDiasAntesMin).optional(),
+  "nota": zod.string().optional()
+})
+
+export const UpdateFechaEspecialResponse = zod.object({
+  "id": zod.number(),
+  "nombre": zod.string(),
+  "fecha": zod.string(),
+  "tipo": zod.enum(['cumpleanos', 'aniversario', 'evento', 'otro']),
+  "icono": zod.string(),
+  "color": zod.string(),
+  "recordar_dias_antes": zod.number(),
+  "nota": zod.string(),
+  "dias_restantes": zod.number(),
+  "edad_o_aniversario": zod.number().nullish()
+})
+
+
+/**
+ * @summary Elimina una fecha especial
+ */
+
+
+
+export const DeleteFechaEspecialParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteFechaEspecialResponse = zod.void()
+
+
+/**
+ * @summary Lista todos los recordatorios
+ */
+export const ListRecordatoriosResponseItem = zod.object({
+  "id": zod.number(),
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']),
+  "fecha_disparo": zod.string(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "modulo_origen": zod.string().nullish(),
+  "referencia_id": zod.number().nullish(),
+  "activo": zod.boolean(),
+  "disparado": zod.boolean()
+})
+export const ListRecordatoriosResponse = zod.array(ListRecordatoriosResponseItem)
+
+
+/**
+ * @summary Registra un nuevo recordatorio o alarma
+ */
+export const createRecordatorioBodyAnticipacionMinutosMin = 0;
+
+
+
+export const CreateRecordatorioBody = zod.object({
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']).optional(),
+  "fecha_disparo": zod.string(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().min(createRecordatorioBodyAnticipacionMinutosMin).optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']).optional(),
+  "modulo_origen": zod.string().nullish(),
+  "referencia_id": zod.number().nullish(),
+  "activo": zod.boolean().optional()
+})
+
+export const CreateRecordatorioResponse = zod.object({
+  "id": zod.number(),
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']),
+  "fecha_disparo": zod.string(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "modulo_origen": zod.string().nullish(),
+  "referencia_id": zod.number().nullish(),
+  "activo": zod.boolean(),
+  "disparado": zod.boolean()
+})
+
+
+/**
+ * @summary Obtiene un recordatorio por ID
+ */
+
+
+
+export const GetRecordatorioParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const GetRecordatorioResponse = zod.object({
+  "id": zod.number(),
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']),
+  "fecha_disparo": zod.string(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "modulo_origen": zod.string().nullish(),
+  "referencia_id": zod.number().nullish(),
+  "activo": zod.boolean(),
+  "disparado": zod.boolean()
+})
+
+
+/**
+ * @summary Actualiza un recordatorio
+ */
+
+
+
+export const UpdateRecordatorioParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const updateRecordatorioBodyAnticipacionMinutosMin = 0;
+
+
+
+export const UpdateRecordatorioBody = zod.object({
+  "titulo": zod.string().optional(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']).optional(),
+  "fecha_disparo": zod.string().optional(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().min(updateRecordatorioBodyAnticipacionMinutosMin).optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']).optional(),
+  "activo": zod.boolean().optional()
+})
+
+export const UpdateRecordatorioResponse = zod.object({
+  "id": zod.number(),
+  "titulo": zod.string(),
+  "descripcion": zod.string().optional(),
+  "tipo": zod.enum(['puntual', 'recurrente', 'fecha_especial', 'relacionado']),
+  "fecha_disparo": zod.string(),
+  "regla_recurrencia": zod.string().nullish(),
+  "anticipacion_minutos": zod.number().optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "modulo_origen": zod.string().nullish(),
+  "referencia_id": zod.number().nullish(),
+  "activo": zod.boolean(),
+  "disparado": zod.boolean()
+})
+
+
+/**
+ * @summary Elimina un recordatorio
+ */
+
+
+
+export const DeleteRecordatorioParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const DeleteRecordatorioResponse = zod.void()
+
+

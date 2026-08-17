@@ -173,13 +173,14 @@ Más adelante se podrán incorporar modelos, APIs o infraestructura especializad
 
 **Decisión actual:** no invertir significativamente en un agente avanzado antes de completar y probar la base manual.
 
-## 10. Comercialización
+## 10. Comercialización y Experiencia de Usuario
 
-La posibilidad de convertir Sistema Personal en un producto comercial es una **visión de largo plazo**, no un requisito de las decisiones actuales.
+La posibilidad de convertir Sistema Personal en un producto comercial es una **visión de largo plazo**, no un requisito de las decisiones inmediatas.
 
-No se debe sobrearquitecturar el sistema presente para resolver problemas de un producto comercial que todavía no existe.
-
-Cuando llegue el momento, se evaluarán multiusuario, privacidad, seguridad, escalabilidad, costos por usuario, onboarding y modelo de negocio.
+Principios acordados para la evolución comercial:
+- **Estado inicial limpio (Virgin State):** Ninguna cuenta nueva contendrá datos, gastos fijos ni rutinas hardcodeadas. Cada usuario construye su propio espacio desde cero.
+- **Onboarding interactivo:** Se planificará un tour/guía interactiva de bienvenida (estilo Nequi) que guíe al usuario en su primer registro de cuentas, categorías y rutinas.
+- **Estrategia Móvil:** La transición de Web a App Móvil se realizará mediante **Capacitor / PWA** en primera instancia, preservando el 100% de la lógica de negocio y APIs REST desacopladas.
 
 ## 11. Regla de oro
 

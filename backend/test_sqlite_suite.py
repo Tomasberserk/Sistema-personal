@@ -53,10 +53,19 @@ def test_full_system_sqlite_suite():
             gv_data = gv_resp.json()
             assert gv_data["monto"] == 25000.0
 
-            # 5. Gastos Fijos
+            # 5. Gastos Fijos (limpio por defecto sin hardcodeo)
             gf_resp = client.get("/api/gastos-fijos")
             assert gf_resp.status_code == 200
-            assert len(gf_resp.json()) >= 3
+            assert gf_resp.json() == []
+
+            # Crear un gasto fijo manual
+            gf_create = client.post("/api/gastos-fijos", json={
+                "nombre": "Servicio de Nube",
+                "monto": 20000.0,
+                "tipo": "mensual",
+                "activo": True
+            })
+            assert gf_create.status_code == 201
 
             # 6. Medios de Pago y Transferencias
             medios_resp = client.get("/api/medios-pago")
@@ -113,7 +122,45 @@ def test_full_system_sqlite_suite():
             assert rutina_resp.status_code == 200
             assert rutina_resp.json() == []
 
-            # 10. Resumen Financiero y Saldos
+            # 10. Fechas Especiales
+            fechas_resp = client.post("/api/fechas-especiales", json={
+                "nombre": "Cumpleaños Mamá",
+                "fecha": "1975-09-24",
+                "tipo": "cumpleanos",
+                "icono": "🎂",
+                "color": "#e85d8a",
+                "recordar_dias_antes": 3,
+                "nota": "Le gustan las flores"
+            })
+            assert fechas_resp.status_code == 201
+            fechas_data = fechas_resp.json()
+            assert "dias_restantes" in fechas_data
+            assert fechas_data["nombre"] == "Cumpleaños Mamá"
+
+            list_fechas = client.get("/api/fechas-especiales")
+            assert list_fechas.status_code == 200
+            assert len(list_fechas.json()) >= 1
+
+            # 11. Recordatorios Universales
+            rec_resp = client.post("/api/recordatorios", json={
+                "titulo": "Tomar agua cada 2 horas",
+                "tipo": "recurrente",
+                "fecha_disparo": "2026-08-17T09:00:00",
+                "regla_recurrencia": "INTERVAL_HOURS:2",
+                "canal": "todos",
+                "anticipacion_minutos": 0,
+                "activo": True
+            })
+            assert rec_resp.status_code == 201
+            rec_data = rec_resp.json()
+            assert rec_data["activo"] is True
+            assert rec_data["tipo"] == "recurrente"
+
+            list_rec = client.get("/api/recordatorios")
+            assert list_rec.status_code == 200
+            assert len(list_rec.json()) >= 1
+
+            # 12. Resumen Financiero y Saldos
             fin_resp = client.get("/api/resumen/mes-actual")
             assert fin_resp.status_code == 200
             fin_data = fin_resp.json()
