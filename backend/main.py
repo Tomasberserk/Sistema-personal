@@ -1012,8 +1012,14 @@ def startup() -> None:
 
 @app.get("/api/healthz")
 @app.get("/api/health")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
+def healthz() -> dict[str, Any]:
+    engine = "postgresql" if _is_postgres() else "sqlite"
+    return {
+        "status": "ok",
+        "engine": engine,
+        "is_postgres": _is_postgres(),
+        "has_database_url": bool(os.environ.get("DATABASE_URL")),
+    }
 
 
 @app.get("/api/ingresos", response_model=list[Ingreso])
