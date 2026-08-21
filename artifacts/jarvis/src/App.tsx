@@ -113,13 +113,14 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="md:pl-[236px]">{children}</main>
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[70px] items-center justify-around border-t border-white/5 bg-[#0a0a0a]/85 px-4 backdrop-blur-xl md:hidden">
-        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Resumen" testId="mobile-link-resumen" />
-        <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Km" testId="mobile-link-kilometraje" />
-        <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="mobile-link-habitos" />
-        <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="mobile-link-rutina" />
-        <NavItem href="/fechas" active={location === '/fechas'} icon={<Gift size={18} />} label="Fechas" testId="mobile-link-fechas" />
-        <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={18} />} label="Moto" testId="mobile-link-moto" />
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[68px] items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#0a0a0a]/95 px-3 py-1.5 backdrop-blur-2xl scrollbar-none md:hidden">
+        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={17} />} label="Resumen" testId="mobile-link-resumen" />
+        <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={17} />} label="Km" testId="mobile-link-kilometraje" />
+        <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={17} />} label="Hábitos" testId="mobile-link-habitos" />
+        <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={17} />} label="Rutina" testId="mobile-link-rutina" />
+        <NavItem href="/fechas" active={location === '/fechas'} icon={<Gift size={17} />} label="Fechas" testId="mobile-link-fechas" />
+        <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={17} />} label="Moto" testId="mobile-link-moto" />
+        <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={17} />} label="Categorías" testId="mobile-link-categorias" />
       </nav>
     </div>
   );
@@ -127,8 +128,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function NavItem({ href, active, icon, label, testId }: { href: string; active: boolean; icon: React.ReactNode; label: string; testId: string }) {
   return (
-    <Link href={href} data-testid={testId} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? 'bg-white/8 text-white' : 'text-white/55 hover:bg-white/4 hover:text-white'} md:w-full md:justify-start`}>
-      {icon}<span className="md:inline">{label}</span>
+    <Link href={href} data-testid={testId} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${active ? 'bg-white text-black shadow-md' : 'text-white/60 hover:bg-white/5 hover:text-white'} md:w-full md:justify-start md:gap-3 md:px-3 md:py-2.5 md:text-sm ${active ? 'md:bg-white/10 md:text-white' : ''}`}>
+      {icon}<span>{label}</span>
     </Link>
   );
 }
@@ -194,7 +195,19 @@ function RowActions({ onEdit, onDelete, id }: { onEdit: () => void; onDelete: ()
   );
 }
 
-function ListCard({ title, kicker, action, children }: { title: string; kicker: string; action: () => void; children: React.ReactNode }) {
+function ListCard({
+  title,
+  kicker,
+  action,
+  historyAction,
+  children,
+}: {
+  title: string;
+  kicker: string;
+  action: () => void;
+  historyAction?: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <section className="cosmos-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6">
@@ -202,7 +215,24 @@ function ListCard({ title, kicker, action, children }: { title: string; kicker: 
           <div className="cosmos-eyebrow mb-1">{kicker}</div>
           <h2 className="cosmos-title text-lg font-bold">{title}</h2>
         </div>
-        <button onClick={action} data-testid={`button-add-${kicker.toLowerCase().replaceAll(' ', '-')}`} className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /> <span className="hidden sm:inline">Añadir</span></button>
+        <div className="flex items-center gap-2">
+          {historyAction && (
+            <button
+              onClick={historyAction}
+              data-testid={`button-historial-${kicker.toLowerCase().replaceAll(' ', '-')}`}
+              className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/12"
+            >
+              <Clock size={14} /> Historial
+            </button>
+          )}
+          <button
+            onClick={action}
+            data-testid={`button-add-${kicker.toLowerCase().replaceAll(' ', '-')}`}
+            className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"
+          >
+            <Plus size={16} /> <span className="hidden sm:inline">Añadir</span>
+          </button>
+        </div>
       </div>
       <div className="p-3 sm:p-4">{children}</div>
     </section>
@@ -272,6 +302,7 @@ function CategoryBars({ data }: { data: ResumenCategoria[] }) {
 function Dashboard() {
   const queryClient = useQueryClient();
   const [modal, setModal] = useState<ModalKind | 'transferencia'>(null);
+  const [historialModal, setHistorialModal] = useState<'ingresos' | 'variables' | null>(null);
   const [editing, setEditing] = useState<AnyRecord | null>(null);
   const ingresos = useListIngresos(); const fijos = useListGastosFijos(); const variables = useListGastosVariables();
   const categorias = useListCategorias();
@@ -412,14 +443,14 @@ function Dashboard() {
         </section>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          <ListCard title="Ingresos" kicker="dinero que llegó" action={() => { setEditing(null); setModal('ingreso'); }}>
+          <ListCard title="Ingresos" kicker="dinero que llegó" historyAction={() => setHistorialModal('ingresos')} action={() => { setEditing(null); setModal('ingreso'); }}>
             {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primera jornada para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => {
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
               return <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><ArrowUpRight size={17} /></div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{sourceLabel[x.fuente]} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>;
             })}</div>}
           </ListCard>
 
-          <ListCard title="Gastos variables" kicker="lo que cambia" action={() => { setEditing(null); setModal('variable'); }}>
+          <ListCard title="Gastos variables" kicker="lo que cambia" historyAction={() => setHistorialModal('variables')} action={() => { setEditing(null); setModal('variable'); }}>
             {variables.isLoading ? <LoadingRows /> : !variablesList.length ? <EmptyState title="Dale nombre a cada salida" copy="Comida, gasolina, una reparación: todo cuenta para entender tu ruta." action="Registrar gasto variable" onClick={() => setModal('variable')} testId="button-empty-variable" /> : <div className="space-y-1">{variablesList.slice(0, 8).map((x) => {
               const cat = catMap.get(x.categoria_id) ?? FALLBACK_CAT;
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
@@ -432,6 +463,21 @@ function Dashboard() {
         </ListCard>
       </div>
       <DetailPrefetchers ids={ids} />
+      {historialModal && (
+        <HistorialFinancieroModal
+          kind={historialModal}
+          ingresos={ingresosList}
+          variables={variablesList}
+          categorias={categoriasList}
+          medios={mediosList}
+          onEdit={(rec) => {
+            setEditing(rec);
+            setModal(historialModal === 'ingresos' ? 'ingreso' : 'variable');
+          }}
+          onDelete={(k, id) => remove(k, id)}
+          onClose={() => setHistorialModal(null)}
+        />
+      )}
       {modal === 'transferencia' && (
         <TransferenciaModal
           medios={mediosList}
@@ -1195,13 +1241,240 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
               </select>
             </label>
           </div>
-          <span className="block"><span className="cosmos-field-label">Monto a transferir</span><input required min="0.01" step="0.01" type="number" className="cosmos-input" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" /></span>
           <span className="block"><span className="cosmos-field-label">Nota o motivo (opcional)</span><input className="cosmos-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Ej. Retiro cajero, recarga Nequi..." /></span>
           <button disabled={pending} type="submit" data-testid="button-save-transferencia" className="cosmos-button-primary w-full !py-3.5">
             {pending ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRightLeft size={17} />}
             {pending ? 'Transfiriendo…' : 'Completar transferencia'}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function HistorialFinancieroModal({
+  kind,
+  ingresos,
+  variables,
+  categorias,
+  medios,
+  onEdit,
+  onDelete,
+  onClose,
+}: {
+  kind: 'ingresos' | 'variables';
+  ingresos: Ingreso[];
+  variables: GastoVariable[];
+  categorias: Categoria[];
+  medios: MedioPagoSaldo[];
+  onEdit: (record: AnyRecord) => void;
+  onDelete: (kind: 'ingreso' | 'variable', id: number) => void;
+  onClose: () => void;
+}) {
+  const [periodo, setPeriodo] = useState<'semanal' | 'mensual' | 'anual'>('semanal');
+  const catMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
+  const medioMap = useMemo(() => new Map(medios.map((m) => [m.id, m])), [medios]);
+
+  const items = useMemo(() => {
+    const raw = kind === 'ingresos' ? ingresos : variables;
+    const now = new Date();
+
+    return raw.filter((item) => {
+      const itemDate = new Date(`${item.fecha}T12:00:00`);
+      if (periodo === 'semanal') {
+        const hace7Dias = new Date();
+        hace7Dias.setDate(now.getDate() - 7);
+        return itemDate >= hace7Dias;
+      }
+      if (periodo === 'mensual') {
+        return (
+          itemDate.getMonth() === now.getMonth() &&
+          itemDate.getFullYear() === now.getFullYear()
+        );
+      }
+      if (periodo === 'anual') {
+        return itemDate.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+  }, [kind, ingresos, variables, periodo]);
+
+  const total = useMemo(() => items.reduce((acc, curr) => acc + curr.monto, 0), [items]);
+
+  const isIngreso = kind === 'ingresos';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="cosmos-card flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-t-[28px] p-5 shadow-2xl sm:rounded-[28px] sm:p-7 pb-10 sm:pb-7"
+      >
+        <div className="flex items-start justify-between border-b border-white/6 pb-4">
+          <div>
+            <div className="cosmos-eyebrow mb-1">
+              historial {isIngreso ? 'de ingresos' : 'de gastos variables'}
+            </div>
+            <h2 className="cosmos-title text-2xl font-bold">
+              {isIngreso ? 'Entradas registradas' : 'Salidas registradas'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            data-testid="button-close-historial"
+            className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Selector de periodo: Semanal, Mensual, Anual */}
+        <div className="mt-4 flex items-center justify-between gap-2 rounded-2xl bg-white/5 p-1.5 backdrop-blur-md">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPeriodo('semanal')}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                periodo === 'semanal'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Últimos 7 días
+            </button>
+            <button
+              onClick={() => setPeriodo('mensual')}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                periodo === 'mensual'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Este mes
+            </button>
+            <button
+              onClick={() => setPeriodo('anual')}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                periodo === 'anual'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Este año
+            </button>
+          </div>
+          <div className="pr-2 text-right">
+            <span className="text-[11px] uppercase tracking-wider text-white/40">Total: </span>
+            <span
+              className="cosmos-number text-sm font-bold"
+              style={{ color: isIngreso ? '#5de8c4' : '#ff8a7a' }}
+            >
+              {isIngreso ? `+${money(total)}` : `-${money(total)}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Lista con scroll interno */}
+        <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-1.5 min-h-[220px] max-h-[50dvh]">
+          {items.length === 0 ? (
+            <div className="py-12 text-center text-sm text-white/40">
+              No hay registros para el periodo seleccionado.
+            </div>
+          ) : (
+            items.map((x) => {
+              const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
+              if (isIngreso) {
+                const ing = x as Ingreso;
+                return (
+                  <div
+                    key={ing.id}
+                    className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5 transition hover:bg-white/6"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]">
+                        <ArrowUpRight size={17} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white/90">
+                          {sourceLabel[ing.fuente]}{' '}
+                          {med && (
+                            <span className="text-xs text-white/50">
+                              ({med.icono} {med.nombre})
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-white/45">
+                          {dateLabel(ing.fecha)}
+                          {ing.nota ? ` · ${ing.nota}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="cosmos-number text-sm font-semibold text-[#5de8c4]">
+                        +{money(ing.monto)}
+                      </span>
+                      <RowActions
+                        id={ing.id}
+                        onEdit={() => {
+                          onClose();
+                          onEdit(ing);
+                        }}
+                        onDelete={() => onDelete('ingreso', ing.id)}
+                      />
+                    </div>
+                  </div>
+                );
+              } else {
+                const gv = x as GastoVariable;
+                const cat = catMap.get(gv.categoria_id) ?? FALLBACK_CAT;
+                return (
+                  <div
+                    key={gv.id}
+                    className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5 transition hover:bg-white/6"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base"
+                        style={{ backgroundColor: `${cat.color}26` }}
+                      >
+                        {cat.icono}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white">
+                          {cat.nombre}{' '}
+                          {med && (
+                            <span className="text-xs text-white/50">
+                              ({med.icono} {med.nombre})
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-white/45">
+                          {dateLabel(gv.fecha)}
+                          {gv.nota ? ` · ${gv.nota}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="cosmos-number text-sm font-semibold"
+                        style={{ color: cat.color }}
+                      >
+                        -{money(gv.monto)}
+                      </span>
+                      <RowActions
+                        id={gv.id}
+                        onEdit={() => {
+                          onClose();
+                          onEdit(gv);
+                        }}
+                        onDelete={() => onDelete('variable', gv.id)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+            })
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1231,10 +1504,10 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   };
   const title = isIngreso ? (record ? 'Editar ingreso' : 'Nuevo ingreso') : isVariable ? (record ? 'Editar gasto variable' : 'Nuevo gasto variable') : isFijo ? (record ? 'Editar gasto fijo' : 'Nuevo gasto fijo') : (record ? 'Editar kilometraje' : 'Registrar kilometraje');
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / registro</div><h2 className="cosmos-title text-2xl font-bold">{title}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4 pb-4 sm:pb-0">
           {isFijo ? <>
             <span className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-fijo-nombre" placeholder="Ej. renta, plan de datos" /></span>
             <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-fijo-monto" placeholder="0" /></span>
@@ -1262,7 +1535,7 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
             {isKm ? <span className="block"><span className="cosmos-field-label">Kilómetros actuales</span><input required min="0" step="0.1" type="number" className="cosmos-input" value={String(form.km_actuales)} onChange={(e) => set('km_actuales', e.target.value)} data-testid="input-km-actuales" placeholder="0" /></span> : <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-monto" placeholder="0" /></span>}
             {!isKm && <span className="block"><span className="cosmos-field-label">Nota (opcional)</span><input className="cosmos-input" value={String(form.nota)} onChange={(e) => set('nota', e.target.value)} placeholder="Un detalle, la ruta, la hora..." /></span>}
           </>}
-          <button disabled={pending} type="submit" data-testid="button-save-record" className="cosmos-button-primary w-full !py-3.5">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar registro'}</button>
+          <button disabled={pending} type="submit" data-testid="button-save-record" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar registro'}</button>
         </form>
       </div>
     </div>
