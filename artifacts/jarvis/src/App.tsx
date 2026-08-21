@@ -51,7 +51,26 @@ const asList = <T,>(value: unknown): T[] => {
 const dateValue = (date?: string) => date ? date.slice(0, 10) : new Date().toISOString().slice(0, 10);
 const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)) : 'Sin fecha';
 const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(new Date());
-const sourceLabel: Record<string, string> = { Didi: 'Didi', papa: 'Papá', amigo: 'Amigo', otro: 'Otro' };
+
+const DEFAULT_FUENTES_INFO: Record<string, { label: string; icono: string; color: string }> = {
+  Didi: { label: 'Didi', icono: '🛵', color: '#e8a85d' },
+  papa: { label: 'Papá', icono: '👨', color: '#5de8c4' },
+  amigo: { label: 'Amigo', icono: '🤝', color: '#5d8ae8' },
+  prestamo: { label: 'Deuda / Me debían', icono: '🤝', color: '#5de87a' },
+  random: { label: 'Ingreso Random / Extra', icono: '🎲', color: '#e85dd3' },
+  otro: { label: 'Otro', icono: '✨', color: '#a85de8' },
+};
+
+const getFuenteInfo = (fuente: string, customCategories?: Categoria[]) => {
+  if (DEFAULT_FUENTES_INFO[fuente]) return DEFAULT_FUENTES_INFO[fuente];
+  if (customCategories) {
+    const matched = customCategories.find((c) => c.nombre.toLowerCase() === fuente.toLowerCase());
+    if (matched) return { label: matched.nombre, icono: matched.icono, color: matched.color };
+  }
+  return { label: fuente, icono: '💵', color: '#5de8c4' };
+};
+
+const sourceLabel: Record<string, string> = { Didi: 'Didi', papa: 'Papá', amigo: 'Amigo', prestamo: 'Deuda / Me debían', random: 'Ingreso Random', otro: 'Otro' };
 
 const CATEGORY_EMOJIS = ['🍔', '🍕', '🥗', '☕', '🍺', '🛵', '🚗', '🚌', '⛽', '🎮', '🎬', '🎧', '📚', '💻', '📱', '👕', '💊', '🧴', '🎁', '🏠', '✨', '🐾', '✈️', '💰', '📦', '🧾'];
 const CATEGORY_COLORS = ['#e85d4a', '#5d8ae8', '#e8a85d', '#a85de8', '#5de8c4', '#e85d8a', '#e8d95d', '#5de87a', '#5dc4e8', '#e8755d', '#8a8aa0', '#b7e85d', '#e85dd3', '#5de8dd'];
@@ -390,17 +409,17 @@ function Dashboard() {
     });
 
     return Array.from(agrupado.entries()).map(([fuente, monto]) => {
-      const cfg = FUENTE_COLORES[fuente] ?? { color: '#5de8c4', icono: '💵' };
+      const info = getFuenteInfo(fuente, categoriasList);
       return {
         fuente,
-        label: sourceLabel[fuente as Fuente] ?? fuente,
+        label: info.label,
         total: monto,
         porcentaje: Math.round((monto / total) * 100),
-        color: cfg.color,
-        icono: cfg.icono,
+        color: info.color,
+        icono: info.icono,
       };
     });
-  }, [ingresosList]);
+  }, [ingresosList, categoriasList]);
 
   const catMap = useMemo(() => new Map(categoriasList.map((c) => [c.id, c])), [categoriasList]);
   const medioMap = useMemo(() => new Map(mediosList.map((m) => [m.id, m])), [mediosList]);
@@ -540,7 +559,8 @@ function Dashboard() {
           <ListCard title="Ingresos" kicker="dinero que llegó" historyAction={() => setHistorialModal('ingresos')} action={() => { setEditing(null); setModal('ingreso'); }}>
             {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primera jornada para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => {
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
-              return <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><ArrowUpRight size={17} /></div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{sourceLabel[x.fuente]} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>;
+              const fInfo = getFuenteInfo(x.fuente, categoriasList);
+              return <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${fInfo.color}26` }}>{fInfo.icono}</div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{fInfo.label} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>;
             })}</div>}
           </ListCard>
 
@@ -1009,7 +1029,6 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
             <span className="text-sm font-medium text-white/80">¿Mostrarlo en la lista diaria?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-habito-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-habito" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar hábito'}</button>
         </form>
       </div>
     </div>
@@ -1195,7 +1214,6 @@ function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRut
             <span className="text-sm font-medium text-white/80">¿Mostrarlo en la rutina?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-rutina-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-rutina" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar bloque'}</button>
         </form>
       </div>
     </div>
@@ -1204,6 +1222,7 @@ function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRut
 
 function CategoriesPage() {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<'gastos' | 'ingresos'>('gastos');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Categoria | null>(null);
   const list = useListCategorias();
@@ -1224,27 +1243,100 @@ function CategoriesPage() {
     if (!window.confirm(`¿Eliminar "${c.nombre}"?`)) return;
     remove.mutate({ id: c.id }, { onSuccess: invalidate, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar') });
   };
+
+  const defaultIncomeSources = [
+    { nombre: 'Didi', icono: '🛵', color: '#e8a85d', activa: true, isDefault: true },
+    { nombre: 'Papá', icono: '👨', color: '#5de8c4', activa: true, isDefault: true },
+    { nombre: 'Amigo', icono: '🤝', color: '#5d8ae8', activa: true, isDefault: true },
+    { nombre: 'Deuda / Me debían', icono: '💵', color: '#5de87a', activa: true, isDefault: true },
+    { nombre: 'Ingreso Random / Extra', icono: '🎲', color: '#e85dd3', activa: true, isDefault: true },
+  ];
+
   return <Shell><div className="relative z-10 min-h-[100dvh]">
-    <Topbar eyebrow="colores del mes" title="Categorías" onAdd={() => { setEditing(null); setModal(true); }} />
+    <Topbar eyebrow="colores y fuentes" title="Categorías" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {list.isLoading ? <LoadingRows /> : cats.map((c) => (
-          <div key={c.id} data-testid={`carta-categoria-${c.id}`} className="cosmos-card group flex items-center gap-4 p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${c.color}26`, boxShadow: `0 0 0 1px ${c.color}55` }}>{c.icono}</div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-white">{c.nombre}</div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
-                <span className="font-mono uppercase tracking-wider" style={{ color: c.color }}>{c.color}</span>
-                <span className={c.activa ? 'text-[#5de8c4]' : 'text-white/35'}>{c.activa ? 'activa' : 'no activa'}</span>
+      
+      <div className="flex items-center gap-2 border-b border-white/6 pb-3">
+        <button
+          onClick={() => setTab('gastos')}
+          className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+            tab === 'gastos' ? 'bg-white text-black shadow-md' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          Categorías de Gastos ({cats.length})
+        </button>
+        <button
+          onClick={() => setTab('ingresos')}
+          className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+            tab === 'ingresos' ? 'bg-white text-black shadow-md' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          Fuentes de Ingresos ({defaultIncomeSources.length + cats.length})
+        </button>
+      </div>
+
+      {tab === 'gastos' ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {list.isLoading ? <LoadingRows /> : cats.map((c) => (
+            <div key={c.id} data-testid={`carta-categoria-${c.id}`} className="cosmos-card group flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${c.color}26`, boxShadow: `0 0 0 1px ${c.color}55` }}>{c.icono}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-white">{c.nombre}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
+                  <span className="font-mono uppercase tracking-wider" style={{ color: c.color }}>{c.color}</span>
+                  <span className={c.activa ? 'text-[#5de8c4]' : 'text-white/35'}>{c.activa ? 'activa' : 'no activa'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
+                <button onClick={() => { setEditing(c); setModal(true); }} aria-label="Editar categoría" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                <button onClick={() => removeCat(c)} aria-label="Eliminar categoría" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
               </div>
             </div>
-            <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
-              <button onClick={() => { setEditing(c); setModal(true); }} aria-label="Editar categoría" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
-              <button onClick={() => removeCat(c)} aria-label="Eliminar categoría" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div>
+            <div className="cosmos-eyebrow mb-2">Fuentes de ingreso fijas y rápidas</div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {defaultIncomeSources.map((f, idx) => (
+                <div key={idx} className="cosmos-card flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${f.color}26`, boxShadow: `0 0 0 1px ${f.color}55` }}>{f.icono}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">{f.nombre}</div>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
+                      <span className="font-mono uppercase tracking-wider" style={{ color: f.color }}>{f.color}</span>
+                      <span className="text-[#5de8c4]">predeterminada</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+
+          <div>
+            <div className="cosmos-eyebrow mb-2">Tus categorías personalizadas (disponibles en ingresos y gastos)</div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {cats.map((c) => (
+                <div key={c.id} className="cosmos-card group flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${c.color}26`, boxShadow: `0 0 0 1px ${c.color}55` }}>{c.icono}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">{c.nombre}</div>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
+                      <span className="font-mono uppercase tracking-wider" style={{ color: c.color }}>{c.color}</span>
+                      <span className={c.activa ? 'text-[#5de8c4]' : 'text-white/35'}>{c.activa ? 'activa' : 'no activa'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
+                    <button onClick={() => { setEditing(c); setModal(true); }} aria-label="Editar categoría" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                    <button onClick={() => removeCat(c)} aria-label="Eliminar categoría" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     {modal && <CategoryModal record={editing} pending={create.isPending || update.isPending || remove.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={submit} />}
   </div></Shell>;
@@ -1271,7 +1363,7 @@ function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categor
               <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
             </div>
           </div>
-          <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-categoria-nombre" placeholder="Ej. Comida, Didi, Mercado..." /></label>
+          <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-categoria-nombre" placeholder="Ej. Préstamos, Comida, Freelance, Didi..." /></label>
           <div><span className="cosmos-field-label">Icono</span>
             <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
               {CATEGORY_EMOJIS.map((emoji) => (
@@ -1287,10 +1379,9 @@ function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categor
             </div>
           </div>
           <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-            <span className="text-sm font-medium text-white/80">¿Mostrarla al registrar gastos?</span>
+            <span className="text-sm font-medium text-white/80">¿Mostrarla activa para registros y gráficos?</span>
             <button type="button" onClick={() => set('activa', !form.activa)} data-testid="toggle-categoria-activa" className={`relative h-6 w-11 rounded-full transition ${form.activa ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activa ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-categoria" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar categoría'}</button>
         </form>
       </div>
     </div>
@@ -1373,10 +1464,6 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
           </div>
           <span className="block"><span className="cosmos-field-label">Monto a transferir</span><input required min="0.01" step="0.01" type="number" className="cosmos-input" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" /></span>
           <span className="block"><span className="cosmos-field-label">Nota o motivo (opcional)</span><input className="cosmos-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Ej. Retiro cajero, recarga Nequi..." /></span>
-          <button disabled={pending} type="submit" data-testid="button-save-transferencia" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
-            {pending ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRightLeft size={17} />}
-            {pending ? 'Transfiriendo…' : 'Completar transferencia'}
-          </button>
         </form>
       </div>
     </div>
@@ -1515,18 +1602,19 @@ function HistorialFinancieroModal({
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
               if (isIngreso) {
                 const ing = x as Ingreso;
+                const fInfo = getFuenteInfo(ing.fuente, categorias);
                 return (
                   <div
                     key={ing.id}
                     className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5 transition hover:bg-white/6"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]">
-                        <ArrowUpRight size={17} />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${fInfo.color}26` }}>
+                        {fInfo.icono}
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-white/90">
-                          {sourceLabel[ing.fuente]}{' '}
+                          {fInfo.label}{' '}
                           {med && (
                             <span className="text-xs text-white/50">
                               ({med.icono} {med.nombre})
@@ -1621,6 +1709,21 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
     tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
   });
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+  const availableFuentes = useMemo(() => {
+    const defaults = [
+      { id: 'Didi', label: 'Didi', icono: '🛵', color: '#e8a85d' },
+      { id: 'papa', label: 'Papá', icono: '👨', color: '#5de8c4' },
+      { id: 'amigo', label: 'Amigo', icono: '🤝', color: '#5d8ae8' },
+      { id: 'prestamo', label: 'Deuda', icono: '💵', color: '#5de87a' },
+      { id: 'random', label: 'Random', icono: '🎲', color: '#e85dd3' },
+    ];
+    // También incluir las categorías existentes que no estén en defaults
+    const extraCats = (categorias ?? [])
+      .filter((c) => !defaults.some((d) => d.id.toLowerCase() === c.nombre.toLowerCase()))
+      .map((c) => ({ id: c.nombre, label: c.nombre, icono: c.icono, color: c.color }));
+    return [...defaults, ...extraCats, { id: 'otro', label: 'Otro / Custom', icono: '✨', color: '#a85de8' }];
+  }, [categorias]);
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const base = { ...form };
@@ -1629,7 +1732,10 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
       if (!Number(base.categoria_id)) { toast.error('Elige una categoría para este gasto'); return; }
       onSubmit({ fecha: base.fecha, categoria_id: Number(base.categoria_id), monto: Number(base.monto), medio_pago_id: medioId, nota: String(base.nota) });
     }
-    else if (isIngreso) onSubmit({ fecha: base.fecha, fuente: base.fuente, monto: Number(base.monto), medio_pago_id: medioId, nota: String(base.nota) });
+    else if (isIngreso) {
+      const finalFuente = base.fuente === 'otro' ? (String(base.fuente_custom || '').trim() || 'Otro') : String(base.fuente);
+      onSubmit({ fecha: base.fecha, fuente: finalFuente, monto: Number(base.monto), medio_pago_id: medioId, nota: String(base.nota) });
+    }
     else if (isFijo) onSubmit({ nombre: base.nombre, monto: Number(base.monto), tipo: base.tipo, activo: Boolean(base.activo) });
     else onSubmit({ fecha: base.fecha, km_actuales: Number(base.km_actuales), nota: String(base.nota) });
   };
@@ -1676,7 +1782,54 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
               isVariable && <p className="rounded-xl bg-white/5 px-4 py-3 text-sm text-white/50">Aún no hay categorías activas. Crea una desde «Categorías» y vuelve aquí.</p>
             )}
             <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={String(form.fecha)} onChange={(e) => set('fecha', e.target.value)} data-testid={`input-${kind}-fecha`} /></span>
-            {isIngreso && <span className="block"><span className="cosmos-field-label">Fuente</span><select className="cosmos-select" value={String(form.fuente)} onChange={(e) => set('fuente', e.target.value)} data-testid="select-ingreso-fuente"><option value="Didi">Didi</option><option value="papa">Papá</option><option value="amigo">Amigo</option><option value="otro">Otro</option></select></span>}
+            {isIngreso && (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="cosmos-field-label">Fuente o categoría de ingreso</span>
+                  <span className="text-[11px] text-white/40">Didi, deudas, papá, extras...</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 mb-3">
+                  {availableFuentes.map((f) => {
+                    const active = form.fuente === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => set('fuente', f.id)}
+                        className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center transition ${
+                          active ? 'scale-[0.98]' : 'hover:bg-white/6'
+                        }`}
+                        style={
+                          active
+                            ? { backgroundColor: `${f.color}2e`, boxShadow: `inset 0 0 0 1.5px ${f.color}` }
+                            : { backgroundColor: 'rgba(255,255,255,0.05)' }
+                        }
+                      >
+                        <span className="text-xl">{f.icono}</span>
+                        <span
+                          className="w-full truncate text-[11px] font-medium"
+                          style={{ color: active ? f.color : 'rgba(255,255,255,0.7)' }}
+                        >
+                          {f.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {form.fuente === 'otro' && (
+                  <label className="block mt-2">
+                    <span className="cosmos-field-label">Escribe el nombre de esta fuente</span>
+                    <input
+                      required
+                      className="cosmos-input"
+                      placeholder="Ej. Me pagaron deuda, Venta garage, Regalo..."
+                      value={form.fuente_custom ? String(form.fuente_custom) : ''}
+                      onChange={(e) => set('fuente_custom', e.target.value)}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
             {(isIngreso || isVariable) && medios && medios.length > 0 && (
               <label className="block">
                 <span className="cosmos-field-label">{isIngreso ? '¿Dónde entró el dinero?' : '¿De dónde salió el dinero?'}</span>
@@ -1690,7 +1843,6 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
             {isKm ? <span className="block"><span className="cosmos-field-label">Kilómetros actuales</span><input required min="0" step="0.1" type="number" className="cosmos-input" value={String(form.km_actuales)} onChange={(e) => set('km_actuales', e.target.value)} data-testid="input-km-actuales" placeholder="0" /></span> : <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-monto" placeholder="0" /></span>}
             {!isKm && <span className="block"><span className="cosmos-field-label">Nota (opcional)</span><input className="cosmos-input" value={String(form.nota)} onChange={(e) => set('nota', e.target.value)} placeholder="Un detalle, la ruta, la hora..." /></span>}
           </>}
-          <button disabled={pending} type="submit" data-testid="button-save-record" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar registro'}</button>
         </form>
       </div>
     </div>
@@ -2136,11 +2288,6 @@ function FechaModal({
               placeholder="Ej. Le gustan los perfumes o libros"
             />
           </label>
-
-          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
-            {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
-            {pending ? 'Guardando…' : 'Guardar fecha especial'}
-          </button>
         </form>
       </div>
     </div>
@@ -2283,11 +2430,6 @@ function RecordatorioModal({
               placeholder="Ej. Con el enlace de Meet o tomar 500ml"
             />
           </label>
-
-          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
-            {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
-            {pending ? 'Guardando…' : 'Guardar recordatorio'}
-          </button>
         </form>
       </div>
     </div>

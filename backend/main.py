@@ -39,7 +39,7 @@ _INTEGRITY_ERRORS: tuple[type[BaseException], ...] = (sqlite3.IntegrityError,)
 if _HAS_PSYCOPG2:
     _INTEGRITY_ERRORS = (sqlite3.IntegrityError, psycopg2.IntegrityError)
 
-Fuente = Literal["Didi", "papa", "amigo", "otro"]
+Fuente = str
 TipoGastoFijo = Literal["mensual", "por_kilometraje"]
 TipoMedioPago = Literal[
     "efectivo_billetes",
@@ -546,7 +546,7 @@ POSTGRES_SCHEMA = """
     CREATE TABLE IF NOT EXISTS ingresos (
         id SERIAL PRIMARY KEY,
         fecha TEXT NOT NULL,
-        fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
+        fuente TEXT NOT NULL,
         monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
         medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
@@ -659,7 +659,7 @@ SQLITE_SCHEMA = """
     CREATE TABLE IF NOT EXISTS ingresos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL,
-        fuente TEXT NOT NULL CHECK (fuente IN ('Didi', 'papa', 'amigo', 'otro')),
+        fuente TEXT NOT NULL,
         monto REAL NOT NULL CHECK (monto >= 0),
         medio_pago_id INTEGER REFERENCES medios_pago(id),
         nota TEXT NOT NULL DEFAULT ''
@@ -769,7 +769,12 @@ def init_db() -> None:
                 """,
                 DEFAULT_MEDIOS_PAGO,
             )
-        if not _is_postgres():
+        if _is_postgres():
+            try:
+                connection.execute("ALTER TABLE ingresos DROP CONSTRAINT IF EXISTS ingresos_fuente_check")
+            except Exception:
+                pass
+        else:
             # Migraciones de columnas si no existen
             ing_cols = [row["name"] for row in connection.execute("PRAGMA table_info(ingresos)").fetchall()]
             if "medio_pago_id" not in ing_cols:

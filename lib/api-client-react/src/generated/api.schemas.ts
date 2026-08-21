@@ -13,58 +13,34 @@ export interface Error {
   detail: string;
 }
 
-export type IngresoFuente = typeof IngresoFuente[keyof typeof IngresoFuente];
-
-
-export const IngresoFuente = {
-  Didi: 'Didi',
-  papa: 'papa',
-  amigo: 'amigo',
-  otro: 'otro',
-} as const;
+export type IngresoFuente = string;
 
 export interface Ingreso {
   id: number;
   fecha: string;
-  fuente: IngresoFuente;
+  fuente: string;
   /** @minimum 0 */
   monto: number;
   medio_pago_id?: number;
   nota: string;
 }
 
-export type IngresoInputFuente = typeof IngresoInputFuente[keyof typeof IngresoInputFuente];
-
-
-export const IngresoInputFuente = {
-  Didi: 'Didi',
-  papa: 'papa',
-  amigo: 'amigo',
-  otro: 'otro',
-} as const;
+export type IngresoInputFuente = string;
 
 export interface IngresoInput {
   fecha: string;
-  fuente: IngresoInputFuente;
+  fuente: string;
   /** @minimum 0 */
   monto: number;
   medio_pago_id?: number;
   nota: string;
 }
 
-export type IngresoUpdateFuente = typeof IngresoUpdateFuente[keyof typeof IngresoUpdateFuente];
-
-
-export const IngresoUpdateFuente = {
-  Didi: 'Didi',
-  papa: 'papa',
-  amigo: 'amigo',
-  otro: 'otro',
-} as const;
+export type IngresoUpdateFuente = string;
 
 export interface IngresoUpdate {
   fecha?: string;
-  fuente?: IngresoUpdateFuente;
+  fuente?: string;
   /** @minimum 0 */
   monto?: number;
   medio_pago_id?: number;
