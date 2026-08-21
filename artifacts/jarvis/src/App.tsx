@@ -278,6 +278,59 @@ function CategoryDonut({ data }: { data: ResumenCategoria[] }) {
   );
 }
 
+interface ResumenIngresoFuente {
+  fuente: string;
+  label: string;
+  total: number;
+  porcentaje: number;
+  color: string;
+  icono: string;
+}
+
+const FUENTE_COLORES: Record<string, { color: string; icono: string }> = {
+  Didi: { color: '#e8a85d', icono: '🛵' },
+  papa: { color: '#5de8c4', icono: '👨' },
+  amigo: { color: '#5d8ae8', icono: '🤝' },
+  otro: { color: '#a85de8', icono: '✨' },
+};
+
+function DonutTooltipIngresos({ active, payload }: { active?: boolean; payload?: Array<{ payload: ResumenIngresoFuente }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return <div className="cosmos-card px-3 py-2 text-sm text-white shadow-xl">{d.icono} <span className="font-semibold">{d.label}</span> · {money(d.total)} · <span style={{ color: d.color }}>{d.porcentaje}%</span></div>;
+}
+
+function IncomeDonut({ data }: { data: ResumenIngresoFuente[] }) {
+  const total = data.reduce((a, x) => a + x.total, 0);
+  return (
+    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-stretch">
+      <div className="relative h-[220px] w-full max-w-[260px] shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} dataKey="total" nameKey="label" innerRadius={66} outerRadius={96} paddingAngle={3} stroke="none" startAngle={90} endAngle={-270}>
+              {data.map((d) => <Cell key={d.fuente} fill={d.color} />)}
+            </Pie>
+            <Tooltip content={<DonutTooltipIngresos />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <div className="cosmos-eyebrow mb-1">ingresos</div>
+          <div className="cosmos-number text-2xl font-bold text-[#5de8c4]">{money(total)}</div>
+        </div>
+      </div>
+      <div className="grid flex-1 content-center gap-2.5 sm:pr-2">
+        {data.map((d) => (
+          <div key={d.fuente} className="flex items-center gap-3 text-sm">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
+            <span className="truncate text-white/80">{d.icono} {d.label}</span>
+            <span className="cosmos-number ml-auto font-semibold text-[#5de8c4]">{d.porcentaje}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CategoryBars({ data }: { data: ResumenCategoria[] }) {
   if (!data.length) {
     return <div className="py-6 text-center text-sm text-white/45">Todavía no hay gastos variables este mes.</div>;
@@ -325,6 +378,30 @@ function Dashboard() {
   const categoriasList = asList<Categoria>(categorias.data);
   const mediosList = asList<MedioPagoSaldo>(medios.data);
   const pieData = asList<ResumenCategoria>(porCategoria.data);
+  const pieDataIngresos = useMemo<ResumenIngresoFuente[]>(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const delMes = ingresosList.filter((x) => x.fecha.slice(0, 7) === currentMonth);
+    const total = delMes.reduce((acc, curr) => acc + curr.monto, 0);
+    if (!total) return [];
+
+    const agrupado = new Map<string, number>();
+    delMes.forEach((ing) => {
+      agrupado.set(ing.fuente, (agrupado.get(ing.fuente) ?? 0) + ing.monto);
+    });
+
+    return Array.from(agrupado.entries()).map(([fuente, monto]) => {
+      const cfg = FUENTE_COLORES[fuente] ?? { color: '#5de8c4', icono: '💵' };
+      return {
+        fuente,
+        label: sourceLabel[fuente as Fuente] ?? fuente,
+        total: monto,
+        porcentaje: Math.round((monto / total) * 100),
+        color: cfg.color,
+        icono: cfg.icono,
+      };
+    });
+  }, [ingresosList]);
+
   const catMap = useMemo(() => new Map(categoriasList.map((c) => [c.id, c])), [categoriasList]);
   const medioMap = useMemo(() => new Map(mediosList.map((m) => [m.id, m])), [mediosList]);
   const catsForModal = useMemo(() => categoriasList.filter((c) => c.activa), [categoriasList]);
@@ -424,18 +501,35 @@ function Dashboard() {
           )}
         </section>
 
-        <section className="cosmos-card px-5 py-6 sm:px-7">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <div className="cosmos-eyebrow mb-1">monefy style</div>
-              <h2 className="cosmos-title text-xl font-bold">Gasto variable este mes</h2>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* Dona de Ingresos por Fuente */}
+          <section className="cosmos-card px-5 py-6 sm:px-7">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <div className="cosmos-eyebrow mb-1">fuentes de entrada</div>
+                <h2 className="cosmos-title text-xl font-bold">Ingresos este mes</h2>
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-white/70"><CalendarDays size={13} /> {monthLabel}</span>
             </div>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-white/70"><CalendarDays size={13} /> {monthLabel}</span>
-          </div>
-          {porCategoria.isLoading ? <LoadingRows /> : pieData.length === 0
-            ? <EmptyState title="Sin gastos este mes" copy="Al registrar un gasto variable con su categoría, la dona se arma sola." action="Registrar gasto" onClick={() => setModal('variable')} testId="button-empty-dona" />
-            : <CategoryDonut data={pieData} />}
-        </section>
+            {ingresos.isLoading ? <LoadingRows /> : pieDataIngresos.length === 0
+              ? <EmptyState title="Sin ingresos este mes" copy="Registra tus ingresos de Didi u otras fuentes para ver su desglose en circunferencia." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso-dona" />
+              : <IncomeDonut data={pieDataIngresos} />}
+          </section>
+
+          {/* Dona de Gastos por Categoría */}
+          <section className="cosmos-card px-5 py-6 sm:px-7">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <div className="cosmos-eyebrow mb-1">monefy style</div>
+                <h2 className="cosmos-title text-xl font-bold">Gasto variable este mes</h2>
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-white/70"><CalendarDays size={13} /> {monthLabel}</span>
+            </div>
+            {porCategoria.isLoading ? <LoadingRows /> : pieData.length === 0
+              ? <EmptyState title="Sin gastos este mes" copy="Al registrar un gasto variable con su categoría, la dona se arma sola." action="Registrar gasto" onClick={() => setModal('variable')} testId="button-empty-dona" />
+              : <CategoryDonut data={pieData} />}
+          </section>
+        </div>
 
         <section className="cosmos-card px-5 py-6 sm:px-7">
           <div className="mb-1"><div className="cosmos-eyebrow mb-1">desglose</div><h2 className="cosmos-title text-xl font-bold">Resumen mensual por categoría</h2></div>
@@ -880,10 +974,22 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
     onSubmit({ nombre: String(form.nombre).trim(), icono: String(form.icono), color: String(form.color), activo: Boolean(form.activo) });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / hábito</div><h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar hábito' : 'Nuevo hábito'}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-5">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / hábito</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar hábito' : 'Nuevo hábito'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
           <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-habito-nombre" placeholder="Ej. Meditar, Beber agua, Leer 10 min..." /></label>
           <div><span className="cosmos-field-label">Icono</span>
             <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
@@ -903,7 +1009,7 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
             <span className="text-sm font-medium text-white/80">¿Mostrarlo en la lista diaria?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-habito-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-habito" className="cosmos-button-primary w-full">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar hábito'}</button>
+          <button disabled={pending} type="submit" data-testid="button-save-habito" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar hábito'}</button>
         </form>
       </div>
     </div>
@@ -948,26 +1054,20 @@ function RutinaPage() {
     <Topbar eyebrow="semana y ritmo" title="Rutina" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
       <div className="flex items-center justify-between gap-3">
-        <div className="cosmos-card flex gap-1 p-1">
-          <button onClick={() => setView('dia')} data-testid="tab-rutina-dia" className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${view === 'dia' ? 'bg-white text-black' : 'text-white/55 hover:text-white'}`}><List size={15} /><span className="hidden sm:inline">Día</span></button>
-          <button onClick={() => setView('semana')} data-testid="tab-rutina-semana" className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${view === 'semana' ? 'bg-white text-black' : 'text-white/55 hover:text-white'}`}><LayoutGrid size={15} /><span className="hidden sm:inline">Semana</span></button>
+        <div className="flex rounded-2xl bg-white/6 p-1">
+          <button onClick={() => setView('dia')} data-testid="button-vista-dia" className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition ${view === 'dia' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>Vista diaria</button>
+          <button onClick={() => setView('semana')} data-testid="button-vista-semana" className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition ${view === 'semana' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>Toda la semana</button>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1.5 text-xs font-semibold text-white/60"><Clock size={13} /> {RUTINA_DIAS_FULL[today]} · {ahora}</span>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-        {RUTINA_DIAS.map((label, i) => {
-          const n = semana[i]?.bloques.length ?? 0;
-          const selected = view === 'dia' && dia === i;
-          const isToday = i === today;
-          return (
-            <button key={i} onClick={() => { setDia(i); setView('dia'); }} data-testid={`selector-dia-${i}`}
-              className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5 text-center transition ${selected ? 'bg-white text-black' : isToday ? 'bg-white/10 text-white' : 'bg-white/4 text-white/60 hover:bg-white/8'}`}>
-              <span className="text-[10px] font-semibold uppercase tracking-wide">{label}</span>
-              <span className={`cosmos-number text-sm font-bold ${selected ? 'text-black' : isToday ? 'text-[#5de8c4]' : 'text-white/45'}`}>{n}</span>
-            </button>
-          );
-        })}
+        {view === 'dia' && (
+          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl bg-white/6 p-1">
+            {RUTINA_DIAS.map((label, i) => (
+              <button key={i} onClick={() => setDia(i)} data-testid={`tab-dia-${i}`}
+                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${dia === i ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {view === 'dia' ? (
@@ -1058,10 +1158,22 @@ function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRut
     onSubmit({ dia_semana: Number(form.dia_semana), hora_inicio: inicio, hora_fin: fin, titulo: String(form.titulo).trim(), descripcion: String(form.descripcion).trim(), icono: String(form.icono), color: String(form.color), activo: Boolean(form.activo) });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / rutina</div><h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar bloque' : 'Nuevo bloque'}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / rutina</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar bloque' : 'Nuevo bloque'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" data-testid="button-save-rutina-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block"><span className="cosmos-field-label">Día</span><select className="cosmos-select" value={String(form.dia_semana)} onChange={(e) => set('dia_semana', e.target.value)} data-testid="select-rutina-dia">{RUTINA_DIAS.map((label, i) => <option key={i} value={i}>{label} · {RUTINA_DIAS_FULL[i]}</option>)}</select></label>
             <label className="block"><span className="cosmos-field-label">Icono</span><select className="cosmos-select" value={String(form.icono)} onChange={(e) => set('icono', e.target.value)} data-testid="select-rutina-icono">{RUTINA_EMOJIS.map((emoji) => <option key={emoji} value={emoji}>{emoji}</option>)}</select></label>
@@ -1083,7 +1195,7 @@ function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRut
             <span className="text-sm font-medium text-white/80">¿Mostrarlo en la rutina?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-rutina-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-rutina" className="cosmos-button-primary w-full">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar bloque'}</button>
+          <button disabled={pending} type="submit" data-testid="button-save-rutina" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar bloque'}</button>
         </form>
       </div>
     </div>
@@ -1143,10 +1255,22 @@ function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categor
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
   const edit = (event: React.FormEvent) => { event.preventDefault(); if (!String(form.nombre).trim()) return; onSubmit({ ...form, activa: Boolean(form.activa) }); };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / categoría</div><h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar categoría' : 'Nueva categoría'}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={edit} className="space-y-5">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / categoría</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar categoría' : 'Nueva categoría'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" data-testid="button-save-categoria-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
           <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-categoria-nombre" placeholder="Ej. Comida, Didi, Mercado..." /></label>
           <div><span className="cosmos-field-label">Icono</span>
             <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
@@ -1166,7 +1290,7 @@ function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categor
             <span className="text-sm font-medium text-white/80">¿Mostrarla al registrar gastos?</span>
             <button type="button" onClick={() => set('activa', !form.activa)} data-testid="toggle-categoria-activa" className={`relative h-6 w-11 rounded-full transition ${form.activa ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activa ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
-          <button disabled={pending} type="submit" data-testid="button-save-categoria" className="cosmos-button-primary w-full">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar categoría'}</button>
+          <button disabled={pending} type="submit" data-testid="button-save-categoria" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">{pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}{pending ? 'Guardando…' : 'Guardar categoría'}</button>
         </form>
       </div>
     </div>
@@ -1212,16 +1336,22 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
     onSubmit({ fecha: form.fecha, origen_id: origen, destino_id: destino, monto, nota: form.nota });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <div className="cosmos-eyebrow mb-1">jarvis / transferencias</div>
-            <h2 className="cosmos-title text-2xl font-bold">Mover entre cuentas</h2>
-          </div>
-          <button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / transferencias</div>
+              <h2 className="cosmos-title text-2xl font-bold">Mover entre cuentas</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" data-testid="button-save-transferencia-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
+                {pending ? '...' : 'Transferir'}
+              </button>
+              <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
           <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></span>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
@@ -1241,8 +1371,9 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
               </select>
             </label>
           </div>
+          <span className="block"><span className="cosmos-field-label">Monto a transferir</span><input required min="0.01" step="0.01" type="number" className="cosmos-input" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" /></span>
           <span className="block"><span className="cosmos-field-label">Nota o motivo (opcional)</span><input className="cosmos-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Ej. Retiro cajero, recarga Nequi..." /></span>
-          <button disabled={pending} type="submit" data-testid="button-save-transferencia" className="cosmos-button-primary w-full !py-3.5">
+          <button disabled={pending} type="submit" data-testid="button-save-transferencia" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
             {pending ? <RefreshCw size={17} className="animate-spin" /> : <ArrowRightLeft size={17} />}
             {pending ? 'Transfiriendo…' : 'Completar transferencia'}
           </button>
@@ -1505,9 +1636,33 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const title = isIngreso ? (record ? 'Editar ingreso' : 'Nuevo ingreso') : isVariable ? (record ? 'Editar gasto variable' : 'Nuevo gasto variable') : isFijo ? (record ? 'Editar gasto fijo' : 'Nuevo gasto fijo') : (record ? 'Editar kilometraje' : 'Registrar kilometraje');
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
-        <div className="mb-6 flex items-start justify-between"><div><div className="cosmos-eyebrow mb-1">jarvis / registro</div><h2 className="cosmos-title text-2xl font-bold">{title}</h2></div><button onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button></div>
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4 pb-4 sm:pb-0">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / registro</div>
+              <h2 className="cosmos-title text-2xl font-bold">{title}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={pending}
+                type="submit"
+                data-testid="button-save-record-top"
+                className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50"
+              >
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                data-testid="button-close-modal"
+                className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
           {isFijo ? <>
             <span className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-fijo-nombre" placeholder="Ej. renta, plan de datos" /></span>
             <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-fijo-monto" placeholder="0" /></span>
@@ -1901,17 +2056,23 @@ function FechaModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <div className="cosmos-eyebrow mb-1">jarvis / evento</div>
-            <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar fecha especial' : 'Nueva fecha especial'}</h2>
-          </div>
-          <button onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
-        </div>
-
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / evento</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar fecha especial' : 'Nueva fecha especial'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
+
           <label className="block">
             <span className="cosmos-field-label">Nombre de la persona o evento</span>
             <input
@@ -1976,7 +2137,7 @@ function FechaModal({
             />
           </label>
 
-          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5">
+          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
             {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
             {pending ? 'Guardando…' : 'Guardar fecha especial'}
           </button>
@@ -2027,17 +2188,23 @@ function RecordatorioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <div className="cosmos-eyebrow mb-1">jarvis / alarma</div>
-            <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar recordatorio' : 'Nuevo recordatorio'}</h2>
-          </div>
-          <button onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
-        </div>
-
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / alarma</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar recordatorio' : 'Nuevo recordatorio'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
+
           <label className="block">
             <span className="cosmos-field-label">¿Qué deseas que te recuerde?</span>
             <input
@@ -2117,7 +2284,7 @@ function RecordatorioModal({
             />
           </label>
 
-          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5">
+          <button disabled={pending} type="submit" className="cosmos-button-primary w-full !py-3.5 text-base font-bold shadow-lg">
             {pending ? <RefreshCw size={17} className="animate-spin" /> : <Save />}
             {pending ? 'Guardando…' : 'Guardar recordatorio'}
           </button>
