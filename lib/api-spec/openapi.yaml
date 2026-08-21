@@ -868,6 +868,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteAllBloquesRutina
+      tags: [rutina]
+      summary: Elimina todos los bloques de rutina
+      responses:
+        "204":
+          description: Todos los bloques eliminados
   /rutina/semana:
     get:
       operationId: getRutinaSemana

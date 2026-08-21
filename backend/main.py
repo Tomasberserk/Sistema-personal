@@ -1534,6 +1534,14 @@ def delete_bloque_rutina(item_id: int) -> Response:
     return Response(status_code=204)
 
 
+@app.delete("/api/rutina/bloques", status_code=204)
+def delete_all_bloques_rutina() -> Response:
+    with closing(get_connection()) as connection:
+        connection.execute("DELETE FROM bloques_rutina")
+        connection.commit()
+    return Response(status_code=204)
+
+
 @app.get("/api/medios-pago", response_model=list[MedioPagoSaldo])
 def list_medios_pago() -> list[dict[str, Any]]:
     return build_saldos_medios()

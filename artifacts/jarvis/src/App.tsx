@@ -1281,7 +1281,6 @@ function RutinaPage() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<BloqueRutina | null>(null);
   const [focusModal, setFocusModal] = useState<BloqueRutina | null>(null);
-  const [cargandoPlantilla, setCargandoPlantilla] = useState(false);
 
   const diaQ = useGetRutinaDia(dia);
   const semanaQ = useGetRutinaSemana();
@@ -1329,19 +1328,15 @@ function RutinaPage() {
     update.mutate({ id: b.id, data: { activo } as never }, { onSuccess: invalidate });
   };
 
-  const cargarPlantillaExcel = async () => {
-    if (!window.confirm('¿Quieres cargar tu plantilla semanal recomendada de bloques de tiempo? (Lunes a Domingo)')) return;
-    setCargandoPlantilla(true);
+  const onDeleteAll = async () => {
+    if (!todos.length) return;
+    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar TODOS los bloques de tu rutina semanal? Esta acción vaciará por completo tu horario.')) return;
     try {
-      for (const item of PLANTILLA_BLOQUES_EXCEL) {
-        await create.mutateAsync({ data: item as never });
-      }
+      await fetch('/api/rutina/bloques', { method: 'DELETE' });
       invalidate();
-      toast.success('¡Tu rutina semanal de bloques ha sido cargada con éxito!');
-    } catch (e: unknown) {
-      toast.error('Ocurrió un error al cargar la plantilla');
-    } finally {
-      setCargandoPlantilla(false);
+      toast.success('Todos los bloques de la rutina han sido eliminados');
+    } catch {
+      toast.error('No se pudieron eliminar los bloques');
     }
   };
 
@@ -1395,17 +1390,6 @@ function RutinaPage() {
             <Target size={14} />
             <span>Temporizador Enfoque</span>
           </button>
-
-          {todos.length === 0 && (
-            <button
-              disabled={cargandoPlantilla}
-              onClick={cargarPlantillaExcel}
-              className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85 transition hover:bg-white/15"
-            >
-              {cargandoPlantilla ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
-              <span>Cargar horario Excel</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1532,14 +1516,21 @@ function RutinaPage() {
         </section>
       )}
 
-      {/* Gestión general y carga rápida */}
+      {/* Gestión general */}
       <section className="cosmos-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6">
           <div><div className="cosmos-eyebrow mb-1">gestión</div><h2 className="cosmos-title text-lg font-bold">Todos los bloques ({todos.length})</h2></div>
           <div className="flex items-center gap-2">
-            <button onClick={cargarPlantillaExcel} className="hidden sm:flex items-center gap-1.5 rounded-xl bg-white/6 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10">
-              <Download size={14} /> Plantilla Excel
-            </button>
+            {todos.length > 0 && (
+              <button
+                onClick={onDeleteAll}
+                className="flex items-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/20"
+                title="Eliminar todos los bloques de la semana"
+              >
+                <Trash2 size={14} />
+                <span>Vaciar rutina</span>
+              </button>
+            )}
             <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-bloque-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Nuevo</span></button>
           </div>
         </div>
