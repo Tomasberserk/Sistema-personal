@@ -259,7 +259,8 @@ class BloqueRutinaInput(BaseModel):
     titulo: str = Field(min_length=1)
     descripcion: str = ""
     color: str = "#5d8ae8"
-    icono: str = "â°"
+    icono: str = "⏰"
+    tipo_bloque: str = "Flexible"
     activo: bool = True
 
 
@@ -271,6 +272,7 @@ class BloqueRutinaUpdate(BaseModel):
     descripcion: str | None = None
     color: str | None = None
     icono: str | None = None
+    tipo_bloque: str | None = None
     activo: bool | None = None
 
 
@@ -602,6 +604,7 @@ POSTGRES_SCHEMA = """
         descripcion TEXT NOT NULL DEFAULT '',
         color TEXT NOT NULL DEFAULT '#5d8ae8',
         icono TEXT NOT NULL DEFAULT '⏰',
+        tipo_bloque TEXT NOT NULL DEFAULT 'Flexible',
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
     CREATE TABLE IF NOT EXISTS fechas_especiales (
@@ -715,6 +718,7 @@ SQLITE_SCHEMA = """
         descripcion TEXT NOT NULL DEFAULT '',
         color TEXT NOT NULL DEFAULT '#5d8ae8',
         icono TEXT NOT NULL DEFAULT '⏰',
+        tipo_bloque TEXT NOT NULL DEFAULT 'Flexible',
         activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
     );
     CREATE TABLE IF NOT EXISTS fechas_especiales (
@@ -774,6 +778,10 @@ def init_db() -> None:
                 connection.execute("ALTER TABLE ingresos DROP CONSTRAINT IF EXISTS ingresos_fuente_check")
             except Exception:
                 pass
+            try:
+                connection.execute("ALTER TABLE bloques_rutina ADD COLUMN IF NOT EXISTS tipo_bloque TEXT NOT NULL DEFAULT 'Flexible'")
+            except Exception:
+                pass
         else:
             # Migraciones de columnas si no existen
             ing_cols = [row["name"] for row in connection.execute("PRAGMA table_info(ingresos)").fetchall()]
@@ -786,6 +794,12 @@ def init_db() -> None:
             if "medio_pago_id" not in gv_cols:
                 try:
                     connection.execute("ALTER TABLE gastos_variables ADD COLUMN medio_pago_id INTEGER REFERENCES medios_pago(id)")
+                except Exception:
+                    pass
+            br_cols = [row["name"] for row in connection.execute("PRAGMA table_info(bloques_rutina)").fetchall()]
+            if "tipo_bloque" not in br_cols:
+                try:
+                    connection.execute("ALTER TABLE bloques_rutina ADD COLUMN tipo_bloque TEXT NOT NULL DEFAULT 'Flexible'")
                 except Exception:
                     pass
         moto = connection.execute(

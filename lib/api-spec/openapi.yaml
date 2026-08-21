@@ -1732,9 +1732,11 @@ components:
           type: string
         icono:
           type: string
+        tipo_bloque:
+          type: string
         activo:
           type: boolean
-      required: [id, dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, activo]
+      required: [id, dia_semana, hora_inicio, hora_fin, titulo, descripcion, color, icono, tipo_bloque, activo]
     BloqueRutinaInput:
       type: object
       properties:
@@ -1753,6 +1755,8 @@ components:
         color:
           type: string
         icono:
+          type: string
+        tipo_bloque:
           type: string
         activo:
           type: boolean
@@ -1775,6 +1779,8 @@ components:
         color:
           type: string
         icono:
+          type: string
+        tipo_bloque:
           type: string
         activo:
           type: boolean

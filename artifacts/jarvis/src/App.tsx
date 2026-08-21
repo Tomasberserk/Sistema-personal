@@ -6,6 +6,7 @@ import {
   Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight,
   CircleDollarSign, Clock, Droplets, Flame, Gauge, LayoutGrid, List, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
   Trash2, TrendingUp, TriangleAlert, Wrench, X, Wallet, ArrowRightLeft, Landmark, CreditCard, Bell, Gift, Sparkles, AlertCircle,
+  Play, Pause, RotateCcw, Target, Coffee, Heart, Sun, Moon, Zap, Download, Compass,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -79,8 +80,91 @@ const HABITO_EMOJIS = ['✅', '🏃', '💧', '📖', '🧘', '🥗', '💪', '�
 const HABITO_COLORS = ['#5de8c4', '#5d8ae8', '#e8a85d', '#a85de8', '#e85d4a', '#5de87a', '#5dc4e8', '#e85dd3', '#e8d95d', '#8a8aa0'];
 const RUTINA_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const RUTINA_DIAS_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const RUTINA_EMOJIS = ['🐕', '🍳', '💪', '📚', '🍽️', '🕐', '🛁', '🏫', '⏰', '🧘', '🚿', '🛌', '📖', '💻', '🎮', '🏃', '🥗', '☕', '🚌', '🏠', '✨'];
-const RUTINA_COLORS = ['#5d8ae8', '#e8a85d', '#e85d4a', '#a85de8', '#5de87a', '#e8d95d', '#5dc4e8', '#e85d8a', '#5de8c4', '#8a8aa0'];
+const RUTINA_EMOJIS = ['🎯', '💼', '🎓', '🍲', '❤️', '🌅', '🚶', '👁️', '📋', '🌙', '🐕', '🍳', '💪', '📚', '🍽️', '⏰', '🧘', '💻', '🎮', '🏃', '☕', '✨'];
+const RUTINA_COLORS = ['#5de8c4', '#5d8ae8', '#e8a85d', '#a85de8', '#e85d8a', '#e8d95d', '#8a8aa0', '#5dc4e8', '#b7e85d', '#e85d4a'];
+
+const TIPOS_BLOQUE = [
+  { id: 'Enfoque', label: 'Enfoque / Creación', icono: '🎯', color: '#5de8c4', desc: 'Trabajo profundo en proyecto prioritario (35 min / bloques)' },
+  { id: 'Flexible', label: 'Flexible / Elección', icono: '💼', color: '#5d8ae8', desc: 'Digi, SENA, gestión, proyectos o vida personal' },
+  { id: 'Fijo', label: 'Fijo / Clases / Trabajo', icono: '🎓', color: '#e8a85d', desc: 'Compromisos ineludibles (SENA, horario fijo)' },
+  { id: 'Recuperación', label: 'Recuperación / Comida', icono: '🍲', color: '#a85de8', desc: 'Comer, descansar, desconectar energía' },
+  { id: 'Personal', label: 'Tiempo personal / Pareja', icono: '❤️', color: '#e85d8a', desc: 'Pareja, familia, ocio o descanso sin culpa' },
+  { id: 'Inicio', label: 'Inicio del día', icono: '🌅', color: '#e8d95d', desc: 'Despertar, aseo, desayuno y puesta en marcha' },
+  { id: 'Transición', label: 'Cierre y transición', icono: '🚶', color: '#8a8aa0', desc: 'Ordenar pendientes, alistarse y salir' },
+  { id: 'Revisión', label: 'Revisión ligera', icono: '👁️', color: '#5dc4e8', desc: 'Revisar la semana y anotar prioridades' },
+  { id: 'Planificación', label: 'Planificación semanal', icono: '📋', color: '#b7e85d', desc: 'Elegir prioridades y preparar los bloques' },
+  { id: 'Cierre', label: 'Cierre de jornada', icono: '🌙', color: '#8a8aa0', desc: 'Desconectar y preparar el descanso' },
+] as const;
+
+const getTipoBloqueInfo = (tipo = 'Flexible') => {
+  return TIPOS_BLOQUE.find((t) => t.id.toLowerCase() === tipo.toLowerCase()) ?? {
+    id: tipo,
+    label: tipo,
+    icono: '⏰',
+    color: '#5d8ae8',
+    desc: 'Bloque de tiempo',
+  };
+};
+
+const calcularHorasBloque = (inicio: string, fin: string) => {
+  const [h1, m1] = (inicio || '00:00').split(':').map(Number);
+  const [h2, m2] = (fin || '00:00').split(':').map(Number);
+  let totalMin = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (totalMin < 0) totalMin += 24 * 60;
+  return Math.round((totalMin / 60) * 10) / 10;
+};
+
+const reproducirAlertaSonora = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.85);
+  } catch {
+    // Audio no soportado o bloqueado
+  }
+};
+
+const PLANTILLA_BLOQUES_EXCEL: Omit<BloqueRutinaInput, 'activo'>[] = [
+  // LUNES (0)
+  { dia_semana: 0, hora_inicio: '12:00', hora_fin: '13:30', titulo: 'Almuerzo y pausa', descripcion: 'Comer, descansar y desconectar un rato.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
+  { dia_semana: 0, hora_inicio: '13:30', hora_fin: '16:30', titulo: 'Bloque flexible', descripcion: 'Digi, SENA, gestión de microempresa, continuar el proyecto de la mañana o vida personal según prioridades.', icono: '💼', color: '#5d8ae8', tipo_bloque: 'Flexible' },
+  { dia_semana: 0, hora_inicio: '16:30', hora_fin: '17:40', titulo: 'Cierre y transición', descripcion: 'Ordenar pendientes, preparar comida/cosas del SENA, bañarse y salir.', icono: '🚶', color: '#8a8aa0', tipo_bloque: 'Transición' },
+  { dia_semana: 0, hora_inicio: '17:40', hora_fin: '23:59', titulo: 'SENA', descripcion: 'Clases y actividades del SENA. Al llegar, rutina breve de cierre y descanso.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
+
+  // MARTES (1) a VIERNES (4)
+  ...[1, 2, 3, 4].flatMap((d) => [
+    { dia_semana: d, hora_inicio: '08:00', hora_fin: '09:00', titulo: 'Inicio del día', descripcion: 'Despertar, aseo, desayuno y puesta en marcha.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
+    { dia_semana: d, hora_inicio: '09:00', hora_fin: '12:00', titulo: 'Bloque de creación', descripcion: 'Proyecto prioritario del momento. Sesiones de 35 min + 15 min de descanso.', icono: '🎯', color: '#5de8c4', tipo_bloque: 'Enfoque' },
+    { dia_semana: d, hora_inicio: '12:00', hora_fin: '13:30', titulo: 'Almuerzo y pausa', descripcion: 'Comer y recuperar energía.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
+    { dia_semana: d, hora_inicio: '13:30', hora_fin: '16:30', titulo: 'Bloque flexible', descripcion: 'Digi, SENA, gestión, continuación del proyecto o vida personal.', icono: '💼', color: '#5d8ae8', tipo_bloque: 'Flexible' },
+    { dia_semana: d, hora_inicio: '16:30', hora_fin: '17:40', titulo: 'Cierre y transición', descripcion: 'Organizar, comer/preparar lo necesario y salir.', icono: '🚶', color: '#8a8aa0', tipo_bloque: 'Transición' },
+    { dia_semana: d, hora_inicio: '17:40', hora_fin: '23:59', titulo: 'SENA', descripcion: 'Clases y actividades del SENA.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
+  ]),
+
+  // SÁBADO (5)
+  { dia_semana: 5, hora_inicio: '05:00', hora_fin: '05:40', titulo: 'Inicio del día', descripcion: 'Levantarse, aseo, desayuno ligero y preparación para clase.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
+  { dia_semana: 5, hora_inicio: '06:00', hora_fin: '18:00', titulo: 'SENA', descripcion: 'Jornada presencial de clase. Prioridad: cumplir y conservar energía.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
+  { dia_semana: 5, hora_inicio: '18:00', hora_fin: '20:00', titulo: 'Recuperación', descripcion: 'Regreso, comida, descanso y desconexión. Sin exigir productividad.', icono: '🛋️', color: '#a85de8', tipo_bloque: 'Recuperación' },
+  { dia_semana: 5, hora_inicio: '20:00', hora_fin: '20:30', titulo: 'Revisión ligera', descripcion: 'Revisar cómo fue la semana y anotar lo importante para el domingo/lunes.', icono: '👁️', color: '#5dc4e8', tipo_bloque: 'Revisión' },
+  { dia_semana: 5, hora_inicio: '20:30', hora_fin: '23:59', titulo: 'Tiempo personal', descripcion: 'Pareja, familia, ocio o descanso sin culpa.', icono: '❤️', color: '#e85d8a', tipo_bloque: 'Personal' },
+
+  // DOMINGO (6)
+  { dia_semana: 6, hora_inicio: '08:00', hora_fin: '09:00', titulo: 'Inicio del día', descripcion: 'Despertar tranquilo, aseo y desayuno.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
+  { dia_semana: 6, hora_inicio: '09:00', hora_fin: '12:00', titulo: 'Bloque estratégico', descripcion: 'Proyecto principal o trabajo de mayor impacto. También puede ser planeación profunda.', icono: '🚀', color: '#5de8c4', tipo_bloque: 'Enfoque' },
+  { dia_semana: 6, hora_inicio: '12:00', hora_fin: '14:00', titulo: 'Almuerzo y pausa', descripcion: 'Comer y desconectar.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
+  { dia_semana: 6, hora_inicio: '14:00', hora_fin: '17:00', titulo: 'Bloque de elección', descripcion: 'Proyecto secundario, finanzas, aprendizaje, gestión, pareja, familia o tiempo para ti.', icono: '🧩', color: '#5d8ae8', tipo_bloque: 'Flexible' },
+  { dia_semana: 6, hora_inicio: '17:00', hora_fin: '18:00', titulo: 'Planificación semanal', descripcion: 'Elegir prioridades y preparar los bloques de la semana; no llenar cada minuto.', icono: '📋', color: '#b7e85d', tipo_bloque: 'Planificación' },
+];
+
 const hoyIdx = () => (new Date().getDay() + 6) % 7;
 const horaAhora = () => new Date().toTimeString().slice(0, 5);
 
@@ -1035,6 +1119,160 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
   );
 }
 
+function PomodoroModal({
+  bloque,
+  onClose,
+}: {
+  bloque: BloqueRutina | null;
+  onClose: () => void;
+}) {
+  const [modo, setModo] = useState<'35_15' | '25_5' | '50_10'>('35_15');
+  const [fase, setFase] = useState<'enfoque' | 'descanso'>('enfoque');
+  const [ciclos, setCiclos] = useState(0);
+  const [activo, setActivo] = useState(false);
+
+  const getDuraciones = () => {
+    if (modo === '35_15') return { enfoque: 35, descanso: 15 };
+    if (modo === '25_5') return { enfoque: 25, descanso: 5 };
+    return { enfoque: 50, descanso: 10 };
+  };
+
+  const dur = getDuraciones();
+  const duracionTotalSegundos = (fase === 'enfoque' ? dur.enfoque : dur.descanso) * 60;
+  const [segundosRestantes, setSegundosRestantes] = useState(duracionTotalSegundos);
+
+  useEffect(() => {
+    setSegundosRestantes((fase === 'enfoque' ? dur.enfoque : dur.descanso) * 60);
+    setActivo(false);
+  }, [modo, fase]);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (activo && segundosRestantes > 0) {
+      interval = setInterval(() => {
+        setSegundosRestantes((prev) => prev - 1);
+      }, 1000);
+    } else if (activo && segundosRestantes === 0) {
+      reproducirAlertaSonora();
+      if (fase === 'enfoque') {
+        toast.success('¡Bloque de enfoque completado! Momento de descansar.', { icon: '☕' });
+        setCiclos((c) => c + 1);
+        setFase('descanso');
+      } else {
+        toast.success('¡Descanso terminado! Listo para el siguiente ciclo.', { icon: '🎯' });
+        setFase('enfoque');
+      }
+      setActivo(false);
+    }
+    return () => clearInterval(interval);
+  }, [activo, segundosRestantes, fase]);
+
+  const minutos = Math.floor(segundosRestantes / 60);
+  const segundos = segundosRestantes % 60;
+  const porcentaje = Math.round(((duracionTotalSegundos - segundosRestantes) / duracionTotalSegundos) * 100);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+      <div role="dialog" aria-modal="true" className="cosmos-card relative w-full max-w-md overflow-hidden rounded-[28px] p-6 shadow-2xl sm:p-8 text-center">
+        <div className="flex items-center justify-between border-b border-white/6 pb-4">
+          <div className="text-left">
+            <div className="cosmos-eyebrow mb-1">modo enfoque / creación</div>
+            <h2 className="cosmos-title text-xl font-bold">{bloque ? `${bloque.icono} ${bloque.titulo}` : 'Sesión de creación'}</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="mt-4 flex justify-center gap-1.5 rounded-2xl bg-white/5 p-1">
+          <button
+            onClick={() => setModo('35_15')}
+            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${modo === '35_15' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'}`}
+          >
+            35 / 15 (Tu ritmo)
+          </button>
+          <button
+            onClick={() => setModo('25_5')}
+            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${modo === '25_5' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'}`}
+          >
+            25 / 5
+          </button>
+          <button
+            onClick={() => setModo('50_10')}
+            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${modo === '50_10' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'}`}
+          >
+            50 / 10
+          </button>
+        </div>
+
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider ${fase === 'enfoque' ? 'bg-[#5de8c4]/15 text-[#5de8c4]' : 'bg-[#5d8ae8]/15 text-[#5d8ae8]'}`}>
+            {fase === 'enfoque' ? <Target size={14} /> : <Coffee size={14} />}
+            {fase === 'enfoque' ? 'Trabajo profundo' : 'Pausa y desconexión'}
+          </span>
+          {ciclos > 0 && (
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/70">
+              🔥 {ciclos} {ciclos === 1 ? 'ciclo' : 'ciclos'}
+            </span>
+          )}
+        </div>
+
+        <div className="my-6 flex flex-col items-center justify-center">
+          <div className="cosmos-number text-6xl font-black tracking-tight text-white sm:text-7xl">
+            {String(minutos).padStart(2, '0')}:{String(segundos).padStart(2, '0')}
+          </div>
+          <div className="mt-4 h-2 w-full max-w-[260px] overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full transition-all duration-300 rounded-full"
+              style={{
+                width: `${porcentaje}%`,
+                backgroundColor: fase === 'enfoque' ? '#5de8c4' : '#5d8ae8',
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => setActivo(!activo)}
+            className={`flex h-14 w-14 items-center justify-center rounded-full text-xl shadow-lg transition hover:scale-105 active:scale-95 ${
+              activo ? 'bg-amber-400 text-black' : 'bg-white text-black'
+            }`}
+          >
+            {activo ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+          </button>
+          <button
+            onClick={() => {
+              setActivo(false);
+              setSegundosRestantes((fase === 'enfoque' ? dur.enfoque : dur.descanso) * 60);
+            }}
+            title="Reiniciar timer"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-white/70 transition hover:bg-white/15 hover:text-white"
+          >
+            <RotateCcw size={18} />
+          </button>
+          <button
+            onClick={() => {
+              setActivo(false);
+              setFase(fase === 'enfoque' ? 'descanso' : 'enfoque');
+            }}
+            title="Cambiar fase"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-white/70 transition hover:bg-white/15 hover:text-white"
+          >
+            <Zap size={18} />
+          </button>
+        </div>
+
+        {bloque?.descripcion && (
+          <p className="mt-6 rounded-2xl bg-white/4 p-3 text-xs text-white/60 text-left">
+            💡 {bloque.descripcion}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RutinaPage() {
   const queryClient = useQueryClient();
   const today = hoyIdx();
@@ -1042,6 +1280,9 @@ function RutinaPage() {
   const [view, setView] = useState<'dia' | 'semana'>('dia');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<BloqueRutina | null>(null);
+  const [focusModal, setFocusModal] = useState<BloqueRutina | null>(null);
+  const [cargandoPlantilla, setCargandoPlantilla] = useState(false);
+
   const diaQ = useGetRutinaDia(dia);
   const semanaQ = useGetRutinaSemana();
   const todosQ = useListBloquesRutina();
@@ -1051,66 +1292,208 @@ function RutinaPage() {
   const todos = asList<BloqueRutina>(todosQ.data);
   const ahora = horaAhora();
   const activoAhora = (b: BloqueRutina) => dia === today && b.hora_inicio <= ahora && ahora < b.hora_fin;
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getGetRutinaDiaQueryKey(dia) });
     queryClient.invalidateQueries({ queryKey: getGetRutinaSemanaQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListBloquesRutinaQueryKey() });
   };
-  const onSave = (data: Record<string, unknown>) => {
+
+  const onSave = async (data: Record<string, unknown> | Array<Record<string, unknown>>) => {
     const doneMut = () => { invalidate(); setModal(false); setEditing(null); };
     const onError = (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el bloque');
-    if (editing) update.mutate({ id: editing.id, data: data as never }, { onSuccess: doneMut, onError });
-    else create.mutate({ data: data as never }, { onSuccess: doneMut, onError });
+    
+    if (Array.isArray(data)) {
+      try {
+        for (const item of data) {
+          await create.mutateAsync({ data: item as never });
+        }
+        doneMut();
+        toast.success(`Se crearon ${data.length} bloques en tu rutina`);
+      } catch (err: unknown) {
+        onError(err);
+      }
+    } else if (editing) {
+      update.mutate({ id: editing.id, data: data as never }, { onSuccess: doneMut, onError });
+    } else {
+      create.mutate({ data: data as never }, { onSuccess: doneMut, onError });
+    }
   };
+
   const onDelete = (b: BloqueRutina) => {
-    if (!window.confirm(`¿Eliminar "${b.titulo}" de ${b.hora_inicio} a ${b.hora_fin}?`)) return;
+    if (!window.confirm(`¿Eliminar bloque "${b.titulo}" (${b.hora_inicio} a ${b.hora_fin})?`)) return;
     remove.mutate({ id: b.id }, { onSuccess: () => { invalidate(); toast.success('Bloque eliminado'); }, onError: () => toast.error('No se pudo eliminar') });
   };
+
   const onActive = (b: BloqueRutina, activo: boolean) => {
     update.mutate({ id: b.id, data: { activo } as never }, { onSuccess: invalidate });
   };
+
+  const cargarPlantillaExcel = async () => {
+    if (!window.confirm('¿Quieres cargar tu plantilla semanal recomendada de bloques de tiempo? (Lunes a Domingo)')) return;
+    setCargandoPlantilla(true);
+    try {
+      for (const item of PLANTILLA_BLOQUES_EXCEL) {
+        await create.mutateAsync({ data: item as never });
+      }
+      invalidate();
+      toast.success('¡Tu rutina semanal de bloques ha sido cargada con éxito!');
+    } catch (e: unknown) {
+      toast.error('Ocurrió un error al cargar la plantilla');
+    } finally {
+      setCargandoPlantilla(false);
+    }
+  };
+
+  // Cálculo de distribución de horas por tipo de bloque
+  const horasPorTipoDia = useMemo(() => {
+    const map = new Map<string, number>();
+    bloquesDia.forEach((b) => {
+      if (!b.activo) return;
+      const t = b.tipo_bloque || 'Flexible';
+      const h = calcularHorasBloque(b.hora_inicio, b.hora_fin);
+      map.set(t, (map.get(t) ?? 0) + h);
+    });
+    return Array.from(map.entries()).map(([tipo, horas]) => ({
+      tipo,
+      horas: Math.round(horas * 10) / 10,
+      info: getTipoBloqueInfo(tipo),
+    }));
+  }, [bloquesDia]);
+
+  const horasPorTipoSemana = useMemo(() => {
+    const map = new Map<string, number>();
+    todos.forEach((b) => {
+      if (!b.activo) return;
+      const t = b.tipo_bloque || 'Flexible';
+      const h = calcularHorasBloque(b.hora_inicio, b.hora_fin);
+      map.set(t, (map.get(t) ?? 0) + h);
+    });
+    return Array.from(map.entries()).map(([tipo, horas]) => ({
+      tipo,
+      horas: Math.round(horas * 10) / 10,
+      info: getTipoBloqueInfo(tipo),
+    }));
+  }, [todos]);
+
   return <Shell><div className="relative z-10 min-h-[100dvh]">
-    <Topbar eyebrow="semana y ritmo" title="Rutina" onAdd={() => { setEditing(null); setModal(true); }} />
+    <Topbar eyebrow="arquitectura del día" title="Rutinas y Bloques" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
-      <div className="flex items-center justify-between gap-3">
+      
+      {/* Barra superior de vistas y acciones */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-2xl bg-white/6 p-1">
           <button onClick={() => setView('dia')} data-testid="button-vista-dia" className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition ${view === 'dia' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>Vista diaria</button>
           <button onClick={() => setView('semana')} data-testid="button-vista-semana" className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition ${view === 'semana' ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>Toda la semana</button>
         </div>
-        {view === 'dia' && (
-          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl bg-white/6 p-1">
-            {RUTINA_DIAS.map((label, i) => (
-              <button key={i} onClick={() => setDia(i)} data-testid={`tab-dia-${i}`}
-                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition ${dia === i ? 'bg-white text-black' : 'text-white/60 hover:text-white'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFocusModal(bloquesDia.find((b) => b.tipo_bloque === 'Enfoque') ?? null)}
+            className="flex items-center gap-1.5 rounded-xl bg-[#5de8c4]/15 px-3 py-1.5 text-xs font-bold text-[#5de8c4] transition hover:bg-[#5de8c4]/25"
+          >
+            <Target size={14} />
+            <span>Temporizador Enfoque</span>
+          </button>
+
+          {todos.length === 0 && (
+            <button
+              disabled={cargandoPlantilla}
+              onClick={cargarPlantillaExcel}
+              className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85 transition hover:bg-white/15"
+            >
+              {cargandoPlantilla ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+              <span>Cargar horario Excel</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {view === 'dia' && (
+        <div className="flex items-center gap-1 overflow-x-auto rounded-2xl bg-white/6 p-1.5">
+          {RUTINA_DIAS.map((label, i) => (
+            <button key={i} onClick={() => setDia(i)} data-testid={`tab-dia-${i}`}
+              className={`flex-1 min-w-[44px] rounded-xl py-1.5 text-xs font-semibold transition text-center ${dia === i ? 'bg-white text-black shadow-md' : 'text-white/60 hover:text-white'}`}>
+              <span className="block text-[10px] uppercase tracking-wider">{label}</span>
+              <span className="text-[11px] font-normal">{RUTINA_DIAS_FULL[i].slice(0, 3)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Balance de tiempo según tipo de bloque */}
+      <section className="cosmos-card p-4 sm:p-5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="cosmos-eyebrow">
+            {view === 'dia' ? `balance de hoy · ${RUTINA_DIAS_FULL[dia]}` : 'balance semanal de propósitos'}
+          </span>
+          <span className="text-[11px] text-white/40">Los horarios dan estructura, los bloques flexibilidad</span>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {(view === 'dia' ? horasPorTipoDia : horasPorTipoSemana).length === 0 ? (
+            <span className="text-xs text-white/40">Sin bloques activos en este periodo.</span>
+          ) : (
+            (view === 'dia' ? horasPorTipoDia : horasPorTipoSemana).map((item) => (
+              <div
+                key={item.tipo}
+                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium"
+                style={{ backgroundColor: `${item.info.color}18`, border: `1px solid ${item.info.color}35` }}
+              >
+                <span>{item.info.icono}</span>
+                <span className="text-white/90">{item.info.label}:</span>
+                <span className="font-bold font-mono" style={{ color: item.info.color }}>{item.horas}h</span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
       {view === 'dia' ? (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <div><div className="cosmos-eyebrow mb-1">hoy en el día</div><h2 className="cosmos-title text-xl font-bold">{RUTINA_DIAS_FULL[dia]}</h2></div>
-            <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Bloque</span></button>
+            <div><div className="cosmos-eyebrow mb-1">bloques del día</div><h2 className="cosmos-title text-xl font-bold">{RUTINA_DIAS_FULL[dia]}</h2></div>
+            <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Añadir bloque</span></button>
           </div>
           {diaQ.isLoading ? <LoadingRows /> : !bloquesDia.length ? (
-            <EmptyState title="Día sin bloques" copy="Agrega un bloque para este día y arma tu ritmo." action="Agregar bloque" onClick={() => setModal(true)} testId="button-empty-rutina" />
+            <EmptyState title="Día con espacio libre" copy="No tienes bloques configurados. Añade uno o carga la plantilla recomendada." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-rutina" />
           ) : bloquesDia.map((b) => {
             const running = activoAhora(b);
+            const tipoInfo = getTipoBloqueInfo(b.tipo_bloque);
+            const horas = calcularHorasBloque(b.hora_inicio, b.hora_fin);
+            const isEnfoque = b.tipo_bloque === 'Enfoque' || b.titulo.toLowerCase().includes('creación') || b.titulo.toLowerCase().includes('enfoque');
+
             return (
-              <div key={b.id} data-testid={`bloque-rutina-${b.id}`} className={`cosmos-card group relative flex items-center gap-4 overflow-hidden p-4 sm:p-5 ${running ? 'ring-1' : ''}`} style={running ? { boxShadow: `inset 0 0 0 1px ${b.color}cc`, backgroundColor: `${b.color}14` } : undefined}>
-                <span className="h-12 w-1.5 shrink-0 self-center rounded-full" style={{ backgroundColor: b.color, boxShadow: running ? `0 0 14px ${b.color}` : undefined }} />
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl" style={{ backgroundColor: `${b.color}26` }}>{b.icono}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-semibold text-white">{b.titulo}</span>
-                    {running && <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black" style={{ backgroundColor: b.color }}>ahora</span>}
+              <div key={b.id} data-testid={`bloque-rutina-${b.id}`} className={`cosmos-card group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden p-4 sm:p-5 ${running ? 'ring-1' : ''}`} style={running ? { boxShadow: `inset 0 0 0 1.5px ${b.color}ee`, backgroundColor: `${b.color}18` } : undefined}>
+                <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                  <span className="h-12 w-1.5 shrink-0 self-center rounded-full" style={{ backgroundColor: b.color, boxShadow: running ? `0 0 14px ${b.color}` : undefined }} />
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl" style={{ backgroundColor: `${b.color}26`, border: `1px solid ${b.color}45` }}>{b.icono}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-base font-bold text-white">{b.titulo}</span>
+                      <span className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: `${tipoInfo.color}25`, color: tipoInfo.color }}>
+                        {tipoInfo.label}
+                      </span>
+                      {running && <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black animate-pulse" style={{ backgroundColor: b.color }}>en curso ahora</span>}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                      <span className="flex items-center gap-1 font-mono font-semibold text-white/90">
+                        <Clock size={12} /> {b.hora_inicio} – {b.hora_fin} ({horas}h)
+                      </span>
+                      {b.descripcion && <span className="text-white/60">· {b.descripcion}</span>}
+                    </div>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-white/45"><Clock size={12} /><span className="cosmos-number font-semibold" style={{ color: b.color }}>{b.hora_inicio} – {b.hora_fin}</span>{b.descripcion ? ` · ${b.descripcion}` : ''}</div>
                 </div>
-                <div className="flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+
+                <div className="flex items-center justify-end gap-2 border-t border-white/6 pt-2 sm:border-t-0 sm:pt-0">
+                  {isEnfoque && (
+                    <button
+                      onClick={() => setFocusModal(b)}
+                      className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white hover:text-black"
+                    >
+                      <Target size={13} />
+                      <span>Sesión 35m</span>
+                    </button>
+                  )}
                   <button onClick={() => { setEditing(b); setModal(true); }} aria-label="Editar bloque" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
                   <button onClick={() => onDelete(b)} aria-label="Eliminar bloque" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
                 </div>
@@ -1121,97 +1504,319 @@ function RutinaPage() {
       ) : (
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {semanaQ.isLoading ? <LoadingRows /> : semana.map((d, i) => (
-            <div key={d.dia_semana} data-testid={`columna-semana-${i}`} className={`cosmos-card flex flex-col gap-1.5 p-3 ${i === today ? 'ring-1 ring-white/20' : ''}`}>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">{RUTINA_DIAS[i]}</span>
-                <span className={`text-xs font-semibold ${i === today ? 'text-[#5de8c4]' : 'text-white/35'}`}>{d.bloques.length}</span>
+            <div key={d.dia_semana} data-testid={`columna-semana-${i}`} className={`cosmos-card flex flex-col gap-2 p-3.5 ${i === today ? 'ring-1 ring-[#5de8c4]/40 bg-white/4' : ''}`}>
+              <div className="flex items-center justify-between border-b border-white/6 pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-white/80">{RUTINA_DIAS[i]}</span>
+                <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${i === today ? 'bg-[#5de8c4]/20 text-[#5de8c4]' : 'bg-white/6 text-white/45'}`}>
+                  {d.bloques.length} {d.bloques.length === 1 ? 'bloque' : 'bloques'}
+                </span>
               </div>
-              {!d.bloques.length ? <span className="text-center text-[11px] text-white/25">—</span> : d.bloques.map((b) => (
-                <button key={b.id} onClick={() => { setDia(i); setView('dia'); }} data-testid={`pastilla-semana-${b.id}`}
-                  className="flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-left text-[11px] font-medium leading-tight text-white/85 transition hover:scale-[1.02]"
-                  style={{ backgroundColor: `${b.color}24`, boxShadow: `inset 0 0 0 1px ${b.color}55` }}>
-                  <span>{b.icono}</span>
-                  <span className="min-w-0"><span className="block truncate">{b.titulo}</span><span className="cosmos-number block text-[9px] font-semibold" style={{ color: b.color }}>{b.hora_inicio}–{b.hora_fin}</span></span>
-                </button>
-              ))}
+              {!d.bloques.length ? (
+                <span className="py-4 text-center text-[11px] text-white/25">Espacio libre</span>
+              ) : d.bloques.map((b) => {
+                const tipoInfo = getTipoBloqueInfo(b.tipo_bloque);
+                return (
+                  <button key={b.id} onClick={() => { setDia(i); setView('dia'); }} data-testid={`pastilla-semana-${b.id}`}
+                    className="flex flex-col gap-1 rounded-xl p-2 text-left text-xs font-medium leading-tight text-white/90 transition hover:scale-[1.02]"
+                    style={{ backgroundColor: `${b.color}20`, borderLeft: `3px solid ${b.color}` }}>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate font-bold">{b.icono} {b.titulo}</span>
+                      <span className="text-[9px] font-mono text-white/60">{b.hora_inicio}</span>
+                    </div>
+                    <span className="text-[10px] text-white/50 truncate">{tipoInfo.label}</span>
+                  </button>
+                );
+              })}
             </div>
           ))}
         </section>
       )}
 
+      {/* Gestión general y carga rápida */}
       <section className="cosmos-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6">
-          <div><div className="cosmos-eyebrow mb-1">gestión</div><h2 className="cosmos-title text-lg font-bold">Todos los bloques</h2></div>
-          <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-bloque-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Nuevo</span></button>
+          <div><div className="cosmos-eyebrow mb-1">gestión</div><h2 className="cosmos-title text-lg font-bold">Todos los bloques ({todos.length})</h2></div>
+          <div className="flex items-center gap-2">
+            <button onClick={cargarPlantillaExcel} className="hidden sm:flex items-center gap-1.5 rounded-xl bg-white/6 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10">
+              <Download size={14} /> Plantilla Excel
+            </button>
+            <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-bloque-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Nuevo</span></button>
+          </div>
         </div>
         <div className="p-3 sm:p-4">
-          {todosQ.isLoading ? <LoadingRows /> : !todos.length ? <EmptyState title="Sin bloques configurados" copy="Agrega el primer bloque de tu rutina." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-gestion-rutina" /> : <div className="grid gap-1.5 sm:grid-cols-2">{todos.map((b) => (
-            <div key={b.id} data-testid={`fila-bloque-${b.id}`} className={`group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4 ${b.activo ? '' : 'opacity-60'}`}>
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: b.color }} />
-                <div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{b.icono} {b.titulo}</div><div className="text-xs text-white/45">{RUTINA_DIAS[b.dia_semana]} · {b.hora_inicio}–{b.hora_fin}{b.descripcion ? ` · ${b.descripcion}` : ''}</div></div>
+          {todosQ.isLoading ? <LoadingRows /> : !todos.length ? <EmptyState title="Sin bloques configurados" copy="Agrega el primer bloque o carga la plantilla recomendada." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-gestion-rutina" /> : <div className="grid gap-1.5 sm:grid-cols-2">{todos.map((b) => {
+            const tipoInfo = getTipoBloqueInfo(b.tipo_bloque);
+            return (
+              <div key={b.id} data-testid={`fila-bloque-${b.id}`} className={`group flex items-center justify-between rounded-xl px-3 py-2.5 transition hover:bg-white/4 ${b.activo ? '' : 'opacity-50'}`}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: b.color }} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-white">{b.icono} {b.titulo}</span>
+                      <span className="text-[10px] font-bold rounded px-1.5 py-0.2" style={{ backgroundColor: `${tipoInfo.color}20`, color: tipoInfo.color }}>{tipoInfo.id}</span>
+                    </div>
+                    <div className="text-xs text-white/45">{RUTINA_DIAS[b.dia_semana]} · {b.hora_inicio}–{b.hora_fin}{b.descripcion ? ` · ${b.descripcion}` : ''}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => onActive(b, !b.activo)} data-testid={`toggle-activo-bloque-${b.id}`} className={`rounded-lg p-2 transition ${b.activo ? 'text-[#5de8c4]' : 'text-white/35'} hover:bg-white/8`} title={b.activo ? 'Pausar' : 'Activar'}><CalendarCheck size={16} /></button>
+                  <button onClick={() => { setEditing(b); setModal(true); }} aria-label="Editar bloque" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                  <button onClick={() => onDelete(b)} aria-label="Eliminar bloque" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => onActive(b, !b.activo)} data-testid={`toggle-activo-bloque-${b.id}`} className={`rounded-lg p-2 transition ${b.activo ? 'text-[#5de8c4]' : 'text-white/35'} hover:bg-white/8`} title={b.activo ? 'Pausar' : 'Activar'}><CalendarCheck size={16} /></button>
-                <button onClick={() => { setEditing(b); setModal(true); }} aria-label="Editar bloque" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
-                <button onClick={() => onDelete(b)} aria-label="Eliminar bloque" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
-              </div>
-            </div>
-          ))}</div>}
+            );
+          })}</div>}
         </div>
       </section>
     </div>
-    {modal && <RutinaModal record={editing} pending={create.isPending || update.isPending || remove.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={onSave} />}
+
+    {modal && (
+      <RutinaModal
+        record={editing}
+        currentDay={dia}
+        pending={create.isPending || update.isPending || remove.isPending}
+        onClose={() => { setModal(false); setEditing(null); }}
+        onSubmit={onSave}
+      />
+    )}
+
+    {focusModal && (
+      <PomodoroModal
+        bloque={focusModal}
+        onClose={() => setFocusModal(null)}
+      />
+    )}
   </div></Shell>;
 }
 
-function RutinaModal({ record, pending, onClose, onSubmit }: { record: BloqueRutina | null; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
-  const [form, setForm] = useState<Record<string, string | boolean>>({ dia_semana: String(record?.dia_semana ?? hoyIdx()), hora_inicio: record?.hora_inicio ?? '08:00', hora_fin: record?.hora_fin ?? '09:00', titulo: record?.titulo ?? '', descripcion: record?.descripcion ?? '', icono: record?.icono ?? RUTINA_EMOJIS[0], color: record?.color ?? RUTINA_COLORS[0], activo: record?.activo ?? true });
+function RutinaModal({
+  record,
+  currentDay,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  record: BloqueRutina | null;
+  currentDay: number;
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (data: Record<string, unknown> | Array<Record<string, unknown>>) => void;
+}) {
+  // Cuando se crea un nuevo bloque, permite selección multidía
+  const [selectedDays, setSelectedDays] = useState<number[]>(record ? [record.dia_semana] : [currentDay]);
+  const [form, setForm] = useState<Record<string, string | boolean>>({
+    tipo_bloque: record?.tipo_bloque ?? 'Enfoque',
+    hora_inicio: record?.hora_inicio ?? '09:00',
+    hora_fin: record?.hora_fin ?? '12:00',
+    titulo: record?.titulo ?? 'Bloque de creación',
+    descripcion: record?.descripcion ?? 'Proyecto prioritario del momento',
+    icono: record?.icono ?? '🎯',
+    color: record?.color ?? '#5de8c4',
+    activo: record?.activo ?? true,
+  });
+
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
+
+  const toggleDay = (d: number) => {
+    if (record) {
+      // Si estamos editando un bloque existente, solo 1 día
+      setSelectedDays([d]);
+      return;
+    }
+    if (selectedDays.includes(d)) {
+      if (selectedDays.length > 1) {
+        setSelectedDays(selectedDays.filter((x) => x !== d));
+      }
+    } else {
+      setSelectedDays([...selectedDays, d].sort((a, b) => a - b));
+    }
+  };
+
+  const setPresetDays = (preset: 'l_v' | 'fin' | 'todos' | 'hoy') => {
+    if (preset === 'l_v') setSelectedDays([0, 1, 2, 3, 4]);
+    else if (preset === 'fin') setSelectedDays([5, 6]);
+    else if (preset === 'todos') setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+    else setSelectedDays([currentDay]);
+  };
+
+  const handleSelectTipo = (tipo: typeof TIPOS_BLOQUE[number]) => {
+    setForm((curr) => ({
+      ...curr,
+      tipo_bloque: tipo.id,
+      icono: tipo.icono,
+      color: tipo.color,
+      titulo: curr.titulo && curr.titulo !== 'Bloque de creación' ? curr.titulo : (tipo.id === 'Enfoque' ? 'Bloque de creación' : tipo.id === 'Flexible' ? 'Bloque flexible' : tipo.id === 'Fijo' ? 'SENA / Clase' : tipo.id === 'Recuperación' ? 'Almuerzo y pausa' : tipo.label),
+      descripcion: curr.descripcion || tipo.desc,
+    }));
+  };
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     const inicio = String(form.hora_inicio);
     const fin = String(form.hora_fin);
-    if (fin <= inicio) { toast.error('La hora de fin debe ser posterior a la de inicio'); return; }
-    if (!String(form.titulo).trim()) return;
-    onSubmit({ dia_semana: Number(form.dia_semana), hora_inicio: inicio, hora_fin: fin, titulo: String(form.titulo).trim(), descripcion: String(form.descripcion).trim(), icono: String(form.icono), color: String(form.color), activo: Boolean(form.activo) });
+    if (fin <= inicio) {
+      toast.error('La hora de fin debe ser posterior a la de inicio');
+      return;
+    }
+    if (!String(form.titulo).trim()) {
+      toast.error('Ingresa un título para el bloque');
+      return;
+    }
+
+    if (record) {
+      onSubmit({
+        dia_semana: selectedDays[0] ?? record.dia_semana,
+        hora_inicio: inicio,
+        hora_fin: fin,
+        titulo: String(form.titulo).trim(),
+        descripcion: String(form.descripcion).trim(),
+        tipo_bloque: String(form.tipo_bloque),
+        icono: String(form.icono),
+        color: String(form.color),
+        activo: Boolean(form.activo),
+      });
+    } else {
+      // Crear en lote para todos los días seleccionados
+      const batch = selectedDays.map((d) => ({
+        dia_semana: d,
+        hora_inicio: inicio,
+        hora_fin: fin,
+        titulo: String(form.titulo).trim(),
+        descripcion: String(form.descripcion).trim(),
+        tipo_bloque: String(form.tipo_bloque),
+        icono: String(form.icono),
+        color: String(form.color),
+        activo: Boolean(form.activo),
+      }));
+      onSubmit(batch);
+    }
   };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
-          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+          <div className="mb-4 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
-              <div className="cosmos-eyebrow mb-1">jarvis / rutina</div>
-              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar bloque' : 'Nuevo bloque'}</h2>
+              <div className="cosmos-eyebrow mb-1">jarvis / arquitectura de tiempo</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar bloque' : 'Nuevo bloque de tiempo'}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button disabled={pending} type="submit" data-testid="button-save-rutina-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
                 {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                {pending ? '...' : 'Guardar'}
+                {pending ? '...' : (selectedDays.length > 1 && !record ? `Guardar (${selectedDays.length} días)` : 'Guardar')}
               </button>
               <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block"><span className="cosmos-field-label">Día</span><select className="cosmos-select" value={String(form.dia_semana)} onChange={(e) => set('dia_semana', e.target.value)} data-testid="select-rutina-dia">{RUTINA_DIAS.map((label, i) => <option key={i} value={i}>{label} · {RUTINA_DIAS_FULL[i]}</option>)}</select></label>
-            <label className="block"><span className="cosmos-field-label">Icono</span><select className="cosmos-select" value={String(form.icono)} onChange={(e) => set('icono', e.target.value)} data-testid="select-rutina-icono">{RUTINA_EMOJIS.map((emoji) => <option key={emoji} value={emoji}>{emoji}</option>)}</select></label>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block"><span className="cosmos-field-label">Hora inicio</span><input required type="time" className="cosmos-input" value={String(form.hora_inicio)} onChange={(e) => set('hora_inicio', e.target.value)} data-testid="input-rutina-inicio" /></label>
-            <label className="block"><span className="cosmos-field-label">Hora fin</span><input required type="time" className="cosmos-input" value={String(form.hora_fin)} onChange={(e) => set('hora_fin', e.target.value)} data-testid="input-rutina-fin" /></label>
-          </div>
-          <label className="block"><span className="cosmos-field-label">Título</span><input required className="cosmos-input" value={String(form.titulo)} onChange={(e) => set('titulo', e.target.value)} data-testid="input-rutina-titulo" placeholder="Ej. Desayuno, SENA, Tiempo libre..." /></label>
-          <label className="block"><span className="cosmos-field-label">Descripción (opcional)</span><input className="cosmos-input" value={String(form.descripcion)} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-rutina-descripcion" placeholder="Un detalle de este bloque..." /></label>
-          <div><span className="cosmos-field-label">Color</span>
-            <div className="flex flex-wrap gap-2">
-              {RUTINA_COLORS.map((color) => (
-                <button key={color} type="button" onClick={() => set('color', color)} data-testid="swatch-rutina-color" aria-label={color} className={`h-8 w-8 rounded-full transition ${form.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a]' : 'hover:scale-110'}`} style={{ backgroundColor: color }} />
-              ))}
+
+          {/* 1. Selector de Tipo de Bloque (Propósito) */}
+          <div>
+            <span className="cosmos-field-label">1. Propósito del bloque</span>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {TIPOS_BLOQUE.map((t) => {
+                const active = form.tipo_bloque === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleSelectTipo(t)}
+                    className={`flex flex-col items-center gap-1 rounded-2xl p-2 text-center transition ${
+                      active ? 'scale-[0.98]' : 'hover:bg-white/6'
+                    }`}
+                    style={
+                      active
+                        ? { backgroundColor: `${t.color}2e`, boxShadow: `inset 0 0 0 1.5px ${t.color}` }
+                        : { backgroundColor: 'rgba(255,255,255,0.05)' }
+                    }
+                  >
+                    <span className="text-xl">{t.icono}</span>
+                    <span className="text-[11px] font-bold truncate w-full" style={{ color: active ? t.color : 'rgba(255,255,255,0.75)' }}>
+                      {t.id}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* 2. Días de repetición */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="cosmos-field-label">2. Días de la semana</span>
+              {!record && (
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => setPresetDays('l_v')} className="rounded-lg bg-white/6 px-2 py-0.5 text-[10px] font-semibold text-white/70 hover:bg-white/12">L-V</button>
+                  <button type="button" onClick={() => setPresetDays('fin')} className="rounded-lg bg-white/6 px-2 py-0.5 text-[10px] font-semibold text-white/70 hover:bg-white/12">Finde</button>
+                  <button type="button" onClick={() => setPresetDays('todos')} className="rounded-lg bg-white/6 px-2 py-0.5 text-[10px] font-semibold text-white/70 hover:bg-white/12">Todos</button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {RUTINA_DIAS.map((label, idx) => {
+                const selected = selectedDays.includes(idx);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => toggleDay(idx)}
+                    className={`flex flex-col items-center justify-center rounded-xl py-2 text-xs font-bold transition ${
+                      selected ? 'bg-white text-black shadow-md' : 'bg-white/6 text-white/60 hover:bg-white/12'
+                    }`}
+                  >
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Horarios */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="cosmos-field-label">Hora inicio</span>
+              <input required type="time" className="cosmos-input" value={String(form.hora_inicio)} onChange={(e) => set('hora_inicio', e.target.value)} data-testid="input-rutina-inicio" />
+            </label>
+            <label className="block">
+              <span className="cosmos-field-label">Hora fin</span>
+              <input required type="time" className="cosmos-input" value={String(form.hora_fin)} onChange={(e) => set('hora_fin', e.target.value)} data-testid="input-rutina-fin" />
+            </label>
+          </div>
+
+          {/* 4. Título y descripción */}
+          <label className="block">
+            <span className="cosmos-field-label">Título del bloque</span>
+            <input required className="cosmos-input" value={String(form.titulo)} onChange={(e) => set('titulo', e.target.value)} data-testid="input-rutina-titulo" placeholder="Ej. Bloque de creación, Bloque flexible, SENA..." />
+          </label>
+
+          <label className="block">
+            <span className="cosmos-field-label">Propósito / Descripción de posibilidades (opcional)</span>
+            <input className="cosmos-input" value={String(form.descripcion)} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-rutina-descripcion" placeholder="Ej. Proyecto prioritario (HyperBowl u otro), Digi, tareas..." />
+          </label>
+
+          {/* 5. Icono y Color */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="cosmos-field-label">Icono</span>
+              <div className="grid grid-cols-6 gap-1">
+                {RUTINA_EMOJIS.slice(0, 12).map((emoji) => (
+                  <button key={emoji} type="button" onClick={() => set('icono', emoji)} className={`flex h-8 w-8 items-center justify-center rounded-lg text-lg transition ${form.icono === emoji ? 'bg-white text-black' : 'bg-white/6 hover:bg-white/12'}`}>{emoji}</button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="cosmos-field-label">Color</span>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {RUTINA_COLORS.map((color) => (
+                  <button key={color} type="button" onClick={() => set('color', color)} className={`h-7 w-7 rounded-full transition ${form.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a]' : 'hover:scale-110'}`} style={{ backgroundColor: color }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-            <span className="text-sm font-medium text-white/80">¿Mostrarlo en la rutina?</span>
+            <span className="text-sm font-medium text-white/80">¿Mantener este bloque activo en tu horario?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-rutina-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
           </div>
         </form>

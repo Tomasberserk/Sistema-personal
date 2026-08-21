@@ -402,6 +402,7 @@ export interface BloqueRutina {
   descripcion: string;
   color: string;
   icono: string;
+  tipo_bloque?: string;
   activo: boolean;
 }
 
@@ -417,6 +418,7 @@ export interface BloqueRutinaInput {
   descripcion?: string;
   color?: string;
   icono?: string;
+  tipo_bloque?: string;
   activo?: boolean;
 }
 
@@ -432,6 +434,7 @@ export interface BloqueRutinaUpdate {
   descripcion?: string;
   color?: string;
   icono?: string;
+  tipo_bloque?: string;
   activo?: boolean;
 }
 
