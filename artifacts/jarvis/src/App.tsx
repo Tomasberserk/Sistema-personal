@@ -36,6 +36,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthModal } from './components/AuthModal';
+import { LoginPage } from './pages/LoginPage';
 import { AhorroModal } from './components/AhorroModal';
 import { AporteModal } from './components/AporteModal';
 import { MovimientosAhorroModal } from './components/MovimientosAhorroModal';
@@ -3312,38 +3313,64 @@ function RecordatorioModal({
   );
 }
 
+function AppRouter() {
+  const { user, loading } = useAuth();
+  const [location] = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#07070a] text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#5de8c4] border-t-transparent" />
+          <div className="text-xs text-white/50 tracking-wider uppercase font-semibold">Iniciando Jarvis...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not authenticated and not explicitly on another page
+  if (!user && location !== '/login') {
+    return <LoginPage />;
+  }
+
+  return (
+    <Switch>
+      <Route path="/login" component={LoginPage} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/kilometraje" component={KilometrajePage} />
+      <Route path="/habitos" component={HabitosPage} />
+      <Route path="/rutina" component={RutinaPage} />
+      <Route path="/fechas" component={FechasPage} />
+      <Route path="/moto" component={MotoPage} />
+      <Route path="/categorias" component={CategoriesPage} />
+      <Route
+        component={() => (
+          <Shell>
+            <div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center">
+              <div>
+                <h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1>
+                <Link
+                  href="/"
+                  data-testid="link-back-home"
+                  className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4"
+                >
+                  Volver a finanzas
+                </Link>
+              </div>
+            </div>
+          </Shell>
+        )}
+      />
+    </Switch>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/kilometraje" component={KilometrajePage} />
-            <Route path="/habitos" component={HabitosPage} />
-            <Route path="/rutina" component={RutinaPage} />
-            <Route path="/fechas" component={FechasPage} />
-            <Route path="/moto" component={MotoPage} />
-            <Route path="/categorias" component={CategoriesPage} />
-            <Route
-              component={() => (
-                <Shell>
-                  <div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center">
-                    <div>
-                      <h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1>
-                      <Link
-                        href="/"
-                        data-testid="link-back-home"
-                        className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4"
-                      >
-                        Volver a finanzas
-                      </Link>
-                    </div>
-                  </div>
-                </Shell>
-              )}
-            />
-          </Switch>
+          <AppRouter />
           <Toaster />
         </AuthProvider>
       </TooltipProvider>
