@@ -5,7 +5,7 @@ import hmac
 import os
 import sqlite3
 import time
-from contextlib import closing
+from contextlib import asynccontextmanager, closing
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -1006,52 +1006,94 @@ def _seed_user_defaults(connection: Any, user_id: int) -> None:
 
 
 def init_db() -> None:
-    with closing(get_connection()) as connection:
-        connection.executescript(POSTGRES_SCHEMA if _is_postgres() else SQLITE_SCHEMA)
+    try:
+        with closing(get_connection()) as connection:
+            if _is_postgres():
+                connection.executescript(POSTGRES_SCHEMA)
+            else:
+                connection.executescript(SQLITE_SCHEMA)
 
-        # Migraciones si las tablas preexistían sin usuario_id
-        tables = [
-            "categorias",
-            "medios_pago",
-            "transferencias_medios",
-            "ingresos",
-            "gastos_fijos",
-            "gastos_variables",
-            "kilometraje",
-            "moto_config",
-            "habitos",
-            "bloques_rutina",
-            "fechas_especiales",
-            "recordatorios",
-            "metas_ahorro",
-            "movimientos_ahorro",
-        ]
-        if not _is_postgres():
+            # Migraciones seguras para asegurar columna usuario_id en todas las tablas
+            tables = [
+                "categorias",
+                "medios_pago",
+                "transferencias_medios",
+                "ingresos",
+                "gastos_fijos",
+                "gastos_variables",
+                "kilometraje",
+                "moto_config",
+                "habitos",
+                "bloques_rutina",
+                "fechas_especiales",
+                "recordatorios",
+                "metas_ahorro",
+                "movimientos_ahorro",
+            ]
             for tbl in tables:
                 try:
-                    cols = [row["name"] for row in connection.execute(f"PRAGMA table_info({tbl})").fetchall()]
-                    if "usuario_id" not in cols:
-                        connection.execute(f"ALTER TABLE {tbl} ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
+                    if _is_postgres():
+                        connection.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS usuario_id INTEGER NOT NULL DEFAULT 1")
+                    else:
+                        cols = [row["name"] for row in connection.execute(f"PRAGMA table_info({tbl})").fetchall()]
+                        if "usuario_id" not in cols:
+                            connection.execute(f"ALTER TABLE {tbl} ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
+                except Exception as e:
+                    pass
+
+            # Sembrar usuarios Demo si no existen
+            try:
+                user_count_row = connection.execute("SELECT COUNT(*) FROM usuarios").fetchone()
+                user_count = user_count_row[0] if user_count_row else 0
+            except Exception:
+                user_count = 0
+
+            if user_count == 0:
+                for u in DEFAULT_DEMO_USERS:
+                    try:
+                        if _is_postgres():
+                            connection.execute(
+                                """
+                                INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (id) DO NOTHING
+                                """,
+                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                            )
+                        else:
+                            connection.execute(
+                                """
+                                INSERT OR IGNORE INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                """,
+                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                            )
+                    except Exception:
+                        pass
+
+            # Ajustar secuencias en PostgreSQL
+            if _is_postgres():
+                seq_tables = [
+                    "usuarios", "categorias", "medios_pago", "metas_ahorro", "ingresos",
+                    "gastos_fijos", "gastos_variables", "kilometraje", "moto_config",
+                    "habitos", "bloques_rutina", "fechas_especiales", "recordatorios"
+                ]
+                for seq_table in seq_tables:
+                    try:
+                        connection.execute(f"SELECT setval('{seq_table}_id_seq', COALESCE((SELECT MAX(id) FROM {seq_table}), 1), true)")
+                    except Exception:
+                        pass
+
+            # Sembrar datos por defecto para los usuarios demo
+            for u in DEFAULT_DEMO_USERS:
+                try:
+                    _seed_user_defaults(connection, u["id"])
                 except Exception:
                     pass
 
-        # Sembrar usuarios Demo
-        user_count = connection.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
-        if user_count == 0:
-            for u in DEFAULT_DEMO_USERS:
-                connection.execute(
-                    """
-                    INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    """,
-                    (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
-                )
-
-        # Sembrar datos por defecto para los usuarios demo
-        for u in DEFAULT_DEMO_USERS:
-            _seed_user_defaults(connection, u["id"])
-
-        connection.commit()
+            connection.commit()
+    except Exception as exc:
+        print(f"[Init DB Warn] Advertencia durante init_db: {exc}")
 
 
 def _norm_bool(value: Any) -> Any:
@@ -1174,10 +1216,16 @@ def get_current_user(authorization: str | None = Header(default=None)) -> Usuari
 
 
 # --- App Configuration ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 app = FastAPI(
     title="Jarvis API",
     description="API del Sistema Personal (Finanzas, Ahorros, Rutina, Hábitos, Moto, Fechas & Recordatorios)",
     version="2.0.0",
+    lifespan=lifespan,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -1188,17 +1236,16 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def startup() -> None:
-    init_db()
-
-
+@app.get("/")
+@app.get("/health")
+@app.get("/healthz")
 @app.get("/api/healthz")
 @app.get("/api/health")
 def healthz() -> dict[str, Any]:
     engine = "postgresql" if _is_postgres() else "sqlite"
     return {
         "status": "ok",
+        "service": "jarvis-backend",
         "engine": engine,
         "is_postgres": _is_postgres(),
         "has_database_url": bool(os.environ.get("DATABASE_URL")),
