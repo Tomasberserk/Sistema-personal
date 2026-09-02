@@ -63,15 +63,37 @@ const dateValue = (date?: string) => date ? date.slice(0, 10) : new Date().toISO
 const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)) : 'Sin fecha';
 const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(new Date());
 
+export const DEFAULT_INCOME_SOURCES = [
+  { id: 'Sueldo / Salario', label: 'Sueldo', icono: '💼', color: '#5de8c4', desc: 'Salario fijo, nómina, quincena' },
+  { id: 'Trabajo Independiente', label: 'Independiente', icono: '⚡', color: '#5d8ae8', desc: 'Freelance, proyectos, clientes' },
+  { id: 'Didi', label: 'Didi', icono: '🛵', color: '#e8a85d', desc: 'Plataformas de movilidad / entregas' },
+  { id: 'Negocio / Ventas', label: 'Negocio', icono: '🛍️', color: '#e8d95d', desc: 'Comercio, ventas, servicios' },
+  { id: 'Inversiones', label: 'Inversiones', icono: '📈', color: '#5de87a', desc: 'Rendimientos, dividendos, CDTs' },
+  { id: 'Prestamo / Deuda', label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8', desc: 'Dinero prestado que me devolvieron' },
+  { id: 'Familia / Pareja', label: 'Familia / Pareja', icono: '💖', color: '#e85d8a', desc: 'Aportes, mesada, apoyo familiar' },
+  { id: 'Extra / Regalo', label: 'Extra / Regalo', icono: '🎁', color: '#e85dd3', desc: 'Bonificaciones, premios, regalos' },
+];
+
 const DEFAULT_FUENTES_INFO: Record<string, { label: string; icono: string; color: string }> = {
   'Sueldo / Salario': { label: 'Sueldo / Nómina', icono: '💼', color: '#5de8c4' },
+  'Sueldo': { label: 'Sueldo / Nómina', icono: '💼', color: '#5de8c4' },
   'Trabajo Independiente': { label: 'Independiente / Freelance', icono: '⚡', color: '#5d8ae8' },
-  'Negocio / Ventas': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8a85d' },
+  'Independiente': { label: 'Independiente / Freelance', icono: '⚡', color: '#5d8ae8' },
+  'Didi': { label: 'Didi / Movilidad', icono: '🛵', color: '#e8a85d' },
+  'Negocio / Ventas': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8d95d' },
+  'Negocio': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8d95d' },
   'Inversiones': { label: 'Inversiones', icono: '📈', color: '#5de87a' },
   'Prestamo / Deuda': { label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8' },
+  'Deuda / Me debían': { label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8' },
+  'Familia / Pareja': { label: 'Familia / Pareja', icono: '💖', color: '#e85d8a' },
+  'Papá': { label: 'Papá / Familia', icono: '👨', color: '#5de8c4' },
+  'Mamá': { label: 'Mamá / Familia', icono: '👩', color: '#e85d8a' },
+  'Pareja': { label: 'Pareja', icono: '💖', color: '#e85d8a' },
+  'Amigo': { label: 'Amigo', icono: '🤝', color: '#5d8ae8' },
   'Extra / Regalo': { label: 'Ingreso Extra / Regalo', icono: '🎁', color: '#e85dd3' },
-  'Didi': { label: 'Didi / Movilidad', icono: '🛵', color: '#e8a85d' },
+  'Ingreso Random / Extra': { label: 'Ingreso Extra / Regalo', icono: '🎁', color: '#e85dd3' },
   'otro': { label: 'Otro', icono: '✨', color: '#a85de8' },
+  'Otro': { label: 'Otro', icono: '✨', color: '#a85de8' },
 };
 
 const getFuenteInfo = (fuente: string, customCategories?: Categoria[]) => {
@@ -85,13 +107,24 @@ const getFuenteInfo = (fuente: string, customCategories?: Categoria[]) => {
 
 const sourceLabel: Record<string, string> = {
   'Sueldo / Salario': 'Sueldo',
+  'Sueldo': 'Sueldo',
   'Trabajo Independiente': 'Independiente',
+  'Independiente': 'Independiente',
+  'Didi': 'Didi',
   'Negocio / Ventas': 'Negocio',
+  'Negocio': 'Negocio',
   'Inversiones': 'Inversiones',
   'Prestamo / Deuda': 'Deuda',
+  'Deuda / Me debían': 'Deuda',
+  'Familia / Pareja': 'Familia',
+  'Papá': 'Papá',
+  'Mamá': 'Mamá',
+  'Pareja': 'Pareja',
+  'Amigo': 'Amigo',
   'Extra / Regalo': 'Extra',
-  'Didi': 'Didi',
+  'Ingreso Random / Extra': 'Extra',
   'otro': 'Otro',
+  'Otro': 'Otro',
 };
 
 const CATEGORY_EMOJIS = ['🍔', '🍕', '🥗', '☕', '🍺', '🛵', '🚗', '🚌', '⛽', '🎮', '🎬', '🎧', '📚', '💻', '📱', '👕', '💊', '🧴', '🎁', '🏠', '✨', '🐾', '✈️', '💰', '📦', '🧾'];
@@ -2110,14 +2143,6 @@ function CategoriesPage() {
     remove.mutate({ id: c.id }, { onSuccess: invalidate, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar') });
   };
 
-  const defaultIncomeSources = [
-    { nombre: 'Didi', icono: '🛵', color: '#e8a85d', activa: true, isDefault: true },
-    { nombre: 'Papá', icono: '👨', color: '#5de8c4', activa: true, isDefault: true },
-    { nombre: 'Amigo', icono: '🤝', color: '#5d8ae8', activa: true, isDefault: true },
-    { nombre: 'Deuda / Me debían', icono: '💵', color: '#5de87a', activa: true, isDefault: true },
-    { nombre: 'Ingreso Random / Extra', icono: '🎲', color: '#e85dd3', activa: true, isDefault: true },
-  ];
-
   return <Shell><div className="relative z-10 min-h-[100dvh]">
     <Topbar eyebrow="colores y fuentes" title="Categorías" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
@@ -2137,7 +2162,7 @@ function CategoriesPage() {
             tab === 'ingresos' ? 'bg-white text-black shadow-md' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
           }`}
         >
-          Fuentes de Ingresos ({defaultIncomeSources.length + cats.length})
+          Fuentes de Ingresos ({DEFAULT_INCOME_SOURCES.length + cats.length})
         </button>
       </div>
 
@@ -2165,11 +2190,12 @@ function CategoriesPage() {
           <div>
             <div className="cosmos-eyebrow mb-2">Fuentes de ingreso fijas y rápidas</div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {defaultIncomeSources.map((f, idx) => (
+              {DEFAULT_INCOME_SOURCES.map((f, idx) => (
                 <div key={idx} className="cosmos-card flex items-center gap-4 p-5">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${f.color}26`, boxShadow: `0 0 0 1px ${f.color}55` }}>{f.icono}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-white">{f.nombre}</div>
+                    <div className="truncate text-sm font-semibold text-white">{f.label}</div>
+                    <div className="text-[11px] text-white/40">{f.desc}</div>
                     <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
                       <span className="font-mono uppercase tracking-wider" style={{ color: f.color }}>{f.color}</span>
                       <span className="text-[#5de8c4]">predeterminada</span>
@@ -2576,17 +2602,9 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   });
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
   const availableFuentes = useMemo(() => {
-    const defaults = [
-      { id: 'Sueldo / Salario', label: 'Sueldo', icono: '💼', color: '#5de8c4' },
-      { id: 'Trabajo Independiente', label: 'Independiente', icono: '⚡', color: '#5d8ae8' },
-      { id: 'Negocio / Ventas', label: 'Negocio', icono: '🛍️', color: '#e8a85d' },
-      { id: 'Inversiones', label: 'Inversiones', icono: '📈', color: '#5de87a' },
-      { id: 'Prestamo / Deuda', label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8' },
-      { id: 'Extra / Regalo', label: 'Extra / Regalo', icono: '🎁', color: '#e85dd3' },
-    ];
-    // También incluir las categorías existentes que no estén en defaults
+    const defaults = DEFAULT_INCOME_SOURCES;
     const extraCats = (categorias ?? [])
-      .filter((c) => !defaults.some((d) => d.id.toLowerCase() === c.nombre.toLowerCase()))
+      .filter((c) => !defaults.some((d) => d.id.toLowerCase() === c.nombre.toLowerCase() || d.label.toLowerCase() === c.nombre.toLowerCase()))
       .map((c) => ({ id: c.nombre, label: c.nombre, icono: c.icono, color: c.color }));
     return [...defaults, ...extraCats, { id: 'otro', label: 'Otro / Custom', icono: '✨', color: '#a85de8' }];
   }, [categorias]);
