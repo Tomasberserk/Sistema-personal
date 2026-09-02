@@ -10,8 +10,9 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 try:
@@ -602,17 +603,29 @@ class _PgConnection:
 
     def execute(self, sql: str, params: Any = None) -> _Cursor:
         cursor = self._conn.cursor()
-        cursor.execute(sql, params)
-        return _Cursor(cursor)
+        try:
+            cursor.execute(sql, params)
+            return _Cursor(cursor)
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def executemany(self, sql: str, seq: Any) -> _Cursor:
         cursor = self._conn.cursor()
-        cursor.executemany(sql, seq)
-        return _Cursor(cursor)
+        try:
+            cursor.executemany(sql, seq)
+            return _Cursor(cursor)
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def executescript(self, script: str) -> None:
         cursor = self._conn.cursor()
-        cursor.execute(script)
+        try:
+            cursor.execute(script)
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def commit(self) -> None:
         self._conn.commit()
@@ -637,163 +650,194 @@ def get_connection() -> Any:
 
 
 # --- DB Schemas ---
-POSTGRES_SCHEMA = """
+POSTGRES_TABLES = [
+    """
     CREATE TABLE IF NOT EXISTS usuarios (
         id SERIAL PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        avatar TEXT NOT NULL DEFAULT '🚀',
-        rol TEXT NOT NULL DEFAULT 'usuario',
-        creado_en TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+        nombre VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        avatar VARCHAR(50) NOT NULL DEFAULT '🚀',
+        rol VARCHAR(50) NOT NULL DEFAULT 'usuario',
+        creado_en VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS categorias (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        icono TEXT NOT NULL DEFAULT '🏷️',
-        color TEXT NOT NULL DEFAULT '#333333',
+        nombre VARCHAR(255) NOT NULL,
+        icono VARCHAR(50) NOT NULL DEFAULT '🏷️',
+        color VARCHAR(50) NOT NULL DEFAULT '#333333',
         activa BOOLEAN NOT NULL DEFAULT TRUE
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS medios_pago (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        tipo TEXT NOT NULL CHECK (tipo IN ('efectivo_billetes', 'efectivo_monedas', 'cuenta_bancaria', 'billetera_digital', 'tarjeta', 'otro')),
-        icono TEXT NOT NULL DEFAULT '💵',
-        color TEXT NOT NULL DEFAULT '#5de87a',
-        saldo_inicial DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (saldo_inicial >= 0),
+        nombre VARCHAR(255) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        icono VARCHAR(50) NOT NULL DEFAULT '💵',
+        color VARCHAR(50) NOT NULL DEFAULT '#5de87a',
+        saldo_inicial DOUBLE PRECISION NOT NULL DEFAULT 0.0,
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS metas_ahorro (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        monto_objetivo DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (monto_objetivo >= 0),
-        monto_actual DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (monto_actual >= 0),
-        icono TEXT NOT NULL DEFAULT '🐷',
-        color TEXT NOT NULL DEFAULT '#5de8c4',
-        fecha_limite TEXT,
-        medio_pago_id INTEGER REFERENCES medios_pago(id),
+        nombre VARCHAR(255) NOT NULL,
+        monto_objetivo DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        monto_actual DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        icono VARCHAR(50) NOT NULL DEFAULT '🐷',
+        color VARCHAR(50) NOT NULL DEFAULT '#5de8c4',
+        fecha_limite VARCHAR(50),
+        medio_pago_id INTEGER,
         nota TEXT NOT NULL DEFAULT '',
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS movimientos_ahorro (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        meta_ahorro_id INTEGER NOT NULL REFERENCES metas_ahorro(id) ON DELETE CASCADE,
-        tipo TEXT NOT NULL CHECK (tipo IN ('aporte', 'retiro')),
-        monto DOUBLE PRECISION NOT NULL CHECK (monto > 0),
-        fecha TEXT NOT NULL,
-        medio_pago_id INTEGER REFERENCES medios_pago(id),
+        meta_ahorro_id INTEGER NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        monto DOUBLE PRECISION NOT NULL,
+        fecha VARCHAR(50) NOT NULL,
+        medio_pago_id INTEGER,
         nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS transferencias_medios (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        fecha TEXT NOT NULL,
-        origen_id INTEGER NOT NULL REFERENCES medios_pago(id),
-        destino_id INTEGER NOT NULL REFERENCES medios_pago(id),
-        monto DOUBLE PRECISION NOT NULL CHECK (monto > 0),
-        nota TEXT NOT NULL DEFAULT '',
-        CHECK (origen_id <> destino_id)
+        fecha VARCHAR(50) NOT NULL,
+        origen_id INTEGER NOT NULL,
+        destino_id INTEGER NOT NULL,
+        monto DOUBLE PRECISION NOT NULL,
+        nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS ingresos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        fecha TEXT NOT NULL,
-        fuente TEXT NOT NULL,
-        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
-        medio_pago_id INTEGER REFERENCES medios_pago(id),
+        fecha VARCHAR(50) NOT NULL,
+        fuente VARCHAR(255) NOT NULL,
+        monto DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        medio_pago_id INTEGER,
         nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS gastos_fijos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
-        tipo TEXT NOT NULL CHECK (tipo IN ('mensual', 'por_kilometraje')),
+        nombre VARCHAR(255) NOT NULL,
+        monto DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        tipo VARCHAR(50) NOT NULL,
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS gastos_variables (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        fecha TEXT NOT NULL,
-        categoria_id INTEGER NOT NULL REFERENCES categorias(id),
-        monto DOUBLE PRECISION NOT NULL CHECK (monto >= 0),
-        medio_pago_id INTEGER REFERENCES medios_pago(id),
+        fecha VARCHAR(50) NOT NULL,
+        categoria_id INTEGER NOT NULL,
+        monto DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+        medio_pago_id INTEGER,
         nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS kilometraje (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        fecha TEXT NOT NULL,
-        km_actuales INTEGER NOT NULL CHECK (km_actuales >= 0),
+        fecha VARCHAR(50) NOT NULL,
+        km_actuales INTEGER NOT NULL DEFAULT 0,
         nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS moto_config (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        km_ultimo_cambio INTEGER NOT NULL DEFAULT 0 CHECK (km_ultimo_cambio >= 0),
-        intervalo_km INTEGER NOT NULL DEFAULT 2000 CHECK (intervalo_km >= 1),
-        alerta_km_antes INTEGER NOT NULL DEFAULT 200 CHECK (alerta_km_antes >= 0)
+        km_ultimo_cambio INTEGER NOT NULL DEFAULT 0,
+        intervalo_km INTEGER NOT NULL DEFAULT 2000,
+        alerta_km_antes INTEGER NOT NULL DEFAULT 200
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS habitos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        icono TEXT NOT NULL DEFAULT '✅',
-        color TEXT NOT NULL DEFAULT '#5de8c4',
+        nombre VARCHAR(255) NOT NULL,
+        icono VARCHAR(50) NOT NULL DEFAULT '✅',
+        color VARCHAR(50) NOT NULL DEFAULT '#5de8c4',
         activo BOOLEAN NOT NULL DEFAULT TRUE,
-        creado_en TEXT NOT NULL DEFAULT to_char(now(), 'YYYY-MM-DD HH24:MI:SS')
+        creado_en VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS registro_habitos (
         id SERIAL PRIMARY KEY,
-        habito_id INTEGER NOT NULL REFERENCES habitos(id) ON DELETE CASCADE,
-        fecha TEXT NOT NULL,
+        habito_id INTEGER NOT NULL,
+        fecha VARCHAR(50) NOT NULL,
         completado BOOLEAN NOT NULL DEFAULT TRUE,
         UNIQUE (habito_id, fecha)
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS bloques_rutina (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
-        hora_inicio TEXT NOT NULL,
-        hora_fin TEXT NOT NULL,
-        titulo TEXT NOT NULL,
+        dia_semana INTEGER NOT NULL,
+        hora_inicio VARCHAR(50) NOT NULL,
+        hora_fin VARCHAR(50) NOT NULL,
+        titulo VARCHAR(255) NOT NULL,
         descripcion TEXT NOT NULL DEFAULT '',
-        color TEXT NOT NULL DEFAULT '#5d8ae8',
-        icono TEXT NOT NULL DEFAULT '⏰',
-        tipo_bloque TEXT NOT NULL DEFAULT 'Flexible',
+        color VARCHAR(50) NOT NULL DEFAULT '#5d8ae8',
+        icono VARCHAR(50) NOT NULL DEFAULT '⏰',
+        tipo_bloque VARCHAR(50) NOT NULL DEFAULT 'Flexible',
         activo BOOLEAN NOT NULL DEFAULT TRUE
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS fechas_especiales (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        nombre TEXT NOT NULL,
-        fecha TEXT NOT NULL,
-        tipo TEXT NOT NULL CHECK (tipo IN ('cumpleanos', 'aniversario', 'evento', 'otro')),
-        icono TEXT NOT NULL DEFAULT '🎂',
-        color TEXT NOT NULL DEFAULT '#e85d8a',
-        recordar_dias_antes INTEGER NOT NULL DEFAULT 1 CHECK (recordar_dias_antes >= 0),
+        nombre VARCHAR(255) NOT NULL,
+        fecha VARCHAR(50) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        icono VARCHAR(50) NOT NULL DEFAULT '🎂',
+        color VARCHAR(50) NOT NULL DEFAULT '#e85d8a',
+        recordar_dias_antes INTEGER NOT NULL DEFAULT 1,
         nota TEXT NOT NULL DEFAULT ''
     );
+    """,
+    """
     CREATE TABLE IF NOT EXISTS recordatorios (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL DEFAULT 1,
-        titulo TEXT NOT NULL,
+        titulo VARCHAR(255) NOT NULL,
         descripcion TEXT NOT NULL DEFAULT '',
-        tipo TEXT NOT NULL CHECK (tipo IN ('puntual', 'recurrente', 'fecha_especial', 'relacionado')),
-        fecha_disparo TEXT NOT NULL,
-        regla_recurrencia TEXT,
-        anticipacion_minutos INTEGER NOT NULL DEFAULT 0 CHECK (anticipacion_minutos >= 0),
-        canal TEXT NOT NULL DEFAULT 'todos' CHECK (canal IN ('push', 'in_app', 'todos')),
-        modulo_origen TEXT,
+        tipo VARCHAR(50) NOT NULL DEFAULT 'puntual',
+        fecha_disparo VARCHAR(50) NOT NULL,
+        regla_recurrencia VARCHAR(255),
+        anticipacion_minutos INTEGER NOT NULL DEFAULT 0,
+        canal VARCHAR(50) NOT NULL DEFAULT 'todos',
+        modulo_origen VARCHAR(50),
         referencia_id INTEGER,
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         disparado BOOLEAN NOT NULL DEFAULT FALSE
     );
-"""
+    """
+]
 
 SQLITE_SCHEMA = """
     CREATE TABLE IF NOT EXISTS usuarios (
@@ -956,62 +1000,77 @@ SQLITE_SCHEMA = """
 
 def _seed_user_defaults(connection: Any, user_id: int) -> None:
     # Categorías para el usuario
-    cat_count = connection.execute(
-        "SELECT COUNT(*) FROM categorias WHERE usuario_id = %s", (user_id,)
-    ).fetchone()[0]
-    if cat_count == 0:
-        if _is_postgres():
-            for c in DEFAULT_CATEGORIAS:
-                connection.execute(
-                    "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, TRUE)",
-                    (user_id, c[0], c[1], c[2]),
-                )
-        else:
-            for c in DEFAULT_CATEGORIAS:
-                connection.execute(
-                    "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, 1)",
-                    (user_id, c[0], c[1], c[2]),
-                )
+    try:
+        cat_count = connection.execute(
+            "SELECT COUNT(*) FROM categorias WHERE usuario_id = %s", (user_id,)
+        ).fetchone()[0]
+        if cat_count == 0:
+            if _is_postgres():
+                for c in DEFAULT_CATEGORIAS:
+                    connection.execute(
+                        "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, TRUE)",
+                        (user_id, c[0], c[1], c[2]),
+                    )
+            else:
+                for c in DEFAULT_CATEGORIAS:
+                    connection.execute(
+                        "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, 1)",
+                        (user_id, c[0], c[1], c[2]),
+                    )
+    except Exception:
+        pass
 
     # Medios de pago para el usuario
-    med_count = connection.execute(
-        "SELECT COUNT(*) FROM medios_pago WHERE usuario_id = %s", (user_id,)
-    ).fetchone()[0]
-    if med_count == 0:
-        if _is_postgres():
-            for m in DEFAULT_MEDIOS_PAGO:
-                connection.execute(
-                    "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, TRUE)",
-                    (user_id, m[0], m[1], m[2], m[3], m[4]),
-                )
-        else:
-            for m in DEFAULT_MEDIOS_PAGO:
-                connection.execute(
-                    "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, 1)",
-                    (user_id, m[0], m[1], m[2], m[3], m[4]),
-                )
+    try:
+        med_count = connection.execute(
+            "SELECT COUNT(*) FROM medios_pago WHERE usuario_id = %s", (user_id,)
+        ).fetchone()[0]
+        if med_count == 0:
+            if _is_postgres():
+                for m in DEFAULT_MEDIOS_PAGO:
+                    connection.execute(
+                        "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, TRUE)",
+                        (user_id, m[0], m[1], m[2], m[3], m[4]),
+                    )
+            else:
+                for m in DEFAULT_MEDIOS_PAGO:
+                    connection.execute(
+                        "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, 1)",
+                        (user_id, m[0], m[1], m[2], m[3], m[4]),
+                    )
+    except Exception:
+        pass
 
     # Moto config para el usuario
-    moto = connection.execute(
-        "SELECT 1 FROM moto_config WHERE usuario_id = %s", (user_id,)
-    ).fetchone()
-    if moto is None:
-        connection.execute(
-            """
-            INSERT INTO moto_config (usuario_id, km_ultimo_cambio, intervalo_km, alerta_km_antes)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (user_id, 0, 2000, 200),
-        )
+    try:
+        moto = connection.execute(
+            "SELECT 1 FROM moto_config WHERE usuario_id = %s", (user_id,)
+        ).fetchone()
+        if moto is None:
+            connection.execute(
+                """
+                INSERT INTO moto_config (usuario_id, km_ultimo_cambio, intervalo_km, alerta_km_antes)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (user_id, 0, 2000, 200),
+            )
+    except Exception:
+        pass
 
 
 def init_db() -> None:
     try:
         with closing(get_connection()) as connection:
             if _is_postgres():
-                connection.executescript(POSTGRES_SCHEMA)
+                for stmt in POSTGRES_TABLES:
+                    try:
+                        connection.execute(stmt)
+                        connection.commit()
+                    except Exception as e:
+                        print(f"[Postgres Table Warn] {e}")
             else:
                 connection.executescript(SQLITE_SCHEMA)
+                connection.commit()
 
             # Migraciones seguras para asegurar columna usuario_id en todas las tablas
             tables = [
@@ -1034,42 +1093,38 @@ def init_db() -> None:
                 try:
                     if _is_postgres():
                         connection.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS usuario_id INTEGER NOT NULL DEFAULT 1")
+                        connection.commit()
                     else:
                         cols = [row["name"] for row in connection.execute(f"PRAGMA table_info({tbl})").fetchall()]
                         if "usuario_id" not in cols:
                             connection.execute(f"ALTER TABLE {tbl} ADD COLUMN usuario_id INTEGER NOT NULL DEFAULT 1")
-                except Exception as e:
+                            connection.commit()
+                except Exception:
                     pass
 
             # Sembrar usuarios Demo si no existen
-            try:
-                user_count_row = connection.execute("SELECT COUNT(*) FROM usuarios").fetchone()
-                user_count = user_count_row[0] if user_count_row else 0
-            except Exception:
-                user_count = 0
-
-            if user_count == 0:
-                for u in DEFAULT_DEMO_USERS:
-                    try:
-                        if _is_postgres():
-                            connection.execute(
-                                """
-                                INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
-                                VALUES (%s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (id) DO NOTHING
-                                """,
-                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
-                            )
-                        else:
-                            connection.execute(
-                                """
-                                INSERT OR IGNORE INTO usuarios (id, nombre, email, password_hash, avatar, rol)
-                                VALUES (%s, %s, %s, %s, %s, %s)
-                                """,
-                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
-                            )
-                    except Exception:
-                        pass
+            for u in DEFAULT_DEMO_USERS:
+                try:
+                    if _is_postgres():
+                        connection.execute(
+                            """
+                            INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (id) DO NOTHING
+                            """,
+                            (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                        )
+                    else:
+                        connection.execute(
+                            """
+                            INSERT OR IGNORE INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                        )
+                    connection.commit()
+                except Exception as e:
+                    print(f"[Seed User Warn] {e}")
 
             # Ajustar secuencias en PostgreSQL
             if _is_postgres():
@@ -1081,6 +1136,7 @@ def init_db() -> None:
                 for seq_table in seq_tables:
                     try:
                         connection.execute(f"SELECT setval('{seq_table}_id_seq', COALESCE((SELECT MAX(id) FROM {seq_table}), 1), true)")
+                        connection.commit()
                     except Exception:
                         pass
 
@@ -1088,12 +1144,11 @@ def init_db() -> None:
             for u in DEFAULT_DEMO_USERS:
                 try:
                     _seed_user_defaults(connection, u["id"])
+                    connection.commit()
                 except Exception:
                     pass
-
-            connection.commit()
     except Exception as exc:
-        print(f"[Init DB Warn] Advertencia durante init_db: {exc}")
+        print(f"[Init DB Error] Error durante init_db: {exc}")
 
 
 def _norm_bool(value: Any) -> Any:
@@ -1230,10 +1285,27 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_origin_regex=r"^https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "*")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
 
 
 @app.get("/")
