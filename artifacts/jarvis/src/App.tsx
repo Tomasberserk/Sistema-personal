@@ -6,7 +6,7 @@ import {
   Activity, ArrowDownLeft, ArrowUpRight, Bike, CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight,
   CircleDollarSign, Clock, Droplets, Flame, Gauge, LayoutGrid, List, Pencil, Plus, Receipt, RefreshCw, Save, Settings2, Tags, Timer,
   Trash2, TrendingUp, TriangleAlert, Wrench, X, Wallet, ArrowRightLeft, Landmark, CreditCard, Bell, Gift, Sparkles, AlertCircle,
-  Play, Pause, RotateCcw, Target, Coffee, Heart, Sun, Moon, Zap, Download, Compass,
+  Play, Pause, RotateCcw, Target, Coffee, Heart, Sun, Moon, Zap, Download, Compass, PiggyBank, Users,
 } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -34,6 +34,15 @@ import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, G
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthModal } from './components/AuthModal';
+import { AhorroModal } from './components/AhorroModal';
+import { AporteModal } from './components/AporteModal';
+import { MovimientosAhorroModal } from './components/MovimientosAhorroModal';
+import { useRecordatoriosScheduler, reproducirAlertaSonora } from './hooks/useRecordatoriosScheduler';
+import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro } from './api/customApi';
+import type { MetaAhorro, MetaAhorroInput, MovimientoAhorroInput } from './types/custom';
+
 const queryClient = new QueryClient();
 type ModalKind = 'ingreso' | 'variable' | 'fijo' | 'km' | null;
 type AnyRecord = Ingreso | GastoVariable | GastoFijo | Kilometraje;
@@ -54,12 +63,14 @@ const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('es-MX', { d
 const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(new Date());
 
 const DEFAULT_FUENTES_INFO: Record<string, { label: string; icono: string; color: string }> = {
-  Didi: { label: 'Didi', icono: '🛵', color: '#e8a85d' },
-  papa: { label: 'Papá', icono: '👨', color: '#5de8c4' },
-  amigo: { label: 'Amigo', icono: '🤝', color: '#5d8ae8' },
-  prestamo: { label: 'Deuda / Me debían', icono: '🤝', color: '#5de87a' },
-  random: { label: 'Ingreso Random / Extra', icono: '🎲', color: '#e85dd3' },
-  otro: { label: 'Otro', icono: '✨', color: '#a85de8' },
+  'Sueldo / Salario': { label: 'Sueldo / Nómina', icono: '💼', color: '#5de8c4' },
+  'Trabajo Independiente': { label: 'Independiente / Freelance', icono: '⚡', color: '#5d8ae8' },
+  'Negocio / Ventas': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8a85d' },
+  'Inversiones': { label: 'Inversiones', icono: '📈', color: '#5de87a' },
+  'Prestamo / Deuda': { label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8' },
+  'Extra / Regalo': { label: 'Ingreso Extra / Regalo', icono: '🎁', color: '#e85dd3' },
+  'Didi': { label: 'Didi / Movilidad', icono: '🛵', color: '#e8a85d' },
+  'otro': { label: 'Otro', icono: '✨', color: '#a85de8' },
 };
 
 const getFuenteInfo = (fuente: string, customCategories?: Categoria[]) => {
@@ -71,7 +82,16 @@ const getFuenteInfo = (fuente: string, customCategories?: Categoria[]) => {
   return { label: fuente, icono: '💵', color: '#5de8c4' };
 };
 
-const sourceLabel: Record<string, string> = { Didi: 'Didi', papa: 'Papá', amigo: 'Amigo', prestamo: 'Deuda / Me debían', random: 'Ingreso Random', otro: 'Otro' };
+const sourceLabel: Record<string, string> = {
+  'Sueldo / Salario': 'Sueldo',
+  'Trabajo Independiente': 'Independiente',
+  'Negocio / Ventas': 'Negocio',
+  'Inversiones': 'Inversiones',
+  'Prestamo / Deuda': 'Deuda',
+  'Extra / Regalo': 'Extra',
+  'Didi': 'Didi',
+  'otro': 'Otro',
+};
 
 const CATEGORY_EMOJIS = ['🍔', '🍕', '🥗', '☕', '🍺', '🛵', '🚗', '🚌', '⛽', '🎮', '🎬', '🎧', '📚', '💻', '📱', '👕', '💊', '🧴', '🎁', '🏠', '✨', '🐾', '✈️', '💰', '📦', '🧾'];
 const CATEGORY_COLORS = ['#e85d4a', '#5d8ae8', '#e8a85d', '#a85de8', '#5de8c4', '#e85d8a', '#e8d95d', '#5de87a', '#5dc4e8', '#e8755d', '#8a8aa0', '#b7e85d', '#e85dd3', '#5de8dd'];
@@ -190,16 +210,40 @@ function CosmosBackground() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  useRecordatoriosScheduler();
+
   return (
     <div className="relative min-h-[100dvh] overflow-x-clip bg-background text-foreground">
       <CosmosBackground />
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[236px] flex-col border-r border-white/5 bg-black/30 px-5 py-7 backdrop-blur-xl md:flex">
-        <div className="mb-12 flex items-center gap-3 px-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black"><Activity size={19} strokeWidth={2.6} /></div>
-          <div><div className="cosmos-eyebrow">personal</div><div className="cosmos-title text-xl font-bold">jarvis</div></div>
+        <div className="mb-6 flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black"><Activity size={19} strokeWidth={2.6} /></div>
+            <div><div className="cosmos-eyebrow">personal</div><div className="cosmos-title text-xl font-bold">jarvis</div></div>
+          </div>
         </div>
+
+        {/* User Pill Button */}
+        <button
+          onClick={() => setAuthModalOpen(true)}
+          className="mb-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-left transition hover:border-white/20 hover:bg-white/8"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-xl">{user?.avatar || '🚀'}</span>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-white truncate">{user?.nombre || 'Tomás'}</div>
+              <div className="text-[10px] text-[#5de8c4] flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#5de8c4] animate-pulse" /> Espacio activo
+              </div>
+            </div>
+          </div>
+          <Users size={14} className="text-white/40 shrink-0" />
+        </button>
+
         <nav className="space-y-2">
-          <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Resumen" testId="link-resumen" />
+          <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Finanzas" testId="link-finanzas" />
           <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Kilometraje" testId="link-kilometraje" />
           <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="link-habitos" />
           <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="link-rutina" />
@@ -216,8 +260,20 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="md:pl-[236px]">{children}</main>
+
+      {/* Mobile user bar */}
+      <div className="fixed top-3 right-4 z-40 md:hidden">
+        <button
+          onClick={() => setAuthModalOpen(true)}
+          className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/80 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-xl shadow-lg"
+        >
+          <span>{user?.avatar || '🚀'}</span>
+          <span>{user?.nombre || 'Tomás'}</span>
+        </button>
+      </div>
+
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[68px] items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#0a0a0a]/95 px-3 py-1.5 backdrop-blur-2xl scrollbar-none md:hidden">
-        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={17} />} label="Resumen" testId="mobile-link-resumen" />
+        <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={17} />} label="Finanzas" testId="mobile-link-finanzas" />
         <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={17} />} label="Km" testId="mobile-link-kilometraje" />
         <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={17} />} label="Hábitos" testId="mobile-link-habitos" />
         <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={17} />} label="Rutina" testId="mobile-link-rutina" />
@@ -225,6 +281,8 @@ function Shell({ children }: { children: React.ReactNode }) {
         <NavItem href="/moto" active={location === '/moto'} icon={<Droplets size={17} />} label="Moto" testId="mobile-link-moto" />
         <NavItem href="/categorias" active={location === '/categorias'} icon={<Tags size={17} />} label="Categorías" testId="mobile-link-categorias" />
       </nav>
+
+      {authModalOpen && <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />}
     </div>
   );
 }
@@ -460,15 +518,26 @@ function Dashboard() {
   const [modal, setModal] = useState<ModalKind | 'transferencia'>(null);
   const [historialModal, setHistorialModal] = useState<'ingresos' | 'variables' | null>(null);
   const [editing, setEditing] = useState<AnyRecord | null>(null);
+
+  // Ahorros states
+  const [modalAhorro, setModalAhorro] = useState(false);
+  const [editingAhorro, setEditingAhorro] = useState<MetaAhorro | null>(null);
+  const [aporteMeta, setAporteMeta] = useState<MetaAhorro | null>(null);
+  const [historialMeta, setHistorialMeta] = useState<MetaAhorro | null>(null);
+
   const ingresos = useListIngresos(); const fijos = useListGastosFijos(); const variables = useListGastosVariables();
   const categorias = useListCategorias();
   const medios = useListMediosPago();
   const summary = useGetResumenMesActual();
   const porCategoria = useGetResumenMensualPorCategoria();
+  const ahorros = useListAhorros();
+
   const createIngreso = useCreateIngreso(); const updateIngreso = useUpdateIngreso(); const deleteIngreso = useDeleteIngreso();
   const createFijo = useCreateGastoFijo(); const updateFijo = useUpdateGastoFijo(); const deleteFijo = useDeleteGastoFijo();
   const createVariable = useCreateGastoVariable(); const updateVariable = useUpdateGastoVariable(); const deleteVariable = useDeleteGastoVariable();
   const createTransferencia = useCreateTransferencia();
+  const createAhorro = useCreateAhorro(); const updateAhorro = useUpdateAhorro(); const deleteAhorro = useDeleteAhorro();
+  const aportarAhorro = useAportarAhorro();
 
   const ids = {
     ingreso: editing && 'fuente' in editing ? editing.id : undefined,
@@ -480,7 +549,11 @@ function Dashboard() {
   const variablesList = asList<GastoVariable>(variables.data);
   const categoriasList = asList<Categoria>(categorias.data);
   const mediosList = asList<MedioPagoSaldo>(medios.data);
+  const ahorrosList = asList<MetaAhorro>(ahorros.data);
   const pieData = asList<ResumenCategoria>(porCategoria.data);
+
+  const totalAhorrado = ahorrosList.reduce((acc, m) => acc + (m.activo ? m.monto_actual : 0), 0);
+
   const pieDataIngresos = useMemo<ResumenIngresoFuente[]>(() => {
     const currentMonth = new Date().toISOString().slice(0, 7);
     const delMes = ingresosList.filter((x) => x.fecha.slice(0, 7) === currentMonth);
@@ -531,6 +604,7 @@ function Dashboard() {
     queryClient.invalidateQueries({ queryKey: getGetResumenMensualPorCategoriaQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListTransferenciasQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ['/api/ahorros'] });
   };
   const close = () => { setModal(null); setEditing(null); };
   const submit = (data: Record<string, unknown>) => {
@@ -555,16 +629,138 @@ function Dashboard() {
     if (kind === 'variable') deleteVariable.mutate({ id }, { onSuccess: done });
     if (kind === 'fijo') deleteFijo.mutate({ id }, { onSuccess: done });
   };
+
   return <Shell>
     <div className="relative z-10 min-h-[100dvh]">
-      <Topbar eyebrow={`visión de ${monthLabel}`} title="Que tu dinero te siga el paso." onAdd={() => setModal('ingreso')} />
+      <Topbar eyebrow={`finanzas · visión de ${monthLabel}`} title="Que tu dinero te siga el paso." onAdd={() => setModal('ingreso')} />
       <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Metric label="Dinero disponible" value={money(totalEnMedios)} icon={<Wallet size={19} />} tone="green" note="Saldo real en todos tus medios" />
-          <Metric label="Saldo del mes" value={money(sum.saldo)} icon={<TrendingUp size={19} />} note={sum.saldo >= 0 ? 'Margen positivo del mes' : 'Ajusta el ritmo esta semana'} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Metric label="Dinero disponible" value={money(totalEnMedios)} icon={<Wallet size={19} />} tone="green" note="Saldo en tus cuentas" />
+          <Metric label="Total ahorrado" value={money(totalAhorrado)} icon={<PiggyBank size={19} />} tone="green" note={`${ahorrosList.length} metas de ahorro`} />
+          <Metric label="Saldo del mes" value={money(sum.saldo)} icon={<TrendingUp size={19} />} note={sum.saldo >= 0 ? 'Margen positivo' : 'Ajusta el ritmo'} />
           <Metric label="Ingresos" value={money(sum.total_ingresos)} icon={<ArrowUpRight size={19} />} tone="warm" note={`${ingresosList.length} entradas este mes`} />
-          <Metric label="Gastos" value={money(sum.total_gastos_fijos + sum.total_gastos_variables)} icon={<ArrowDownLeft size={19} />} note={`${money(sum.total_gastos_fijos)} fijos · ${money(sum.total_gastos_variables)} variables`} />
+          <Metric label="Gastos" value={money(sum.total_gastos_fijos + sum.total_gastos_variables)} icon={<ArrowDownLeft size={19} />} note={`${money(sum.total_gastos_fijos)} fijos · ${money(sum.total_gastos_variables)} var`} />
         </div>
+
+        {/* Sección Metas de Ahorro */}
+        <section className="cosmos-card px-5 py-6 sm:px-7">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="cosmos-eyebrow mb-1">guardar para lo que importa</div>
+              <h2 className="cosmos-title text-xl font-bold">Metas & Fondos de Ahorro</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setEditingAhorro(null);
+                  setModalAhorro(true);
+                }}
+                className="cosmos-button-primary !py-2 !px-3 text-xs"
+              >
+                <Plus size={14} /> Nueva Meta
+              </button>
+            </div>
+          </div>
+          {ahorros.isLoading ? (
+            <LoadingRows />
+          ) : ahorrosList.length === 0 ? (
+            <EmptyState
+              title="Aún no tienes metas de ahorro"
+              copy="Crea un fondo de emergencia, vacaciones o tu próximo proyecto para ver crecer tu dinero."
+              action="Crear primera meta de ahorro"
+              onClick={() => {
+                setEditingAhorro(null);
+                setModalAhorro(true);
+              }}
+              testId="button-empty-ahorro"
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {ahorrosList.map((m) => {
+                const med = m.medio_pago_id ? medioMap.get(m.medio_pago_id) : null;
+                return (
+                  <div
+                    key={m.id}
+                    className="group flex flex-col justify-between rounded-2xl border border-white/5 bg-white/4 p-4 transition hover:border-white/20 hover:bg-white/7"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-xl text-xl"
+                            style={{ backgroundColor: `${m.color}25` }}
+                          >
+                            {m.icono}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-white">{m.nombre}</h3>
+                            <div className="text-[11px] text-white/45">
+                              {med ? `${med.icono} ${med.nombre}` : 'Cuenta general'}
+                              {m.fecha_limite ? ` · ${m.fecha_limite}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100">
+                          <button
+                            onClick={() => {
+                              setEditingAhorro(m);
+                              setModalAhorro(true);
+                            }}
+                            className="rounded-lg p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`¿Eliminar la meta "${m.nombre}"?`)) {
+                                deleteAhorro.mutate(m.id, {
+                                  onSuccess: () => toast.success('Meta de ahorro eliminada'),
+                                });
+                              }
+                            }}
+                            className="rounded-lg p-1 text-white/50 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex items-end justify-between text-xs mb-1.5">
+                          <span className="cosmos-number text-lg font-bold text-[#5de8c4]">{money(m.monto_actual)}</span>
+                          <span className="text-white/50 text-[11px]">Meta: {money(m.monto_objetivo)} ({m.porcentaje}%)</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white/8">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(m.porcentaje, 100)}%`, backgroundColor: m.color }}
+                          />
+                        </div>
+                      </div>
+
+                      {m.nota && <p className="mt-2 text-[11px] italic text-white/40 truncate">"{m.nota}"</p>}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                      <button
+                        onClick={() => setHistorialMeta(m)}
+                        className="text-xs font-semibold text-white/60 hover:text-white flex items-center gap-1"
+                      >
+                        <Clock size={12} /> Historial
+                      </button>
+                      <button
+                        onClick={() => setAporteMeta(m)}
+                        className="cosmos-button-primary !py-1 !px-3 text-xs"
+                      >
+                        <Plus size={13} /> Aportar / Retirar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Sección Medios de Dinero */}
         <section className="cosmos-card px-5 py-6 sm:px-7">
@@ -615,7 +811,7 @@ function Dashboard() {
               <span className="flex items-center gap-1.5 rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-white/70"><CalendarDays size={13} /> {monthLabel}</span>
             </div>
             {ingresos.isLoading ? <LoadingRows /> : pieDataIngresos.length === 0
-              ? <EmptyState title="Sin ingresos este mes" copy="Registra tus ingresos de Didi u otras fuentes para ver su desglose en circunferencia." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso-dona" />
+              ? <EmptyState title="Sin ingresos este mes" copy="Registra tus ingresos de trabajo, sueldo u otras fuentes para ver su desglose en circunferencia." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso-dona" />
               : <IncomeDonut data={pieDataIngresos} />}
           </section>
 
@@ -641,7 +837,7 @@ function Dashboard() {
 
         <div className="grid gap-5 lg:grid-cols-2">
           <ListCard title="Ingresos" kicker="dinero que llegó" historyAction={() => setHistorialModal('ingresos')} action={() => { setEditing(null); setModal('ingreso'); }}>
-            {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primera jornada para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => {
+            {ingresos.isLoading ? <LoadingRows /> : !ingresosList.length ? <EmptyState title="Todavía no hay ingresos" copy="Anota tu primer ingreso para empezar a ver el movimiento." action="Registrar ingreso" onClick={() => setModal('ingreso')} testId="button-empty-ingreso" /> : <div className="space-y-1">{ingresosList.slice(0, 6).map((x) => {
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
               const fInfo = getFuenteInfo(x.fuente, categoriasList);
               return <div key={x.id} data-testid={`row-ingreso-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${fInfo.color}26` }}>{fInfo.icono}</div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white/90">{fInfo.label} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-medium text-[#5de8c4]">+{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('ingreso'); }} onDelete={() => remove('ingreso', x.id)} /></div></div>;
@@ -649,7 +845,7 @@ function Dashboard() {
           </ListCard>
 
           <ListCard title="Gastos variables" kicker="lo que cambia" historyAction={() => setHistorialModal('variables')} action={() => { setEditing(null); setModal('variable'); }}>
-            {variables.isLoading ? <LoadingRows /> : !variablesList.length ? <EmptyState title="Dale nombre a cada salida" copy="Comida, gasolina, una reparación: todo cuenta para entender tu ruta." action="Registrar gasto variable" onClick={() => setModal('variable')} testId="button-empty-variable" /> : <div className="space-y-1">{variablesList.slice(0, 8).map((x) => {
+            {variables.isLoading ? <LoadingRows /> : !variablesList.length ? <EmptyState title="Dale nombre a cada salida" copy="Comida, transporte, servicios, compras: todo cuenta para entender tu dinero." action="Registrar gasto variable" onClick={() => setModal('variable')} testId="button-empty-variable" /> : <div className="space-y-1">{variablesList.slice(0, 8).map((x) => {
               const cat = catMap.get(x.categoria_id) ?? FALLBACK_CAT;
               const med = x.medio_pago_id ? medioMap.get(x.medio_pago_id) : null;
               return <div key={x.id} data-testid={`row-variable-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 transition hover:bg-white/4"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${cat.color}26` }}>{cat.icono}</div><div className="min-w-0"><div className="truncate text-sm font-semibold text-white">{cat.nombre} {med && <span className="ml-1 text-xs text-white/50">({med.icono} {med.nombre})</span>}</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><div className="flex items-center gap-1"><span className="cosmos-number text-sm font-semibold" style={{ color: cat.color }}>-{money(x.monto)}</span><RowActions id={x.id} onEdit={() => { setEditing(x); setModal('variable'); }} onDelete={() => remove('variable', x.id)} /></div></div>;
@@ -693,6 +889,79 @@ function Dashboard() {
           pending={createIngreso.isPending || updateIngreso.isPending || createVariable.isPending || updateVariable.isPending || createFijo.isPending || updateFijo.isPending}
           onClose={close}
           onSubmit={submit}
+        />
+      )}
+
+      {/* Modales de Ahorros */}
+      {modalAhorro && (
+        <AhorroModal
+          record={editingAhorro}
+          medios={mediosList}
+          pending={createAhorro.isPending || updateAhorro.isPending}
+          onClose={() => {
+            setModalAhorro(false);
+            setEditingAhorro(null);
+          }}
+          onSubmit={(data) => {
+            if (editingAhorro) {
+              updateAhorro.mutate(
+                { id: editingAhorro.id, data },
+                {
+                  onSuccess: () => {
+                    toast.success('Meta de ahorro actualizada');
+                    setModalAhorro(false);
+                    setEditingAhorro(null);
+                  },
+                }
+              );
+            } else {
+              createAhorro.mutate(data, {
+                onSuccess: () => {
+                  toast.success('Meta de ahorro creada con éxito');
+                  setModalAhorro(false);
+                  setEditingAhorro(null);
+                },
+              });
+            }
+          }}
+        />
+      )}
+
+      {aporteMeta && (
+        <AporteModal
+          meta={aporteMeta}
+          medios={mediosList}
+          pending={aportarAhorro.isPending}
+          onClose={() => setAporteMeta(null)}
+          onSubmit={(data) => {
+            aportarAhorro.mutate(
+              { id: aporteMeta.id, data },
+              {
+                onSuccess: (res) => {
+                  toast.success(
+                    data.tipo === 'aporte'
+                      ? `¡Aporte registrado! Nuevo saldo: ${money(res.monto_actual)}`
+                      : `Retiro registrado. Saldo restante: ${money(res.monto_actual)}`
+                  );
+                  setAporteMeta(null);
+                },
+                onError: () => toast.error('Error al registrar el movimiento de ahorro'),
+              }
+            );
+          }}
+        />
+      )}
+
+      {historialMeta && (
+        <MovimientosAhorroModal
+          meta={historialMeta}
+          medios={mediosList}
+          onClose={() => setHistorialMeta(null)}
+          onAddAporte={() => {
+            const m = historialMeta;
+            setHistorialMeta(null);
+            setAporteMeta(m);
+          }}
         />
       )}
     </div>
@@ -2299,7 +2568,7 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const isIngreso = kind === 'ingreso'; const isVariable = kind === 'variable'; const isFijo = kind === 'fijo'; const isKm = kind === 'km';
   const r = record as Partial<Ingreso & GastoVariable & GastoFijo & Kilometraje> | null;
   const [form, setForm] = useState<Record<string, string | boolean>>({
-    fecha: dateValue(r?.fecha), fuente: r?.fuente ?? 'Didi', monto: String(r?.monto ?? ''),
+    fecha: dateValue(r?.fecha), fuente: r?.fuente ?? 'Sueldo / Salario', monto: String(r?.monto ?? ''),
     medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
     nota: r?.nota ?? '', categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: r?.nombre ?? '',
     tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
@@ -2307,11 +2576,12 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
   const availableFuentes = useMemo(() => {
     const defaults = [
-      { id: 'Didi', label: 'Didi', icono: '🛵', color: '#e8a85d' },
-      { id: 'papa', label: 'Papá', icono: '👨', color: '#5de8c4' },
-      { id: 'amigo', label: 'Amigo', icono: '🤝', color: '#5d8ae8' },
-      { id: 'prestamo', label: 'Deuda', icono: '💵', color: '#5de87a' },
-      { id: 'random', label: 'Random', icono: '🎲', color: '#e85dd3' },
+      { id: 'Sueldo / Salario', label: 'Sueldo', icono: '💼', color: '#5de8c4' },
+      { id: 'Trabajo Independiente', label: 'Independiente', icono: '⚡', color: '#5d8ae8' },
+      { id: 'Negocio / Ventas', label: 'Negocio', icono: '🛍️', color: '#e8a85d' },
+      { id: 'Inversiones', label: 'Inversiones', icono: '📈', color: '#5de87a' },
+      { id: 'Prestamo / Deuda', label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8' },
+      { id: 'Extra / Regalo', label: 'Extra / Regalo', icono: '🎁', color: '#e85dd3' },
     ];
     // También incluir las categorías existentes que no estén en defaults
     const extraCats = (categorias ?? [])
@@ -2382,7 +2652,7 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="cosmos-field-label">Fuente o categoría de ingreso</span>
-                  <span className="text-[11px] text-white/40">Didi, deudas, papá, extras...</span>
+                  <span className="text-[11px] text-white/40">Sueldo, independiente, negocio, extras...</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 mb-3">
                   {availableFuentes.map((f) => {
@@ -2473,19 +2743,29 @@ function FechasPage() {
   };
 
   const handleRequestPush = async () => {
+    reproducirAlertaSonora();
     if (!('Notification' in window)) {
-      toast.error('Este navegador no soporta notificaciones Web Push.');
+      toast.error('Este navegador no soporta notificaciones de escritorio/móvil.');
       return;
     }
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      toast.success('¡Notificaciones activadas en este dispositivo!');
-      new Notification('Jarvis Sistema Personal', {
-        body: 'Notificaciones y recordatorios sincronizados con éxito.',
-        icon: '/favicon.ico',
-      });
+      toast.success('¡Notificaciones y sonido activados en este dispositivo!');
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification('Jarvis Sistema Personal', {
+            body: 'Notificaciones locales y alarmas sincronizadas con éxito.',
+            icon: '/favicon.svg',
+          });
+        });
+      } else {
+        new Notification('Jarvis Sistema Personal', {
+          body: 'Notificaciones locales y alarmas sincronizadas con éxito.',
+          icon: '/favicon.svg',
+        });
+      }
     } else {
-      toast.error('Permiso de notificaciones denegado.');
+      toast.error('Permiso de notificaciones denegado. Actívalas en la configuración de tu navegador.');
     }
   };
 
@@ -3033,16 +3313,42 @@ function RecordatorioModal({
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><Switch>
-    <Route path="/" component={Dashboard} />
-    <Route path="/kilometraje" component={KilometrajePage} />
-    <Route path="/habitos" component={HabitosPage} />
-    <Route path="/rutina" component={RutinaPage} />
-    <Route path="/fechas" component={FechasPage} />
-    <Route path="/moto" component={MotoPage} />
-    <Route path="/categorias" component={CategoriesPage} />
-    <Route component={() => <Shell><div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center"><div><h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1><Link href="/" data-testid="link-back-home" className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4">Volver al resumen</Link></div></div></Shell>} />
-  </Switch><Toaster /></TooltipProvider></QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/kilometraje" component={KilometrajePage} />
+            <Route path="/habitos" component={HabitosPage} />
+            <Route path="/rutina" component={RutinaPage} />
+            <Route path="/fechas" component={FechasPage} />
+            <Route path="/moto" component={MotoPage} />
+            <Route path="/categorias" component={CategoriesPage} />
+            <Route
+              component={() => (
+                <Shell>
+                  <div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center">
+                    <div>
+                      <h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1>
+                      <Link
+                        href="/"
+                        data-testid="link-back-home"
+                        className="mt-3 inline-block text-white underline decoration-white/25 underline-offset-4"
+                      >
+                        Volver a finanzas
+                      </Link>
+                    </div>
+                  </div>
+                </Shell>
+              )}
+            />
+          </Switch>
+          <Toaster />
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;

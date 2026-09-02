@@ -1,0 +1,18 @@
+{
+  "name": "Jarvis — Sistema Personal",
+  "short_name": "Jarvis",
+  "description": "Sistema Operativo Personal: Finanzas, Ahorros, Hábitos, Rutina, Moto y Recordatorios",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070a",
+  "theme_color": "#07070a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
