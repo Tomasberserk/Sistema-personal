@@ -118,3 +118,27 @@ export async function apiGetMe(): Promise<Usuario> {
 export async function apiGetDemoUsers(): Promise<DemoUserItem[]> {
   return customFetch<DemoUserItem[]>('/api/auth/demo-users', { method: 'GET' });
 }
+
+export function useSeedDefaultCategorias() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      customFetch<unknown>('/api/categorias/seed-defaults', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/categorias'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resumen/mes-actual/por-categoria'] });
+    },
+  });
+}
+
+export function useSeedDefaultMediosPago() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      customFetch<unknown>('/api/medios-pago/seed-defaults', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/medios-pago'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resumen/mes-actual'] });
+    },
+  });
+}

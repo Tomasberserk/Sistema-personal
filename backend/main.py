@@ -77,6 +77,7 @@ DEFAULT_MEDIOS_PAGO = [
     ("Efectivo (Monedas)", "efectivo_monedas", "🪙", "#e8d95d", 0.0),
     ("Bancolombia", "cuenta_bancaria", "🏦", "#e85d4a", 0.0),
     ("Nequi", "billetera_digital", "📱", "#a85de8", 0.0),
+    ("Daviplata", "billetera_digital", "📲", "#e85d5d", 0.0),
 ]
 
 DEFAULT_DEMO_USERS = [
@@ -1001,45 +1002,47 @@ SQLITE_SCHEMA = """
 def _seed_user_defaults(connection: Any, user_id: int) -> None:
     # Categorías para el usuario
     try:
-        cat_count = connection.execute(
-            "SELECT COUNT(*) FROM categorias WHERE usuario_id = %s", (user_id,)
-        ).fetchone()[0]
-        if cat_count == 0:
-            if _is_postgres():
-                for c in DEFAULT_CATEGORIAS:
+        for c in DEFAULT_CATEGORIAS:
+            exists = connection.execute(
+                "SELECT 1 FROM categorias WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
+                (user_id, c[0]),
+            ).fetchone()
+            if not exists:
+                if _is_postgres():
                     connection.execute(
                         "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, TRUE)",
                         (user_id, c[0], c[1], c[2]),
                     )
-            else:
-                for c in DEFAULT_CATEGORIAS:
+                else:
                     connection.execute(
                         "INSERT INTO categorias (usuario_id, nombre, icono, color, activa) VALUES (%s, %s, %s, %s, 1)",
                         (user_id, c[0], c[1], c[2]),
                     )
-    except Exception:
-        pass
+        connection.commit()
+    except Exception as exc:
+        print(f"[Seed Categorias Error for user {user_id}]: {exc}")
 
     # Medios de pago para el usuario
     try:
-        med_count = connection.execute(
-            "SELECT COUNT(*) FROM medios_pago WHERE usuario_id = %s", (user_id,)
-        ).fetchone()[0]
-        if med_count == 0:
-            if _is_postgres():
-                for m in DEFAULT_MEDIOS_PAGO:
+        for m in DEFAULT_MEDIOS_PAGO:
+            exists = connection.execute(
+                "SELECT 1 FROM medios_pago WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
+                (user_id, m[0]),
+            ).fetchone()
+            if not exists:
+                if _is_postgres():
                     connection.execute(
                         "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, TRUE)",
                         (user_id, m[0], m[1], m[2], m[3], m[4]),
                     )
-            else:
-                for m in DEFAULT_MEDIOS_PAGO:
+                else:
                     connection.execute(
                         "INSERT INTO medios_pago (usuario_id, nombre, tipo, icono, color, saldo_inicial, activo) VALUES (%s, %s, %s, %s, %s, %s, 1)",
                         (user_id, m[0], m[1], m[2], m[3], m[4]),
                     )
-    except Exception:
-        pass
+        connection.commit()
+    except Exception as exc:
+        print(f"[Seed Medios Error for user {user_id}]: {exc}")
 
     # Moto config para el usuario
     try:
@@ -1054,8 +1057,9 @@ def _seed_user_defaults(connection: Any, user_id: int) -> None:
                 """,
                 (user_id, 0, 2000, 200),
             )
-    except Exception:
-        pass
+            connection.commit()
+    except Exception as exc:
+        print(f"[Seed Moto Error for user {user_id}]: {exc}")
 
 
 def init_db() -> None:
@@ -1071,6 +1075,48 @@ def init_db() -> None:
             else:
                 connection.executescript(SQLITE_SCHEMA)
                 connection.commit()
+
+            # Migración para categorias: remover restricción UNIQUE(nombre) global si existe
+            if not _is_postgres():
+                try:
+                    tbl_row = connection.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='categorias'").fetchone()
+                    if tbl_row and "nombre TEXT NOT NULL UNIQUE" in tbl_row[0]:
+                        connection.execute("PRAGMA foreign_keys=OFF")
+                        connection.execute("ALTER TABLE categorias RENAME TO _categorias_old_uniq")
+                        connection.execute("""
+                            CREATE TABLE categorias (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                usuario_id INTEGER NOT NULL DEFAULT 1,
+                                nombre TEXT NOT NULL,
+                                icono TEXT NOT NULL DEFAULT '🏷️',
+                                color TEXT NOT NULL DEFAULT '#333333',
+                                activa INTEGER NOT NULL DEFAULT 1 CHECK (activa IN (0, 1))
+                            )
+                        """)
+                        connection.execute("""
+                            INSERT INTO categorias (id, usuario_id, nombre, icono, color, activa)
+                            SELECT id, usuario_id, nombre, icono, color, activa FROM _categorias_old_uniq
+                        """)
+                        connection.execute("DROP TABLE _categorias_old_uniq")
+                        connection.execute("PRAGMA foreign_keys=ON")
+                        connection.commit()
+                except Exception as e:
+                    print(f"[SQLite Categorias Migration Warn] {e}")
+            else:
+                try:
+                    connection.execute("ALTER TABLE categorias DROP CONSTRAINT IF EXISTS categorias_nombre_key")
+                    connection.execute("ALTER TABLE categorias DROP CONSTRAINT IF EXISTS uq_categorias_nombre")
+                    connection.commit()
+                except Exception as e:
+                    print(f"[Postgres Categorias Migration Warn] {e}")
+
+            # Índices compuestos por usuario_id y nombre
+            try:
+                connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_categorias_user_nombre ON categorias (usuario_id, lower(nombre))")
+                connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_medios_pago_user_nombre ON medios_pago (usuario_id, lower(nombre))")
+                connection.commit()
+            except Exception as e:
+                print(f"[Index Migration Warn] {e}")
 
             # Migraciones seguras para asegurar columna usuario_id en todas las tablas
             tables = [
@@ -1140,13 +1186,15 @@ def init_db() -> None:
                     except Exception:
                         pass
 
-            # Sembrar datos por defecto para los usuarios demo
-            for u in DEFAULT_DEMO_USERS:
-                try:
-                    _seed_user_defaults(connection, u["id"])
-                    connection.commit()
-                except Exception:
-                    pass
+            # Sembrar datos por defecto para los usuarios demo y todos los usuarios existentes
+            try:
+                all_users = connection.execute("SELECT id FROM usuarios").fetchall()
+                for u in all_users:
+                    uid = int(u[0] if isinstance(u, (tuple, list)) else u["id"])
+                    _seed_user_defaults(connection, uid)
+                connection.commit()
+            except Exception as e:
+                print(f"[Seed All Users Warn] {e}")
     except Exception as exc:
         print(f"[Init DB Error] Error durante init_db: {exc}")
 
@@ -1363,12 +1411,23 @@ def login(payload: UsuarioLogin) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail="Credenciales incorrectas")
 
         user = Usuario(**user_dict)
+        try:
+            _seed_user_defaults(connection, user.id)
+            connection.commit()
+        except Exception:
+            pass
         token = generate_auth_token(user.id)
         return {"token": token, "usuario": user}
 
 
 @app.get("/api/auth/me", response_model=Usuario)
 def me(user: Usuario = Depends(get_current_user)) -> Usuario:
+    try:
+        with closing(get_connection()) as connection:
+            _seed_user_defaults(connection, user.id)
+            connection.commit()
+    except Exception:
+        pass
     return user
 
 
@@ -1386,6 +1445,11 @@ def switch_demo(payload: SwitchDemoInput) -> dict[str, Any]:
         if not user_row:
             raise HTTPException(status_code=404, detail="Usuario demo no encontrado")
         user = Usuario(**row_to_dict(user_row))
+        try:
+            _seed_user_defaults(connection, user.id)
+            connection.commit()
+        except Exception:
+            pass
         token = generate_auth_token(user.id)
         return {"token": token, "usuario": user}
 
@@ -1484,11 +1548,35 @@ def list_categorias(user: Usuario = Depends(get_current_user)) -> list[dict[str,
             "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
             (user.id,),
         ).fetchall()
+        if not rows:
+            _seed_user_defaults(connection, user.id)
+            rows = connection.execute(
+                "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
+                (user.id,),
+            ).fetchall()
+        return [{**row_to_dict(row), "activa": bool(row["activa"])} for row in rows]
+
+
+@app.post("/api/categorias/seed-defaults", response_model=list[Categoria])
+def seed_default_categorias(user: Usuario = Depends(get_current_user)) -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        _seed_user_defaults(connection, user.id)
+        rows = connection.execute(
+            "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
+            (user.id,),
+        ).fetchall()
         return [{**row_to_dict(row), "activa": bool(row["activa"])} for row in rows]
 
 
 @app.post("/api/categorias", response_model=Categoria, status_code=201)
 def create_categoria(payload: CategoriaInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        existing = connection.execute(
+            "SELECT id FROM categorias WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
+            (user.id, payload.nombre.strip()),
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
     result = create_item(
         "categorias",
         {**payload.model_dump(), "usuario_id": user.id, "activa": _norm_bool(payload.activa)},
@@ -1684,6 +1772,12 @@ def build_saldos_medios(user_id: int) -> list[dict[str, Any]]:
             "SELECT * FROM medios_pago WHERE usuario_id = %s ORDER BY activo DESC, id",
             (user_id,),
         ).fetchall()
+        if not medios:
+            _seed_user_defaults(connection, user_id)
+            medios = connection.execute(
+                "SELECT * FROM medios_pago WHERE usuario_id = %s ORDER BY activo DESC, id",
+                (user_id,),
+            ).fetchall()
 
         # Totales por medio
         ingresos_rows = connection.execute(
@@ -1739,8 +1833,22 @@ def list_medios_pago(user: Usuario = Depends(get_current_user)) -> list[dict[str
     return build_saldos_medios(user.id)
 
 
+@app.post("/api/medios-pago/seed-defaults", response_model=list[MedioPagoSaldo])
+def seed_default_medios_pago(user: Usuario = Depends(get_current_user)) -> list[dict[str, Any]]:
+    with closing(get_connection()) as connection:
+        _seed_user_defaults(connection, user.id)
+    return build_saldos_medios(user.id)
+
+
 @app.post("/api/medios-pago", response_model=MedioPago, status_code=201)
 def create_medio_pago(payload: MedioPagoInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        existing = connection.execute(
+            "SELECT id FROM medios_pago WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
+            (user.id, payload.nombre.strip()),
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe una cuenta o medio de pago con ese nombre")
     result = create_item(
         "medios_pago",
         {**payload.model_dump(), "usuario_id": user.id, "activo": _norm_bool(payload.activo)},

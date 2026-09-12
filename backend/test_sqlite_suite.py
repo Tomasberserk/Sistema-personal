@@ -217,6 +217,45 @@ def test_full_system_sqlite_suite():
             assert fin_user2.json()["total_ingresos"] == 0.0
             assert fin_user2.json()["total_ahorros"] == 0.0
 
+            # 16. Registro de nuevo usuario (Melanie) y verificación de categorías/medios por defecto
+            reg_resp = client.post("/api/auth/register", json={
+                "nombre": "Melanie",
+                "email": "melanie@personal.io",
+                "password": "password123",
+                "avatar": "💖"
+            })
+            assert reg_resp.status_code == 200
+            token_melanie = reg_resp.json()["token"]
+            headers_melanie = {"Authorization": f"Bearer {token_melanie}"}
+
+            cats_melanie = client.get("/api/categorias", headers=headers_melanie).json()
+            assert len(cats_melanie) == 12
+            assert any(c["nombre"] == "Comida & Alimentación" for c in cats_melanie)
+
+            medios_melanie = client.get("/api/medios-pago", headers=headers_melanie).json()
+            assert len(medios_melanie) == 5
+            assert any(m["nombre"] == "Daviplata" for m in medios_melanie)
+            assert any(m["nombre"] == "Nequi" for m in medios_melanie)
+
+            # 17. Creación de nueva cuenta / medio de pago para Melanie
+            new_medio_resp = client.post("/api/medios-pago", json={
+                "nombre": "Billetera Dale",
+                "tipo": "billetera_digital",
+                "icono": "💳",
+                "color": "#e8a85d",
+                "saldo_inicial": 25000.0,
+                "activo": True
+            }, headers=headers_melanie)
+            assert new_medio_resp.status_code == 201
+            assert new_medio_resp.json()["nombre"] == "Billetera Dale"
+
+            # 18. Sembrar predeterminados endpoints
+            reseed_cats = client.post("/api/categorias/seed-defaults", headers=headers_melanie)
+            assert reseed_cats.status_code == 200
+            reseed_meds = client.post("/api/medios-pago/seed-defaults", headers=headers_melanie)
+            assert reseed_meds.status_code == 200
+
+
     finally:
         if os.path.exists(db_path):
             os.remove(db_path)

@@ -40,8 +40,9 @@ import { LoginPage } from './pages/LoginPage';
 import { AhorroModal } from './components/AhorroModal';
 import { AporteModal } from './components/AporteModal';
 import { MovimientosAhorroModal } from './components/MovimientosAhorroModal';
+import { MedioPagoModal } from './components/MedioPagoModal';
 import { useRecordatoriosScheduler, reproducirAlertaSonora } from './hooks/useRecordatoriosScheduler';
-import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro } from './api/customApi';
+import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro, useSeedDefaultCategorias, useSeedDefaultMediosPago } from './api/customApi';
 import type { MetaAhorro, MetaAhorroInput, MovimientoAhorroInput } from './types/custom';
 
 const queryClient = new QueryClient();
@@ -559,6 +560,10 @@ function Dashboard() {
   const [aporteMeta, setAporteMeta] = useState<MetaAhorro | null>(null);
   const [historialMeta, setHistorialMeta] = useState<MetaAhorro | null>(null);
 
+  // Medios states
+  const [modalMedio, setModalMedio] = useState(false);
+  const [editingMedio, setEditingMedio] = useState<MedioPagoSaldo | null>(null);
+
   const ingresos = useListIngresos(); const fijos = useListGastosFijos(); const variables = useListGastosVariables();
   const categorias = useListCategorias();
   const medios = useListMediosPago();
@@ -572,6 +577,25 @@ function Dashboard() {
   const createTransferencia = useCreateTransferencia();
   const createAhorro = useCreateAhorro(); const updateAhorro = useUpdateAhorro(); const deleteAhorro = useDeleteAhorro();
   const aportarAhorro = useAportarAhorro();
+  const createMedio = useCreateMedioPago(); const updateMedio = useUpdateMedioPago(); const deleteMedio = useDeleteMedioPago();
+  const seedMedios = useSeedDefaultMediosPago();
+
+  const handleRemoveMedio = (m: MedioPagoSaldo) => {
+    if (!window.confirm(`¿Eliminar la cuenta "${m.nombre}"?`)) return;
+    deleteMedio.mutate(
+      { id: m.id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+          toast.success(`Cuenta "${m.nombre}" eliminada`);
+        },
+        onError: (err: unknown) => {
+          toast.error((err as { detail?: string })?.detail ?? 'No se pudo eliminar el medio de pago: tiene movimientos asociados');
+        },
+      }
+    );
+  };
 
   const ids = {
     ingreso: editing && 'fuente' in editing ? editing.id : undefined,
@@ -804,23 +828,83 @@ function Dashboard() {
               <h2 className="cosmos-title text-xl font-bold">Medios de dinero y cuentas</h2>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setModal('transferencia')} data-testid="button-open-transferencia" className="cosmos-button-secondary !py-2 !px-3 text-xs">
+              <button
+                onClick={() => { setEditingMedio(null); setModalMedio(true); }}
+                data-testid="button-open-nuevo-medio"
+                className="cosmos-button-primary !py-2 !px-3 text-xs"
+              >
+                <Plus size={14} /> Nueva cuenta
+              </button>
+              <button
+                onClick={() => setModal('transferencia')}
+                data-testid="button-open-transferencia"
+                className="cosmos-button-secondary !py-2 !px-3 text-xs"
+              >
                 <ArrowRightLeft size={14} /> Mover entre cuentas
               </button>
             </div>
           </div>
-          {medios.isLoading ? <LoadingRows /> : (
+          {medios.isLoading ? <LoadingRows /> : mediosList.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/3 p-8 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-2xl text-[#5de87a]">
+                💵
+              </div>
+              <h3 className="text-sm font-semibold text-white">Sin cuentas o medios de dinero configurados</h3>
+              <p className="mx-auto mt-1 max-w-md text-xs text-white/50">
+                Agrega tus cuentas bancarias, billeteras digitales (Nequi, Daviplata) o efectivo para saber exactamente dónde tienes tu plata y controlar tus saldos.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => { setEditingMedio(null); setModalMedio(true); }}
+                  className="cosmos-button-primary !py-2 !px-3 text-xs"
+                >
+                  <Plus size={14} /> Crear primera cuenta
+                </button>
+                <button
+                  onClick={() => seedMedios.mutate(undefined, {
+                    onSuccess: () => toast.success('Medios predeterminados cargados'),
+                    onError: () => toast.error('No se pudieron cargar los medios')
+                  })}
+                  disabled={seedMedios.isPending}
+                  className="cosmos-button-secondary !py-2 !px-3 text-xs"
+                >
+                  <Sparkles size={14} /> Cargar predeterminados (Efectivo, Bancolombia, Nequi, Daviplata...)
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {mediosList.map((m) => (
-                <div key={m.id} data-testid={`card-medio-${m.id}`} className="rounded-2xl border border-white/5 bg-white/4 p-4 transition hover:bg-white/7">
+                <div key={m.id} data-testid={`card-medio-${m.id}`} className="group relative rounded-2xl border border-white/5 bg-white/4 p-4 transition hover:border-white/15 hover:bg-white/7">
                   <div className="flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl text-xl" style={{ backgroundColor: `${m.color}22` }}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl text-xl shadow-inner" style={{ backgroundColor: `${m.color}22` }}>
                       {m.icono}
                     </div>
-                    <span className="text-xs uppercase tracking-wider text-white/40">{m.tipo.replace('_', ' ')}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] uppercase tracking-wider text-white/40">{m.tipo.replace('_', ' ')}</span>
+                      <div className="flex items-center opacity-70 transition group-hover:opacity-100 ml-1">
+                        <button
+                          onClick={() => { setEditingMedio(m); setModalMedio(true); }}
+                          aria-label="Editar cuenta"
+                          className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveMedio(m)}
+                          aria-label="Eliminar cuenta"
+                          className="rounded-lg p-1.5 text-white/50 hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-3">
-                    <div className="text-xs font-medium text-white/60">{m.nombre}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-xs font-medium text-white/70 truncate">{m.nombre}</div>
+                      {!m.activo && <span className="rounded bg-white/10 px-1 py-0.5 text-[9px] text-white/40">Inactiva</span>}
+                    </div>
                     <div className="cosmos-number text-lg font-bold text-white mt-0.5">{money(m.saldo_actual)}</div>
                   </div>
                   <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-[11px] text-white/45">
@@ -995,6 +1079,52 @@ function Dashboard() {
             const m = historialMeta;
             setHistorialMeta(null);
             setAporteMeta(m);
+          }}
+        />
+      )}
+
+      {modalMedio && (
+        <MedioPagoModal
+          record={editingMedio}
+          pending={createMedio.isPending || updateMedio.isPending}
+          onClose={() => {
+            setModalMedio(false);
+            setEditingMedio(null);
+          }}
+          onSubmit={(data) => {
+            if (editingMedio) {
+              updateMedio.mutate(
+                { id: editingMedio.id, data },
+                {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+                    queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+                    toast.success('Medio de dinero actualizado');
+                    setModalMedio(false);
+                    setEditingMedio(null);
+                  },
+                  onError: (err: unknown) => {
+                    toast.error((err as { detail?: string })?.detail ?? 'Error al actualizar medio');
+                  },
+                }
+              );
+            } else {
+              createMedio.mutate(
+                { data },
+                {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+                    queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+                    toast.success('Cuenta o medio de dinero creado');
+                    setModalMedio(false);
+                    setEditingMedio(null);
+                  },
+                  onError: (err: unknown) => {
+                    toast.error((err as { detail?: string })?.detail ?? 'Error al crear medio');
+                  },
+                }
+              );
+            }
           }}
         />
       )}
@@ -2119,19 +2249,55 @@ function RutinaModal({
   );
 }
 
+const TIPO_MEDIO_LABELS: Record<string, string> = {
+  billetera_digital: 'Billetera Digital',
+  cuenta_bancaria: 'Cuenta Bancaria',
+  efectivo_billetes: 'Efectivo (Billetes)',
+  efectivo_monedas: 'Efectivo (Monedas)',
+  tarjeta: 'Tarjeta',
+  otro: 'Otro Medio',
+};
+
 function CategoriesPage() {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'gastos' | 'ingresos'>('gastos');
+  const [tab, setTab] = useState<'gastos' | 'ingresos' | 'medios'>('gastos');
+  const [medioFilter, setMedioFilter] = useState<string>('todos');
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Categoria | null>(null);
+
+  // Medios states
+  const [modalMedio, setModalMedio] = useState(false);
+  const [editingMedio, setEditingMedio] = useState<MedioPagoSaldo | null>(null);
+
   const list = useListCategorias();
   const cats = asList<Categoria>(list.data);
+  const medios = useListMediosPago();
+  const mediosList = asList<MedioPagoSaldo>(medios.data);
+
+  const filteredMedios = mediosList.filter((m) => {
+    if (medioFilter === 'todos') return true;
+    if (medioFilter === 'billetera') return m.tipo === 'billetera_digital';
+    if (medioFilter === 'banco') return m.tipo === 'cuenta_bancaria';
+    if (medioFilter === 'efectivo') return m.tipo === 'efectivo_billetes' || m.tipo === 'efectivo_monedas';
+    if (medioFilter === 'tarjeta') return m.tipo === 'tarjeta';
+    return m.tipo === 'otro';
+  });
+
   const create = useCreateCategoria(); const update = useUpdateCategoria(); const remove = useDeleteCategoria();
+  const createMedio = useCreateMedioPago(); const updateMedio = useUpdateMedioPago(); const removeMedio = useDeleteMedioPago();
+  const seedCategorias = useSeedDefaultCategorias();
+  const seedMedios = useSeedDefaultMediosPago();
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListCategoriasQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetResumenMensualPorCategoriaQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListGastosVariablesQueryKey() });
   };
+  const invalidateMedios = () => {
+    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+  };
+
   const onSuccess = () => { invalidate(); setModal(false); setEditing(null); };
   const onError = (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar la categoría');
   const submit = (data: Record<string, unknown>) => {
@@ -2143,11 +2309,39 @@ function CategoriesPage() {
     remove.mutate({ id: c.id }, { onSuccess: invalidate, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar') });
   };
 
+  const removeMedioItem = (m: MedioPagoSaldo) => {
+    if (!window.confirm(`¿Eliminar la cuenta "${m.nombre}"?`)) return;
+    removeMedio.mutate(
+      { id: m.id },
+      {
+        onSuccess: () => {
+          invalidateMedios();
+          toast.success(`Cuenta "${m.nombre}" eliminada`);
+        },
+        onError: (e: unknown) => {
+          toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar el medio de pago: tiene movimientos asociados');
+        },
+      }
+    );
+  };
+
   return <Shell><div className="relative z-10 min-h-[100dvh]">
-    <Topbar eyebrow="colores y fuentes" title="Categorías" onAdd={() => { setEditing(null); setModal(true); }} />
+    <Topbar
+      eyebrow="colores, cuentas y fuentes"
+      title="Categorías"
+      onAdd={() => {
+        if (tab === 'medios') {
+          setEditingMedio(null);
+          setModalMedio(true);
+        } else {
+          setEditing(null);
+          setModal(true);
+        }
+      }}
+    />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
       
-      <div className="flex items-center gap-2 border-b border-white/6 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/6 pb-3">
         <button
           onClick={() => setTab('gastos')}
           className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
@@ -2164,29 +2358,95 @@ function CategoriesPage() {
         >
           Fuentes de Ingresos ({DEFAULT_INCOME_SOURCES.length + cats.length})
         </button>
+        <button
+          onClick={() => setTab('medios')}
+          className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+            tab === 'medios' ? 'bg-white text-black shadow-md' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          Medios de Pago ({mediosList.length})
+        </button>
       </div>
 
       {tab === 'gastos' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list.isLoading ? <LoadingRows /> : cats.map((c) => (
-            <div key={c.id} data-testid={`carta-categoria-${c.id}`} className="cosmos-card group flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${c.color}26`, boxShadow: `0 0 0 1px ${c.color}55` }}>{c.icono}</div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">{c.nombre}</div>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
-                  <span className="font-mono uppercase tracking-wider" style={{ color: c.color }}>{c.color}</span>
-                  <span className={c.activa ? 'text-[#5de8c4]' : 'text-white/35'}>{c.activa ? 'activa' : 'no activa'}</span>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white/80">Categorías de Gastos</h2>
+              <p className="text-xs text-white/45">Clasifica tus consumos y gastos diarios (comida, transporte, facturas, etc.).</p>
+            </div>
+            <button
+              onClick={() => { setEditing(null); setModal(true); }}
+              className="cosmos-button-primary !py-2 !px-3.5 text-xs flex items-center gap-1.5 shadow-lg"
+              data-testid="btn-crear-categoria-gastos"
+            >
+              <Plus size={14} /> Nueva categoría de gasto
+            </button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {list.isLoading ? <LoadingRows /> : cats.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-white/10 bg-white/3 p-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-2xl">
+                  🏷️
+                </div>
+                <h3 className="text-sm font-semibold text-white">Aún no tienes categorías de gastos</h3>
+                <p className="mx-auto mt-1 max-w-md text-xs text-white/50">
+                  Las categorías te permiten clasificar tus gastos variables (comida, transporte, hogar, etc.) y visualizar gráficos con tu consumo.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <button onClick={() => { setEditing(null); setModal(true); }} className="cosmos-button-primary !py-2 !px-3 text-xs">
+                    <Plus size={14} /> Crear categoría
+                  </button>
+                  <button
+                    onClick={() => seedCategorias.mutate(undefined, {
+                      onSuccess: () => {
+                        invalidate();
+                        toast.success('Categorías básicas cargadas');
+                      },
+                      onError: () => toast.error('No se pudieron cargar las categorías')
+                    })}
+                    disabled={seedCategorias.isPending}
+                    className="cosmos-button-secondary !py-2 !px-3 text-xs"
+                  >
+                    <Sparkles size={14} /> Cargar categorías básicas sugeridas
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
-                <button onClick={() => { setEditing(c); setModal(true); }} aria-label="Editar categoría" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
-                <button onClick={() => removeCat(c)} aria-label="Eliminar categoría" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+            ) : cats.map((c) => (
+              <div key={c.id} data-testid={`carta-categoria-${c.id}`} className="cosmos-card group flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl" style={{ backgroundColor: `${c.color}26`, boxShadow: `0 0 0 1px ${c.color}55` }}>{c.icono}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">{c.nombre}</div>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-white/45">
+                    <span className="font-mono uppercase tracking-wider" style={{ color: c.color }}>{c.color}</span>
+                    <span className={c.activa ? 'text-[#5de8c4]' : 'text-white/35'}>{c.activa ? 'activa' : 'no activa'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
+                  <button onClick={() => { setEditing(c); setModal(true); }} aria-label="Editar categoría" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                  <button onClick={() => removeCat(c)} aria-label="Eliminar categoría" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      ) : (
+      ) : tab === 'ingresos' ? (
         <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white/80">Fuentes y Categorías de Ingresos</h2>
+              <p className="text-xs text-white/45">Fuentes predeterminadas y categorías para clasificar tus entradas de dinero.</p>
+            </div>
+            <button
+              onClick={() => { setEditing(null); setModal(true); }}
+              className="cosmos-button-primary !py-2 !px-3.5 text-xs flex items-center gap-1.5 shadow-lg"
+              data-testid="btn-crear-categoria-ingresos"
+            >
+              <Plus size={14} /> Nueva categoría de ingreso
+            </button>
+          </div>
+
           <div>
             <div className="cosmos-eyebrow mb-2">Fuentes de ingreso fijas y rápidas</div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2228,21 +2488,216 @@ function CategoriesPage() {
             </div>
           </div>
         </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-white/80">Medios de Pago y Cuentas</h2>
+                <p className="text-xs text-white/45">Cuentas bancarias, billeteras digitales (Nequi, Daviplata) y efectivo donde administras tu dinero.</p>
+              </div>
+              <button
+                onClick={() => { setEditingMedio(null); setModalMedio(true); }}
+                className="cosmos-button-primary !py-2 !px-3.5 text-xs flex items-center gap-1.5 shadow-lg"
+                data-testid="btn-agregar-medio-categorias"
+              >
+                <Plus size={14} /> Agregar medio de pago
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {[
+                { id: 'todos', label: `Todos (${mediosList.length})` },
+                { id: 'billetera', label: `📱 Billeteras (${mediosList.filter((m) => m.tipo === 'billetera_digital').length})` },
+                { id: 'banco', label: `🏦 Bancos (${mediosList.filter((m) => m.tipo === 'cuenta_bancaria').length})` },
+                { id: 'efectivo', label: `💵 Efectivo (${mediosList.filter((m) => m.tipo === 'efectivo_billetes' || m.tipo === 'efectivo_monedas').length})` },
+                { id: 'tarjeta', label: `💳 Tarjetas (${mediosList.filter((m) => m.tipo === 'tarjeta').length})` },
+                { id: 'otro', label: `📦 Otros (${mediosList.filter((m) => m.tipo === 'otro').length})` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setMedioFilter(f.id)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                    medioFilter === f.id
+                      ? 'bg-white text-black font-bold shadow'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {medios.isLoading ? (
+              <LoadingRows />
+            ) : filteredMedios.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-white/10 bg-white/3 p-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-2xl text-[#5de87a]">
+                  💵
+                </div>
+                <h3 className="text-sm font-semibold text-white">
+                  {mediosList.length === 0 ? 'Sin medios de pago configurados' : 'No hay cuentas en esta categoría'}
+                </h3>
+                <p className="mx-auto mt-1 max-w-md text-xs text-white/50">
+                  {mediosList.length === 0
+                    ? 'Agrega tus cuentas bancarias, billeteras (Nequi, Daviplata) o efectivo para controlar el dinero disponible.'
+                    : 'Puedes cambiar el filtro arriba o agregar un nuevo medio de pago en esta categoría.'}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <button onClick={() => { setEditingMedio(null); setModalMedio(true); }} className="cosmos-button-primary !py-2 !px-3 text-xs">
+                    <Plus size={14} /> Agregar medio de pago
+                  </button>
+                  {mediosList.length === 0 && (
+                    <button
+                      onClick={() =>
+                        seedMedios.mutate(undefined, {
+                          onSuccess: () => {
+                            invalidateMedios();
+                            toast.success('Medios predeterminados cargados');
+                          },
+                          onError: () => toast.error('No se pudieron cargar los medios'),
+                        })
+                      }
+                      disabled={seedMedios.isPending}
+                      className="cosmos-button-secondary !py-2 !px-3 text-xs"
+                    >
+                      <Sparkles size={14} /> Cargar predeterminados (Efectivo, Bancolombia, Nequi, Daviplata...)
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              filteredMedios.map((m) => (
+                <div key={m.id} data-testid={`carta-medio-${m.id}`} className="cosmos-card group flex items-center gap-4 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl" style={{ backgroundColor: `${m.color}26`, boxShadow: `0 0 0 1px ${m.color}55` }}>
+                    {m.icono}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-white">{m.nombre}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${m.activo ? 'bg-[#5de8c4]/15 text-[#5de8c4]' : 'bg-white/10 text-white/40'}`}>
+                        {m.activo ? 'activa' : 'no activa'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-white/50">
+                      <span className="rounded px-1.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: `${m.color}18`, color: m.color }}>
+                        {TIPO_MEDIO_LABELS[m.tipo] ?? m.tipo.replace('_', ' ')}
+                      </span>
+                      <span>•</span>
+                      <span className="font-mono text-white/80">Saldo: {money(m.saldo_actual)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
+                    <button onClick={() => { setEditingMedio(m); setModalMedio(true); }} aria-label="Editar cuenta" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => removeMedioItem(m)} aria-label="Eliminar cuenta" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       )}
     </div>
-    {modal && <CategoryModal record={editing} pending={create.isPending || update.isPending || remove.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={submit} />}
+    {modal && (
+      <CategoryModal
+        record={editing}
+        pending={create.isPending || update.isPending || remove.isPending}
+        onClose={() => { setModal(false); setEditing(null); }}
+        onSwitchToMedio={() => {
+          setModal(false);
+          setEditing(null);
+          setEditingMedio(null);
+          setModalMedio(true);
+        }}
+        onSubmit={submit}
+      />
+    )}
+    {modalMedio && (
+      <MedioPagoModal
+        record={editingMedio}
+        pending={createMedio.isPending || updateMedio.isPending}
+        onClose={() => { setModalMedio(false); setEditingMedio(null); }}
+        onSwitchToCategoria={() => {
+          setModalMedio(false);
+          setEditingMedio(null);
+          setEditing(null);
+          setModal(true);
+        }}
+        onSubmit={(data) => {
+          if (editingMedio) {
+            updateMedio.mutate(
+              { id: editingMedio.id, data },
+              {
+                onSuccess: () => {
+                  invalidateMedios();
+                  toast.success('Medio de pago actualizado');
+                  setModalMedio(false);
+                  setEditingMedio(null);
+                },
+                onError: (err: unknown) => {
+                  toast.error((err as { detail?: string })?.detail ?? 'Error al actualizar medio');
+                },
+              }
+            );
+          } else {
+            createMedio.mutate(
+              { data },
+              {
+                onSuccess: () => {
+                  invalidateMedios();
+                  toast.success('Medio de pago creado exitosamente');
+                  setModalMedio(false);
+                  setEditingMedio(null);
+                },
+                onError: (err: unknown) => {
+                  toast.error((err as { detail?: string })?.detail ?? 'Error al crear medio');
+                },
+              }
+            );
+          }
+        }}
+      />
+    )}
   </div></Shell>;
 }
 
-function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categoria | null; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
-  const [form, setForm] = useState<Record<string, string | boolean>>({ nombre: record?.nombre ?? '', icono: record?.icono ?? CATEGORY_EMOJIS[0], color: record?.color ?? CATEGORY_COLORS[0], activa: record?.activa ?? true });
+function CategoryModal({
+  record,
+  pending,
+  onClose,
+  onSubmit,
+  onSwitchToMedio,
+}: {
+  record: Categoria | null;
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (data: Record<string, unknown>) => void;
+  onSwitchToMedio?: () => void;
+}) {
+  const [form, setForm] = useState<Record<string, string | boolean>>({
+    nombre: record?.nombre ?? '',
+    icono: record?.icono ?? CATEGORY_EMOJIS[0],
+    color: record?.color ?? CATEGORY_COLORS[0],
+    activa: record?.activa ?? true,
+  });
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
-  const edit = (event: React.FormEvent) => { event.preventDefault(); if (!String(form.nombre).trim()) return; onSubmit({ ...form, activa: Boolean(form.activa) }); };
+  const edit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!String(form.nombre).trim()) return;
+    onSubmit({ ...form, activa: Boolean(form.activa) });
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
       <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={edit} className="space-y-5">
-          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+          <div className="mb-4 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
               <div className="cosmos-eyebrow mb-1">jarvis / categoría</div>
               <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar categoría' : 'Nueva categoría'}</h2>
@@ -2255,6 +2710,25 @@ function CategoryModal({ record, pending, onClose, onSubmit }: { record: Categor
               <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
             </div>
           </div>
+
+          {!record && onSwitchToMedio && (
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/6 p-1 text-xs">
+              <button
+                type="button"
+                className="rounded-lg py-2 font-bold transition bg-white text-black shadow"
+              >
+                🏷️ Categoría de Gasto / Ingreso
+              </button>
+              <button
+                type="button"
+                onClick={onSwitchToMedio}
+                className="rounded-lg py-2 font-medium text-white/60 transition hover:bg-white/5 hover:text-white"
+              >
+                💳 Medio de Pago / Cuenta
+              </button>
+            </div>
+          )}
+
           <label className="block"><span className="cosmos-field-label">Nombre</span><input required className="cosmos-input" value={String(form.nombre)} onChange={(e) => set('nombre', e.target.value)} data-testid="input-categoria-nombre" placeholder="Ej. Préstamos, Comida, Freelance, Didi..." /></label>
           <div><span className="cosmos-field-label">Icono</span>
             <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-10">
@@ -2299,6 +2773,8 @@ function CategoryPills({ categories, value, onSelect }: { categories: Categoria[
 }
 
 function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: MedioPagoSaldo[]; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+  const queryClient = useQueryClient();
+  const seedMedios = useSeedDefaultMediosPago();
   const activos = medios.filter((m) => m.activo);
   const [form, setForm] = useState({
     fecha: dateValue(),
@@ -2328,13 +2804,39 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
               <h2 className="cosmos-title text-2xl font-bold">Mover entre cuentas</h2>
             </div>
             <div className="flex items-center gap-2">
-              <button disabled={pending} type="submit" data-testid="button-save-transferencia-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+              <button disabled={pending || activos.length < 2} type="submit" data-testid="button-save-transferencia-top" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
                 {pending ? <RefreshCw size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
                 {pending ? '...' : 'Transferir'}
               </button>
               <button type="button" onClick={onClose} data-testid="button-close-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
             </div>
           </div>
+
+          {activos.length < 2 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 space-y-2">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertCircle size={15} /> Se requieren al menos dos cuentas activas
+              </div>
+              <p className="text-amber-200/80 leading-relaxed">
+                Para transferir dinero entre cuentas (ej. retirar de Bancolombia a Efectivo, o cargar Nequi), necesitas tener al menos 2 medios de dinero activos.
+              </p>
+              <button
+                type="button"
+                disabled={seedMedios.isPending}
+                onClick={() => seedMedios.mutate(undefined, {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+                    toast.success('Medios predeterminados cargados');
+                  },
+                  onError: () => toast.error('Error al cargar medios')
+                })}
+                className="flex items-center gap-1.5 rounded-xl bg-amber-500/25 px-3 py-1.5 font-bold text-amber-100 hover:bg-amber-500/35 transition"
+              >
+                <Sparkles size={13} /> Cargar cuentas predeterminadas (Efectivo, Bancolombia, Nequi...)
+              </button>
+            </div>
+          )}
+
           <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></span>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
@@ -2592,11 +3094,17 @@ function HistorialFinancieroModal({
 }
 
 function RecordModal({ kind, record, categorias, medios, pending, onClose, onSubmit }: { kind: Exclude<ModalKind, null>; record: AnyRecord | null; categorias?: Categoria[]; medios?: MedioPagoSaldo[]; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
-  const isIngreso = kind === 'ingreso'; const isVariable = kind === 'variable'; const isFijo = kind === 'fijo'; const isKm = kind === 'km';
-  const r = record as Partial<Ingreso & GastoVariable & GastoFijo & Kilometraje> | null;
+  const queryClient = useQueryClient();
+  const seedCategorias = useSeedDefaultCategorias();
+  const seedMedios = useSeedDefaultMediosPago();
+  const isIngreso = kind === 'ingreso';
+  const isVariable = kind === 'variable';
+  const isFijo = kind === 'fijo';
+  const isKm = kind === 'km';
+  const r = record as Record<string, unknown> | null;
   const [form, setForm] = useState<Record<string, string | boolean>>({
-    fecha: dateValue(r?.fecha), fuente: r?.fuente ?? 'Sueldo / Salario', monto: String(r?.monto ?? ''),
-    medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
+    fecha: String(r?.fecha ?? dateValue()), monto: String(r?.monto ?? ''), fuente: String(r?.fuente ?? 'sueldo'),
+    fuente_custom: '', medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
     nota: r?.nota ?? '', categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: r?.nombre ?? '',
     tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
   });
@@ -2660,12 +3168,33 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
             <span className="block"><span className="cosmos-field-label">Tipo</span><select className="cosmos-select" value={String(form.tipo)} onChange={(e) => set('tipo', e.target.value)} data-testid="select-fijo-tipo"><option value="mensual">Mensual</option><option value="por_kilometraje">Por kilometraje</option></select></span>
             <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-white/5 p-3 text-sm font-medium text-white/80"><input type="checkbox" checked={Boolean(form.activo)} onChange={(e) => set('activo', e.target.checked)} data-testid="checkbox-fijo-activo" className="h-4 w-4 accent-white" /> Está activo este mes</label>
           </> : <>
-            {isVariable && categorias?.length ? <div>
+            {isVariable && (categorias?.length ? <div>
               <span className="cosmos-field-label">Categoría</span>
               <CategoryPills categories={categorias} value={Number(form.categoria_id) || null} onSelect={(id) => set('categoria_id', String(id))} />
             </div> : (
-              isVariable && <p className="rounded-xl bg-white/5 px-4 py-3 text-sm text-white/50">Aún no hay categorías activas. Crea una desde «Categorías» y vuelve aquí.</p>
-            )}
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 space-y-2">
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertCircle size={15} /> Aún no tienes categorías de gastos activas
+                </div>
+                <p className="text-amber-200/80 leading-relaxed">
+                  Para registrar este gasto necesitas al menos una categoría de gasto (Comida, Transporte, etc.).
+                </p>
+                <button
+                  type="button"
+                  disabled={seedCategorias.isPending}
+                  onClick={() => seedCategorias.mutate(undefined, {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({ queryKey: getListCategoriasQueryKey() });
+                      toast.success('Categorías básicas cargadas');
+                    },
+                    onError: () => toast.error('Error al cargar categorías')
+                  })}
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-500/25 px-3 py-1.5 font-bold text-amber-100 hover:bg-amber-500/35 transition"
+                >
+                  <Sparkles size={13} /> Cargar categorías básicas ahora
+                </button>
+              </div>
+            ))}
             <span className="block"><span className="cosmos-field-label">Fecha</span><input required type="date" className="cosmos-input" value={String(form.fecha)} onChange={(e) => set('fecha', e.target.value)} data-testid={`input-${kind}-fecha`} /></span>
             {isIngreso && (
               <div>
@@ -2715,15 +3244,35 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
                 )}
               </div>
             )}
-            {(isIngreso || isVariable) && medios && medios.length > 0 && (
-              <label className="block">
-                <span className="cosmos-field-label">{isIngreso ? '¿Dónde entró el dinero?' : '¿De dónde salió el dinero?'}</span>
-                <select className="cosmos-select" value={String(form.medio_pago_id)} onChange={(e) => set('medio_pago_id', e.target.value)}>
-                  {medios.map((m) => (
-                    <option key={m.id} value={m.id}>{m.icono} {m.nombre}</option>
-                  ))}
-                </select>
-              </label>
+            {(isIngreso || isVariable) && (
+              medios && medios.length > 0 ? (
+                <label className="block">
+                  <span className="cosmos-field-label">{isIngreso ? '¿Dónde entró el dinero?' : '¿De dónde salió el dinero?'}</span>
+                  <select className="cosmos-select" value={String(form.medio_pago_id)} onChange={(e) => set('medio_pago_id', e.target.value)}>
+                    {medios.map((m) => (
+                      <option key={m.id} value={m.id}>{m.icono} {m.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 flex flex-wrap items-center justify-between gap-2">
+                  <span>Sin medios de dinero configurados.</span>
+                  <button
+                    type="button"
+                    disabled={seedMedios.isPending}
+                    onClick={() => seedMedios.mutate(undefined, {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+                        toast.success('Medios predeterminados cargados');
+                      },
+                      onError: () => toast.error('Error al cargar medios')
+                    })}
+                    className="font-bold text-[#5de87a] hover:underline"
+                  >
+                    <Sparkles size={12} className="inline mr-1" /> Cargar predeterminados
+                  </button>
+                </div>
+              )
             )}
             {isKm ? <span className="block"><span className="cosmos-field-label">Kilómetros actuales</span><input required min="0" step="0.1" type="number" className="cosmos-input" value={String(form.km_actuales)} onChange={(e) => set('km_actuales', e.target.value)} data-testid="input-km-actuales" placeholder="0" /></span> : <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-monto" placeholder="0" /></span>}
             {!isKm && <span className="block"><span className="cosmos-field-label">Nota (opcional)</span><input className="cosmos-input" value={String(form.nota)} onChange={(e) => set('nota', e.target.value)} placeholder="Un detalle, la ruta, la hora..." /></span>}
