@@ -42,24 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
-    const hasLoggedOut = localStorage.getItem('jarvis_has_logged_out') === 'true';
 
     if (!token) {
-      if (hasLoggedOut) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      // Primera vez: auto-login con Tomás en modo demo
-      try {
-        const res = await apiSwitchDemo(1);
-        localStorage.setItem(TOKEN_KEY, res.token);
-        setUser(res.usuario);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      setUser(null);
+      setLoading(false);
       return;
     }
 
@@ -67,18 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const me = await apiGetMe();
       setUser(me);
     } catch {
-      // Token expirado o inválido, reiniciar con demo si no ha cerrado sesión explícitamente
-      if (!hasLoggedOut) {
-        try {
-          const res = await apiSwitchDemo(1);
-          localStorage.setItem(TOKEN_KEY, res.token);
-          setUser(res.usuario);
-        } catch {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
+      localStorage.removeItem(TOKEN_KEY);
+      setUser(null);
+      queryClient.clear();
     } finally {
       setLoading(false);
     }
@@ -87,12 +64,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loadDemoUsers();
     refreshUser();
+
+    // Sincronización de sesión multi-pestaña
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY) {
+        if (!e.newValue) {
+          setUser(null);
+          queryClient.clear();
+        } else {
+          refreshUser();
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const login = async (email: string, pass: string) => {
     const res = await apiLogin(email, pass);
     localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.removeItem('jarvis_has_logged_out');
     setUser(res.usuario);
     queryClient.clear();
   };
@@ -100,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (nombre: string, email: string, pass: string, avatar = '🚀') => {
     const res = await apiRegister(nombre, email, pass, avatar);
     localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.removeItem('jarvis_has_logged_out');
     setUser(res.usuario);
     await loadDemoUsers();
     queryClient.clear();
@@ -109,14 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchDemoUser = async (userId: number) => {
     const res = await apiSwitchDemo(userId);
     localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.removeItem('jarvis_has_logged_out');
     setUser(res.usuario);
     queryClient.clear();
   };
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.setItem('jarvis_has_logged_out', 'true');
     setUser(null);
     queryClient.clear();
   };

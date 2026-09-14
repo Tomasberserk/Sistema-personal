@@ -92,13 +92,32 @@ def test_full_system_sqlite_suite():
             efectivo_id = next(m["id"] for m in medios if "Efectivo" in m["nombre"])
             nequi_id = next(m["id"] for m in medios if "Nequi" in m["nombre"])
 
-            # Transferir de Efectivo a Nequi
+            # 7a. Transferir sin fondos -> 400 (regla de concurrencia/saldo insuficiente)
+            trans_fail = client.post("/api/transferencias", json={
+                "fecha": today_str,
+                "origen_id": efectivo_id,
+                "destino_id": nequi_id,
+                "monto": 50000.0,
+                "nota": "Sin fondos"
+            }, headers=headers)
+            assert trans_fail.status_code == 400
+
+            # 7b. Recargar fondos a Efectivo
+            client.post("/api/ingresos", json={
+                "fecha": today_str,
+                "fuente": "Sueldo",
+                "monto": 100000.0,
+                "medio_pago_id": efectivo_id,
+                "nota": "Fondo para transferir"
+            }, headers=headers)
+
+            # 7c. Transferir con fondos -> 201
             trans_resp = client.post("/api/transferencias", json={
                 "fecha": today_str,
                 "origen_id": efectivo_id,
                 "destino_id": nequi_id,
                 "monto": 50000.0,
-                "nota": "Consignación"
+                "nota": "Consignación exitosa"
             }, headers=headers)
             assert trans_resp.status_code == 201
 
@@ -201,7 +220,7 @@ def test_full_system_sqlite_suite():
             fin_resp = client.get("/api/resumen/mes-actual", headers=headers)
             assert fin_resp.status_code == 200
             fin_data = fin_resp.json()
-            assert fin_data["total_ingresos"] == 150000.0
+            assert fin_data["total_ingresos"] == 250000.0
             assert fin_data["total_gastos_fijos"] == 20000.0
             assert fin_data["total_ahorros"] == 200000.0
             assert len(fin_data["metas_ahorro"]) == 1
@@ -232,12 +251,11 @@ def test_full_system_sqlite_suite():
             assert len(cats_melanie) == 12
             assert any(c["nombre"] == "Comida & Alimentación" for c in cats_melanie)
 
+            # Virgin state: nuevo usuario arranca con 0 cuentas
             medios_melanie = client.get("/api/medios-pago", headers=headers_melanie).json()
-            assert len(medios_melanie) == 5
-            assert any(m["nombre"] == "Daviplata" for m in medios_melanie)
-            assert any(m["nombre"] == "Nequi" for m in medios_melanie)
+            assert len(medios_melanie) == 0
 
-            # 17. Creación de nueva cuenta / medio de pago para Melanie
+            # 17. Creación de nueva cuenta personalizada para Melanie
             new_medio_resp = client.post("/api/medios-pago", json={
                 "nombre": "Billetera Dale",
                 "tipo": "billetera_digital",
@@ -248,12 +266,57 @@ def test_full_system_sqlite_suite():
             }, headers=headers_melanie)
             assert new_medio_resp.status_code == 201
             assert new_medio_resp.json()["nombre"] == "Billetera Dale"
+            dale_id = new_medio_resp.json()["id"]
 
-            # 18. Sembrar predeterminados endpoints
+            # 18. Sembrar predeterminados bajo demanda si el usuario lo desea
             reseed_cats = client.post("/api/categorias/seed-defaults", headers=headers_melanie)
             assert reseed_cats.status_code == 200
             reseed_meds = client.post("/api/medios-pago/seed-defaults", headers=headers_melanie)
             assert reseed_meds.status_code == 200
+            assert len(reseed_meds.json()) >= 5
+
+            # 19. Pruebas de Seguridad Anti-IDOR (Directo e Indirecto)
+            # T-IDOR-01: Melanie intenta acceder a un ingreso de Tomás -> 404
+            idor_ing = client.get(f"/api/ingresos/{ing_data['id']}", headers=headers_melanie)
+            assert idor_ing.status_code == 404
+
+            # T-IDOR-02: Melanie intenta crear un gasto usando categoría de Tomás -> 404
+            idor_gasto = client.post("/api/gastos-variables", json={
+                "fecha": today_str,
+                "categoria_id": cat_id, # Categoria de Tomás
+                "monto": 10000.0,
+                "medio_pago_id": dale_id
+            }, headers=headers_melanie)
+            assert idor_gasto.status_code == 404
+
+            # T-IDOR-03: Melanie intenta transferir hacia la cuenta de Tomás -> 404
+            idor_trans = client.post("/api/transferencias", json={
+                "fecha": today_str,
+                "origen_id": dale_id,
+                "destino_id": efectivo_id, # Cuenta de Tomás
+                "monto": 5000.0
+            }, headers=headers_melanie)
+            assert idor_trans.status_code == 404
+
+            # 20. Pruebas de Integridad Financiera
+            # T-SoftDelete: Borrar cuenta con movimientos la desactiva (activo = False), no la destruye
+            cat_melanie_id = cats_melanie[0]["id"]
+            client.post("/api/gastos-variables", json={
+                "fecha": today_str,
+                "categoria_id": cat_melanie_id,
+                "monto": 5000.0,
+                "medio_pago_id": dale_id
+            }, headers=headers_melanie)
+
+            del_dale = client.delete(f"/api/medios-pago/{dale_id}", headers=headers_melanie)
+            assert del_dale.status_code == 204
+            medios_post_del = client.get("/api/medios-pago", headers=headers_melanie).json()
+            dale_medio = next(m for m in medios_post_del if m["id"] == dale_id)
+            assert dale_medio["activo"] is False
+
+            # T-Inmutabilidad: Intentar modificar saldo_inicial de cuenta con movimientos -> 400
+            patch_resp = client.patch(f"/api/medios-pago/{dale_id}", json={"saldo_inicial": 99999.0}, headers=headers_melanie)
+            assert patch_resp.status_code == 400
 
 
     finally:

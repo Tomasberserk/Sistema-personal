@@ -999,13 +999,12 @@ SQLITE_SCHEMA = """
 """
 
 
-def _seed_user_defaults(connection: Any, user_id: int) -> None:
-    # Categorías para el usuario
+def _seed_user_categories(connection: Any, user_id: int) -> None:
     try:
         for c in DEFAULT_CATEGORIAS:
             exists = connection.execute(
                 "SELECT 1 FROM categorias WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
-                (user_id, c[0]),
+                (user_id, c[0].strip()),
             ).fetchone()
             if not exists:
                 if _is_postgres():
@@ -1022,12 +1021,13 @@ def _seed_user_defaults(connection: Any, user_id: int) -> None:
     except Exception as exc:
         print(f"[Seed Categorias Error for user {user_id}]: {exc}")
 
-    # Medios de pago para el usuario
+
+def _seed_user_medios(connection: Any, user_id: int) -> None:
     try:
         for m in DEFAULT_MEDIOS_PAGO:
             exists = connection.execute(
                 "SELECT 1 FROM medios_pago WHERE usuario_id = %s AND lower(nombre) = lower(%s)",
-                (user_id, m[0]),
+                (user_id, m[0].strip()),
             ).fetchone()
             if not exists:
                 if _is_postgres():
@@ -1044,7 +1044,8 @@ def _seed_user_defaults(connection: Any, user_id: int) -> None:
     except Exception as exc:
         print(f"[Seed Medios Error for user {user_id}]: {exc}")
 
-    # Moto config para el usuario
+
+def _seed_user_moto(connection: Any, user_id: int) -> None:
     try:
         moto = connection.execute(
             "SELECT 1 FROM moto_config WHERE usuario_id = %s", (user_id,)
@@ -1060,6 +1061,12 @@ def _seed_user_defaults(connection: Any, user_id: int) -> None:
             connection.commit()
     except Exception as exc:
         print(f"[Seed Moto Error for user {user_id}]: {exc}")
+
+
+def _seed_user_defaults(connection: Any, user_id: int) -> None:
+    _seed_user_categories(connection, user_id)
+    _seed_user_medios(connection, user_id)
+    _seed_user_moto(connection, user_id)
 
 
 def init_db() -> None:
@@ -1211,38 +1218,50 @@ def row_to_dict(row: Any) -> dict[str, Any]:
     return dict(row)
 
 
-def require_row(connection: Any, table: str, item_id: int, usuario_id: int | None = None) -> Any:
-    allowed_tables = {
-        "usuarios",
-        "ingresos",
-        "gastos_fijos",
-        "gastos_variables",
-        "kilometraje",
-        "categorias",
-        "habitos",
-        "registro_habitos",
-        "bloques_rutina",
-        "medios_pago",
-        "transferencias_medios",
-        "fechas_especiales",
-        "recordatorios",
-        "metas_ahorro",
-        "movimientos_ahorro",
-    }
-    if table not in allowed_tables:
-        raise ValueError("Tabla no permitida")
+ALLOWED_USER_ENTITIES = frozenset({
+    "usuarios",
+    "ingresos",
+    "gastos_fijos",
+    "gastos_variables",
+    "kilometraje",
+    "categorias",
+    "habitos",
+    "registro_habitos",
+    "bloques_rutina",
+    "medios_pago",
+    "transferencias_medios",
+    "fechas_especiales",
+    "recordatorios",
+    "metas_ahorro",
+    "movimientos_ahorro",
+    "moto_config",
+})
 
-    if usuario_id is not None and table not in ("usuarios", "registro_habitos"):
+
+def require_user_entity(connection: Any, table: str, item_id: int, usuario_id: int) -> dict[str, Any]:
+    if table not in ALLOWED_USER_ENTITIES:
+        raise ValueError(f"Entidad no permitida: {table}")
+    if table in ("usuarios", "registro_habitos"):
+        row = connection.execute(f"SELECT * FROM {table} WHERE id = %s", (item_id,)).fetchone()
+    else:
         row = connection.execute(
             f"SELECT * FROM {table} WHERE id = %s AND usuario_id = %s",
             (item_id, usuario_id),
         ).fetchone()
-    else:
-        row = connection.execute(
-            f"SELECT * FROM {table} WHERE id = %s",
-            (item_id,),
-        ).fetchone()
 
+    if row is None:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    return row_to_dict(row)
+
+
+def require_row(connection: Any, table: str, item_id: int, usuario_id: int | None = None) -> Any:
+    if table not in ALLOWED_USER_ENTITIES:
+        raise ValueError("Tabla no permitida")
+
+    if usuario_id is not None:
+        return require_user_entity(connection, table, item_id, usuario_id)
+
+    row = connection.execute(f"SELECT * FROM {table} WHERE id = %s", (item_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
     return row
@@ -1302,19 +1321,18 @@ def delete_item(table: str, item_id: int, usuario_id: int | None = None) -> None
 
 # --- Dependency: Current User ---
 def get_current_user(authorization: str | None = Header(default=None)) -> Usuario:
-    user_id = 1
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ", 1)[1].strip()
-        verified_id = verify_auth_token(token)
-        if verified_id:
-            user_id = verified_id
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticación requerido")
+
+    token = authorization.split(" ", 1)[1].strip()
+    verified_id = verify_auth_token(token)
+    if not verified_id:
+        raise HTTPException(status_code=401, detail="Token de autenticación inválido o expirado")
 
     with closing(get_connection()) as connection:
-        user_row = connection.execute("SELECT * FROM usuarios WHERE id = %s", (user_id,)).fetchone()
+        user_row = connection.execute("SELECT * FROM usuarios WHERE id = %s", (verified_id,)).fetchone()
         if user_row is None:
-            user_row = connection.execute("SELECT * FROM usuarios ORDER BY id ASC LIMIT 1").fetchone()
-            if user_row is None:
-                raise HTTPException(status_code=401, detail="Usuario no autenticado")
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
         return Usuario(**row_to_dict(user_row))
 
 
@@ -1390,7 +1408,8 @@ def register(payload: UsuarioRegister) -> dict[str, Any]:
             "rol": "usuario",
         })
         user_id = int(created["id"])
-        _seed_user_defaults(connection, user_id)
+        _seed_user_categories(connection, user_id)
+        _seed_user_moto(connection, user_id)
         connection.commit()
 
         user = Usuario(**created)
@@ -1411,23 +1430,12 @@ def login(payload: UsuarioLogin) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail="Credenciales incorrectas")
 
         user = Usuario(**user_dict)
-        try:
-            _seed_user_defaults(connection, user.id)
-            connection.commit()
-        except Exception:
-            pass
         token = generate_auth_token(user.id)
         return {"token": token, "usuario": user}
 
 
 @app.get("/api/auth/me", response_model=Usuario)
 def me(user: Usuario = Depends(get_current_user)) -> Usuario:
-    try:
-        with closing(get_connection()) as connection:
-            _seed_user_defaults(connection, user.id)
-            connection.commit()
-    except Exception:
-        pass
     return user
 
 
@@ -1469,6 +1477,9 @@ def list_ingresos(user: Usuario = Depends(get_current_user)) -> list[dict[str, A
 
 @app.post("/api/ingresos", response_model=Ingreso, status_code=201)
 def create_ingreso(payload: IngresoInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        if payload.medio_pago_id is not None:
+            require_user_entity(connection, "medios_pago", payload.medio_pago_id, user.id)
     return create_item("ingresos", {**payload.model_dump(), "usuario_id": user.id, "fecha": payload.fecha.isoformat()})
 
 
@@ -1483,6 +1494,10 @@ def update_ingreso(item_id: int, payload: IngresoUpdate, user: Usuario = Depends
     fields = payload.model_dump(exclude_unset=True)
     if "fecha" in fields and fields["fecha"] is not None:
         fields["fecha"] = fields["fecha"].isoformat()
+    with closing(get_connection()) as connection:
+        require_user_entity(connection, "ingresos", item_id, user.id)
+        if "medio_pago_id" in fields and fields["medio_pago_id"] is not None:
+            require_user_entity(connection, "medios_pago", fields["medio_pago_id"], user.id)
     return update_item("ingresos", item_id, fields, user.id)
 
 
@@ -1548,19 +1563,13 @@ def list_categorias(user: Usuario = Depends(get_current_user)) -> list[dict[str,
             "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
             (user.id,),
         ).fetchall()
-        if not rows:
-            _seed_user_defaults(connection, user.id)
-            rows = connection.execute(
-                "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
-                (user.id,),
-            ).fetchall()
         return [{**row_to_dict(row), "activa": bool(row["activa"])} for row in rows]
 
 
 @app.post("/api/categorias/seed-defaults", response_model=list[Categoria])
 def seed_default_categorias(user: Usuario = Depends(get_current_user)) -> list[dict[str, Any]]:
     with closing(get_connection()) as connection:
-        _seed_user_defaults(connection, user.id)
+        _seed_user_categories(connection, user.id)
         rows = connection.execute(
             "SELECT * FROM categorias WHERE usuario_id = %s ORDER BY activa DESC, id",
             (user.id,),
@@ -1630,7 +1639,9 @@ def list_gastos_variables(user: Usuario = Depends(get_current_user)) -> list[dic
 @app.post("/api/gastos-variables", response_model=GastoVariable, status_code=201)
 def create_gasto_variable(payload: GastoVariableInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
     with closing(get_connection()) as connection:
-        require_row(connection, "categorias", payload.categoria_id, user.id)
+        require_user_entity(connection, "categorias", payload.categoria_id, user.id)
+        if payload.medio_pago_id is not None:
+            require_user_entity(connection, "medios_pago", payload.medio_pago_id, user.id)
     return create_item(
         "gastos_variables",
         {**payload.model_dump(), "usuario_id": user.id, "fecha": payload.fecha.isoformat()},
@@ -1648,9 +1659,12 @@ def update_gasto_variable(item_id: int, payload: GastoVariableUpdate, user: Usua
     fields = payload.model_dump(exclude_unset=True)
     if "fecha" in fields and fields["fecha"] is not None:
         fields["fecha"] = fields["fecha"].isoformat()
-    if "categoria_id" in fields and fields["categoria_id"] is not None:
-        with closing(get_connection()) as connection:
-            require_row(connection, "categorias", fields["categoria_id"], user.id)
+    with closing(get_connection()) as connection:
+        require_user_entity(connection, "gastos_variables", item_id, user.id)
+        if "categoria_id" in fields and fields["categoria_id"] is not None:
+            require_user_entity(connection, "categorias", fields["categoria_id"], user.id)
+        if "medio_pago_id" in fields and fields["medio_pago_id"] is not None:
+            require_user_entity(connection, "medios_pago", fields["medio_pago_id"], user.id)
     return update_item("gastos_variables", item_id, fields, user.id)
 
 
@@ -1772,12 +1786,6 @@ def build_saldos_medios(user_id: int) -> list[dict[str, Any]]:
             "SELECT * FROM medios_pago WHERE usuario_id = %s ORDER BY activo DESC, id",
             (user_id,),
         ).fetchall()
-        if not medios:
-            _seed_user_defaults(connection, user_id)
-            medios = connection.execute(
-                "SELECT * FROM medios_pago WHERE usuario_id = %s ORDER BY activo DESC, id",
-                (user_id,),
-            ).fetchall()
 
         # Totales por medio
         ingresos_rows = connection.execute(
@@ -1866,6 +1874,25 @@ def get_medio_pago(item_id: int, user: Usuario = Depends(get_current_user)) -> d
 
 @app.patch("/api/medios-pago/{item_id}", response_model=MedioPago)
 def update_medio_pago(item_id: int, payload: MedioPagoUpdate, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        require_user_entity(connection, "medios_pago", item_id, user.id)
+        if payload.saldo_inicial is not None:
+            has_mvt = connection.execute(
+                """
+                SELECT 1 FROM ingresos WHERE medio_pago_id = %s AND usuario_id = %s
+                UNION ALL
+                SELECT 1 FROM gastos_variables WHERE medio_pago_id = %s AND usuario_id = %s
+                UNION ALL
+                SELECT 1 FROM transferencias_medios WHERE (origen_id = %s OR destino_id = %s) AND usuario_id = %s
+                LIMIT 1
+                """,
+                (item_id, user.id, item_id, user.id, item_id, item_id, user.id),
+            ).fetchone()
+            if has_mvt:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El saldo inicial queda bloqueado tras registrar movimientos. Usa un ajuste de saldo.",
+                )
     fields = payload.model_dump(exclude_unset=True)
     if "activo" in fields and fields["activo"] is not None:
         fields["activo"] = _norm_bool(fields["activo"])
@@ -1876,13 +1903,39 @@ def update_medio_pago(item_id: int, payload: MedioPagoUpdate, user: Usuario = De
 
 @app.delete("/api/medios-pago/{item_id}", status_code=204)
 def delete_medio_pago(item_id: int, user: Usuario = Depends(get_current_user)) -> Response:
-    try:
-        delete_item("medios_pago", item_id, user.id)
-    except _INTEGRITY_ERRORS:
-        raise HTTPException(
-            status_code=400,
-            detail="No se puede eliminar el medio de pago: tiene movimientos asociados",
-        )
+    with closing(get_connection()) as connection:
+        require_user_entity(connection, "medios_pago", item_id, user.id)
+        has_ingresos = connection.execute(
+            "SELECT 1 FROM ingresos WHERE medio_pago_id = %s AND usuario_id = %s LIMIT 1",
+            (item_id, user.id),
+        ).fetchone()
+        has_gastos = connection.execute(
+            "SELECT 1 FROM gastos_variables WHERE medio_pago_id = %s AND usuario_id = %s LIMIT 1",
+            (item_id, user.id),
+        ).fetchone()
+        has_trans = connection.execute(
+            "SELECT 1 FROM transferencias_medios WHERE (origen_id = %s OR destino_id = %s) AND usuario_id = %s LIMIT 1",
+            (item_id, item_id, user.id),
+        ).fetchone()
+        has_ahorros = connection.execute(
+            "SELECT 1 FROM movimientos_ahorro WHERE medio_pago_id = %s AND usuario_id = %s LIMIT 1",
+            (item_id, user.id),
+        ).fetchone()
+
+        if has_ingresos or has_gastos or has_trans or has_ahorros:
+            # Soft delete: desactivar para mantener el histórico contable íntegro
+            connection.execute(
+                "UPDATE medios_pago SET activo = %s WHERE id = %s AND usuario_id = %s",
+                (_norm_bool(False), item_id, user.id),
+            )
+            connection.commit()
+        else:
+            # Hard delete: si no tiene movimientos, se puede eliminar físicamente
+            connection.execute(
+                "DELETE FROM medios_pago WHERE id = %s AND usuario_id = %s",
+                (item_id, user.id),
+            )
+            connection.commit()
     return Response(status_code=204)
 
 
@@ -1900,9 +1953,24 @@ def list_transferencias(user: Usuario = Depends(get_current_user)) -> list[dict[
 def create_transferencia(payload: TransferenciaMedioInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
     if payload.origen_id == payload.destino_id:
         raise HTTPException(status_code=400, detail="El medio de origen y destino deben ser diferentes")
+
+    first_id = min(payload.origen_id, payload.destino_id)
+    second_id = max(payload.origen_id, payload.destino_id)
+
     with closing(get_connection()) as connection:
-        require_row(connection, "medios_pago", payload.origen_id, user.id)
-        require_row(connection, "medios_pago", payload.destino_id, user.id)
+        # Deterministic locking / verification order
+        require_user_entity(connection, "medios_pago", first_id, user.id)
+        require_user_entity(connection, "medios_pago", second_id, user.id)
+
+        # Check balance of source account
+        saldos = {m["id"]: m["saldo_actual"] for m in build_saldos_medios(user.id)}
+        saldo_origen = saldos.get(payload.origen_id, 0.0)
+        if saldo_origen < payload.monto:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Saldo insuficiente en la cuenta de origen (Disponible: ${saldo_origen:,.0f} COP)",
+            )
+
     return create_item(
         "transferencias_medios",
         {**payload.model_dump(), "usuario_id": user.id, "fecha": payload.fecha.isoformat()},

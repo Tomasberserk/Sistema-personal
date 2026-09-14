@@ -134,15 +134,45 @@ export const MedioPagoModal: React.FC<MedioPagoModalProps> = ({ record, pending,
           )}
 
           <label className="block">
-            <span className="cosmos-field-label">Nombre del medio o cuenta</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="cosmos-field-label !mb-0">Nombre del medio o cuenta</span>
+              <span className="text-[11px] text-white/40">Sugerencias: Nu, BBVA, Daviplata...</span>
+            </div>
             <input
               required
               className="cosmos-input"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. Bancolombia Principal, Nequi, Efectivo bolsillo, Daviplata..."
+              placeholder="Ej. Nu, Bancolombia, Daviplata, BBVA, Efectivo..."
               data-testid="input-medio-nombre"
             />
+            {!record && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold mr-1">Rápido:</span>
+                {[
+                  { n: 'Nu', t: 'cuenta_bancaria' as MedioPagoTipo, i: '💳', c: '#a85de8' },
+                  { n: 'Daviplata', t: 'billetera_digital' as MedioPagoTipo, i: '📲', c: '#e85d5d' },
+                  { n: 'BBVA', t: 'cuenta_bancaria' as MedioPagoTipo, i: '🏦', c: '#5d8ae8' },
+                  { n: 'Bancolombia', t: 'cuenta_bancaria' as MedioPagoTipo, i: '🏦', c: '#e85d4a' },
+                  { n: 'Nequi', t: 'billetera_digital' as MedioPagoTipo, i: '📱', c: '#a85de8' },
+                  { n: 'Efectivo', t: 'efectivo_billetes' as MedioPagoTipo, i: '💵', c: '#5de87a' },
+                ].map((sug) => (
+                  <button
+                    key={sug.n}
+                    type="button"
+                    onClick={() => {
+                      setNombre(sug.n);
+                      setTipo(sug.t);
+                      setIcono(sug.i);
+                      setColor(sug.c);
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70 hover:border-white/20 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <span>{sug.i}</span> {sug.n}
+                  </button>
+                ))}
+              </div>
+            )}
           </label>
 
           <div>

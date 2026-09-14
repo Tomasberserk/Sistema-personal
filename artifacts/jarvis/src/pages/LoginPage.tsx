@@ -7,12 +7,12 @@ import { useAuth } from '../context/AuthContext';
 export const LoginPage: React.FC = () => {
   const { user, demoUsers, login, register, switchDemoUser } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<'demo' | 'login' | 'register'>('demo');
+  const [tab, setTab] = useState<'login' | 'register' | 'demo'>('login');
 
   // Form states
   const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('tomas@personal.io');
-  const [password, setPassword] = useState('demo');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState('🚀');
   const [loading, setLoading] = useState(false);
 
@@ -100,15 +100,6 @@ export const LoginPage: React.FC = () => {
           <div className="mb-6 flex rounded-2xl bg-white/5 p-1">
             <button
               type="button"
-              onClick={() => setTab('demo')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition ${
-                tab === 'demo' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Sparkles size={14} /> Modo Demo (1-Click)
-            </button>
-            <button
-              type="button"
               onClick={() => setTab('login')}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition ${
                 tab === 'login' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'
@@ -124,6 +115,15 @@ export const LoginPage: React.FC = () => {
               }`}
             >
               <UserPlus size={14} /> Registrarse
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('demo')}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition ${
+                tab === 'demo' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <Sparkles size={14} /> Cuentas Prueba
             </button>
           </div>
 

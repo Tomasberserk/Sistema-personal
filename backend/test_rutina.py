@@ -17,11 +17,21 @@ def test_rutina_empty_by_default():
         main.init_db()
 
         with TestClient(main.app) as client:
-            resp = client.get("/api/rutina/bloques")
+            # 1. Sin token -> 401 Unauthorized
+            unauth = client.get("/api/rutina/bloques")
+            assert unauth.status_code == 401
+
+            # 2. Con login -> 200
+            login_resp = client.post("/api/auth/login", json={"email": "tomas@personal.io", "password": "demo"})
+            assert login_resp.status_code == 200
+            token = login_resp.json()["token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            resp = client.get("/api/rutina/bloques", headers=headers)
             assert resp.status_code == 200
             assert resp.json() == []
 
-            resp_semana = client.get("/api/rutina/semana")
+            resp_semana = client.get("/api/rutina/semana", headers=headers)
             assert resp_semana.status_code == 200
             semana = resp_semana.json()
             assert len(semana) == 7
@@ -38,21 +48,21 @@ def test_rutina_empty_by_default():
                 "icono": "☕",
                 "activo": True
             }
-            create_resp = client.post("/api/rutina/bloques", json=nuevo_bloque)
+            create_resp = client.post("/api/rutina/bloques", json=nuevo_bloque, headers=headers)
             assert create_resp.status_code == 201
             created = create_resp.json()
             assert created["id"] is not None
             assert created["titulo"] == "Lectura y café"
 
-            resp_despues = client.get("/api/rutina/bloques")
+            resp_despues = client.get("/api/rutina/bloques", headers=headers)
             assert len(resp_despues.json()) == 1
 
-            dia0_resp = client.get("/api/rutina/dia/0")
+            dia0_resp = client.get("/api/rutina/dia/0", headers=headers)
             assert len(dia0_resp.json()) == 1
 
-            del_resp = client.delete(f"/api/rutina/bloques/{created['id']}")
+            del_resp = client.delete(f"/api/rutina/bloques/{created['id']}", headers=headers)
             assert del_resp.status_code in (200, 204)
-            assert client.get("/api/rutina/bloques").json() == []
+            assert client.get("/api/rutina/bloques", headers=headers).json() == []
     finally:
         if os.path.exists(db_path):
             try:

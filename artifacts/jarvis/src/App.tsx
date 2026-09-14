@@ -67,7 +67,6 @@ const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'nume
 export const DEFAULT_INCOME_SOURCES = [
   { id: 'Sueldo / Salario', label: 'Sueldo', icono: '💼', color: '#5de8c4', desc: 'Salario fijo, nómina, quincena' },
   { id: 'Trabajo Independiente', label: 'Independiente', icono: '⚡', color: '#5d8ae8', desc: 'Freelance, proyectos, clientes' },
-  { id: 'Didi', label: 'Didi', icono: '🛵', color: '#e8a85d', desc: 'Plataformas de movilidad / entregas' },
   { id: 'Negocio / Ventas', label: 'Negocio', icono: '🛍️', color: '#e8d95d', desc: 'Comercio, ventas, servicios' },
   { id: 'Inversiones', label: 'Inversiones', icono: '📈', color: '#5de87a', desc: 'Rendimientos, dividendos, CDTs' },
   { id: 'Prestamo / Deuda', label: 'Deuda / Cobro', icono: '🤝', color: '#5dc4e8', desc: 'Dinero prestado que me devolvieron' },
@@ -80,7 +79,6 @@ const DEFAULT_FUENTES_INFO: Record<string, { label: string; icono: string; color
   'Sueldo': { label: 'Sueldo / Nómina', icono: '💼', color: '#5de8c4' },
   'Trabajo Independiente': { label: 'Independiente / Freelance', icono: '⚡', color: '#5d8ae8' },
   'Independiente': { label: 'Independiente / Freelance', icono: '⚡', color: '#5d8ae8' },
-  'Didi': { label: 'Didi / Movilidad', icono: '🛵', color: '#e8a85d' },
   'Negocio / Ventas': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8d95d' },
   'Negocio': { label: 'Negocio / Ventas', icono: '🛍️', color: '#e8d95d' },
   'Inversiones': { label: 'Inversiones', icono: '📈', color: '#5de87a' },
@@ -111,7 +109,6 @@ const sourceLabel: Record<string, string> = {
   'Sueldo': 'Sueldo',
   'Trabajo Independiente': 'Independiente',
   'Independiente': 'Independiente',
-  'Didi': 'Didi',
   'Negocio / Ventas': 'Negocio',
   'Negocio': 'Negocio',
   'Inversiones': 'Inversiones',
@@ -484,7 +481,6 @@ interface ResumenIngresoFuente {
 }
 
 const FUENTE_COLORES: Record<string, { color: string; icono: string }> = {
-  Didi: { color: '#e8a85d', icono: '🛵' },
   papa: { color: '#5de8c4', icono: '👨' },
   amigo: { color: '#5d8ae8', icono: '🤝' },
   otro: { color: '#a85de8', icono: '✨' },
@@ -3103,7 +3099,7 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const isKm = kind === 'km';
   const r = record as Record<string, unknown> | null;
   const [form, setForm] = useState<Record<string, string | boolean>>({
-    fecha: String(r?.fecha ?? dateValue()), monto: String(r?.monto ?? ''), fuente: String(r?.fuente ?? 'sueldo'),
+    fecha: String(r?.fecha ?? dateValue()), monto: String(r?.monto ?? ''), fuente: String(r?.fuente ?? 'Sueldo / Salario'),
     fuente_custom: '', medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
     nota: r?.nota ?? '', categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: r?.nombre ?? '',
     tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
