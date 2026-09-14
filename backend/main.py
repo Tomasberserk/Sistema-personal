@@ -506,7 +506,7 @@ class RecordatorioInput(BaseModel):
     fecha_disparo: str
     regla_recurrencia: str | None = None
     anticipacion_minutos: int = Field(default=0, ge=0)
-    canal: str = "notificacion"
+    canal: Literal["push", "in_app", "todos", "suave", "notificacion", "persistente"] = "notificacion"
     modulo_origen: str | None = None
     referencia_id: int | None = None
     activo: bool = True
@@ -519,7 +519,7 @@ class RecordatorioUpdate(BaseModel):
     fecha_disparo: str | None = None
     regla_recurrencia: str | None = None
     anticipacion_minutos: int | None = Field(default=None, ge=0)
-    canal: str | None = None
+    canal: Literal["push", "in_app", "todos", "suave", "notificacion", "persistente"] | None = None
     modulo_origen: str | None = None
     referencia_id: int | None = None
     activo: bool | None = None
@@ -831,7 +831,7 @@ POSTGRES_TABLES = [
         fecha_disparo VARCHAR(50) NOT NULL,
         regla_recurrencia VARCHAR(255),
         anticipacion_minutos INTEGER NOT NULL DEFAULT 0,
-        canal VARCHAR(50) NOT NULL DEFAULT 'todos',
+        canal VARCHAR(50) NOT NULL DEFAULT 'notificacion' CHECK (canal IN ('push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente')),
         modulo_origen VARCHAR(50),
         referencia_id INTEGER,
         activo BOOLEAN NOT NULL DEFAULT TRUE,
@@ -990,7 +990,7 @@ SQLITE_SCHEMA = """
         fecha_disparo TEXT NOT NULL,
         regla_recurrencia TEXT,
         anticipacion_minutos INTEGER NOT NULL DEFAULT 0 CHECK (anticipacion_minutos >= 0),
-        canal TEXT NOT NULL DEFAULT 'todos' CHECK (canal IN ('push', 'in_app', 'todos')),
+        canal TEXT NOT NULL DEFAULT 'notificacion' CHECK (canal IN ('push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente')),
         modulo_origen TEXT,
         referencia_id INTEGER,
         activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
@@ -1116,6 +1116,75 @@ def init_db() -> None:
                     connection.commit()
                 except Exception as e:
                     print(f"[Postgres Categorias Migration Warn] {e}")
+
+            # Migración para recordatorios: ampliar CHECK constraint para canal (push, in_app, todos, suave, notificacion, persistente)
+            if not _is_postgres():
+                try:
+                    tbl_row = connection.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='recordatorios'").fetchone()
+                    if tbl_row and "suave" not in tbl_row[0]:
+                        connection.execute("PRAGMA foreign_keys=OFF")
+                        connection.execute("DROP TABLE IF EXISTS _recordatorios_old")
+                        connection.execute("ALTER TABLE recordatorios RENAME TO _recordatorios_old")
+                        connection.execute("""
+                            CREATE TABLE recordatorios (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                usuario_id INTEGER NOT NULL DEFAULT 1,
+                                titulo TEXT NOT NULL,
+                                descripcion TEXT NOT NULL DEFAULT '',
+                                tipo TEXT NOT NULL CHECK (tipo IN ('puntual', 'recurrente', 'fecha_especial', 'relacionado')),
+                                fecha_disparo TEXT NOT NULL,
+                                regla_recurrencia TEXT,
+                                anticipacion_minutos INTEGER NOT NULL DEFAULT 0 CHECK (anticipacion_minutos >= 0),
+                                canal TEXT NOT NULL DEFAULT 'notificacion' CHECK (canal IN ('push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente')),
+                                modulo_origen TEXT,
+                                referencia_id INTEGER,
+                                activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+                                disparado INTEGER NOT NULL DEFAULT 0 CHECK (disparado IN (0, 1))
+                            )
+                        """)
+                        connection.execute("""
+                            INSERT INTO recordatorios (id, usuario_id, titulo, descripcion, tipo, fecha_disparo, regla_recurrencia, anticipacion_minutos, canal, modulo_origen, referencia_id, activo, disparado)
+                            SELECT id, usuario_id, titulo, descripcion, tipo, fecha_disparo, regla_recurrencia, anticipacion_minutos, canal, modulo_origen, referencia_id, activo, disparado FROM _recordatorios_old
+                        """)
+                        connection.execute("DROP TABLE _recordatorios_old")
+                        connection.execute("PRAGMA foreign_keys=ON")
+                        connection.commit()
+                except Exception as e:
+                    print(f"[SQLite Recordatorios Migration Warn] {e}")
+            else:
+                try:
+                    # Bloqueo consultivo transaccional para evitar carreras si arrancan múltiples workers/instancias
+                    connection.execute("SELECT pg_advisory_xact_lock(hashtext('migration_recordatorios_canal'))")
+                    # Inspeccionar si el constraint ya existe y contiene 'suave'
+                    c_row = connection.execute("""
+                        SELECT pg_get_constraintdef(c.oid)
+                        FROM pg_constraint c
+                        JOIN pg_class t ON c.conrelid = t.oid
+                        WHERE t.relname = 'recordatorios' AND c.conname = 'recordatorios_canal_check'
+                    """).fetchone()
+
+                    if c_row is None:
+                        # No existe el constraint: crearlo directamente
+                        connection.execute("""
+                            ALTER TABLE recordatorios 
+                            ADD CONSTRAINT recordatorios_canal_check 
+                            CHECK (canal IN ('push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente'))
+                        """)
+                        connection.commit()
+                    elif "suave" not in (c_row[0] or ""):
+                        # Existe pero tiene la versión antigua: actualizar
+                        connection.execute("ALTER TABLE recordatorios DROP CONSTRAINT recordatorios_canal_check")
+                        connection.execute("""
+                            ALTER TABLE recordatorios 
+                            ADD CONSTRAINT recordatorios_canal_check 
+                            CHECK (canal IN ('push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente'))
+                        """)
+                        connection.commit()
+                    else:
+                        # Ya existe con la definición correcta: NO ejecutar DDL
+                        pass
+                except Exception as e:
+                    print(f"[Postgres Recordatorios Migration Warn] {e}")
 
             # Índices compuestos por usuario_id y nombre
             try:

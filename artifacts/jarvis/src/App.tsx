@@ -3761,7 +3761,7 @@ function RecordatorioModal({
     fecha_disparo: record?.fecha_disparo ?? new Date().toISOString().slice(0, 16),
     horas_intervalo: record?.regla_recurrencia?.replace('INTERVAL_HOURS:', '') ?? '2',
     anticipacion_minutos: String(record?.anticipacion_minutos ?? 0),
-    canal: record?.canal ?? 'todos',
+    canal: record?.canal ?? 'notificacion',
     activo: record?.activo ?? true,
   });
 

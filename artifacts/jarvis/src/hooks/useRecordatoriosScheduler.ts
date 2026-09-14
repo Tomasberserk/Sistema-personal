@@ -210,20 +210,21 @@ export function useRecordatoriosScheduler() {
               tabId: TAB_ID,
             });
 
-            // Determinar modo de alerta (fallback a 'notificacion')
-            const modoAlerta = (r as unknown as { canal?: string }).canal || 'notificacion';
+            // Determinar modo de alerta (fallback a 'notificacion' para canales históricos y cualquier valor no persistente/suave)
+            const rawCanal = (r as unknown as { canal?: string }).canal;
+            const modoAlerta = (rawCanal === 'suave' || rawCanal === 'persistente') ? rawCanal : 'notificacion';
 
             // 1. Audio & Vibración según el perfil
             if (modoAlerta === 'suave') {
               playTonoSuave();
-            } else if (modoAlerta === 'notificacion') {
-              playTonoNotificacion();
-            } else {
-              // 'persistente' o por defecto
+            } else if (modoAlerta === 'persistente') {
               if (activeAlarmHandleRef.current) {
                 activeAlarmHandleRef.current.stop();
               }
               activeAlarmHandleRef.current = startAlarmaPersistente();
+            } else {
+              // 'notificacion' (incluye fallback seguro para 'todos', 'push', 'in_app')
+              playTonoNotificacion();
             }
 
             // 2. Notificación nativa del Sistema Operativo (Nivel B)
