@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
-import { Sparkles, Activity, Lock, Mail, User, ArrowRight, UserPlus, LogIn, CheckCircle2, ShieldCheck, Key } from 'lucide-react';
+import { Activity, Lock, Mail, User, ArrowRight, UserPlus, LogIn, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { user, demoUsers, login, register, switchDemoUser } = useAuth();
+  const { login, register } = useAuth();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<'login' | 'register' | 'demo'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // Form states
   const [nombre, setNombre] = useState('');
@@ -16,37 +16,28 @@ export const LoginPage: React.FC = () => {
   const [avatar, setAvatar] = useState('🚀');
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, can redirect to dashboard
   const handleSuccess = () => {
     setLocation('/');
   };
 
-  const handleSwitchDemo = async (id: number, userName: string) => {
-    try {
-      setLoading(true);
-      await switchDemoUser(id);
-      toast.success(`¡Bienvenido/a, ${userName}! Espacio personal activado.`);
-      handleSuccess();
-    } catch {
-      toast.error('Error al conectar con el usuario demo');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       toast.error('Ingresa tu correo y contraseña');
       return;
     }
     try {
       setLoading(true);
-      await login(email, password);
+      await login(email.trim(), password);
       toast.success('Sesión iniciada con éxito');
       handleSuccess();
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || 'Correo o contraseña incorrectos');
+      const msg = (err as { message?: string })?.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('timed out') || msg.includes('responder')) {
+        toast.error('No se pudo conectar con el servidor. Verifica que el backend esté activo.');
+      } else {
+        toast.error(msg.replace(/^HTTP \d+ [^:]+: /, '') || 'Correo o contraseña incorrectos');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,17 +45,25 @@ export const LoginPage: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !email || !password) {
+    if (!nombre.trim() || !email.trim() || !password) {
       toast.error('Por favor completa todos los campos');
       return;
     }
     try {
       setLoading(true);
-      await register(nombre, email, password, avatar);
+      await register(nombre.trim(), email.trim(), password, avatar);
       toast.success(`¡Cuenta creada con éxito! Bienvenido/a a Jarvis, ${nombre}.`);
       handleSuccess();
     } catch (err: unknown) {
-      toast.error((err as { message?: string })?.message || 'No se pudo crear la cuenta');
+      const msg = (err as { message?: string })?.message || '';
+      if (msg.includes('Ya existe un usuario')) {
+        toast.error('Ya existe una cuenta con este correo. Por favor inicia sesión.');
+        setTab('login');
+      } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('timed out') || msg.includes('responder')) {
+        toast.error('No se pudo conectar con el servidor. Verifica que el backend esté activo.');
+      } else {
+        toast.error(msg.replace(/^HTTP \d+ [^:]+: /, '') || 'No se pudo crear la cuenta');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +76,7 @@ export const LoginPage: React.FC = () => {
       <div className="absolute right-1/4 bottom-1/4 h-[350px] w-[350px] translate-x-1/2 translate-y-1/2 rounded-full bg-[#5d8ae8]/10 blur-[120px] pointer-events-none" />
 
       {/* Main Container */}
-      <div className="relative z-10 w-full max-w-[460px]">
+      <div className="relative z-10 w-full max-w-[440px]">
         {/* Header Branding */}
         <div className="text-center mb-8">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-white text-black shadow-2xl shadow-white/20 mb-4 transition transform hover:scale-105">
@@ -116,76 +115,9 @@ export const LoginPage: React.FC = () => {
             >
               <UserPlus size={14} /> Registrarse
             </button>
-            <button
-              type="button"
-              onClick={() => setTab('demo')}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition ${
-                tab === 'demo' ? 'bg-white text-black shadow' : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Sparkles size={14} /> Cuentas Prueba
-            </button>
           </div>
 
-          {/* TAB 1: DEMO USERS (1-CLICK) */}
-          {tab === 'demo' && (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-[#5de8c4]/20 bg-[#5de8c4]/5 p-3.5 text-xs text-[#5de8c4] flex items-start gap-2.5">
-                <ShieldCheck size={18} className="shrink-0 mt-0.5" />
-                <div>
-                  <strong className="block font-semibold">Cuentas Demo Listas para Probar</strong>
-                  Haz clic en cualquiera de estos perfiles para entrar al instante con sus datos aislados:
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                {demoUsers.map((u) => {
-                  const isCurrent = user?.id === u.id;
-                  return (
-                    <button
-                      key={u.id}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleSwitchDemo(u.id, u.nombre)}
-                      className={`flex flex-col items-start gap-2 rounded-2xl border p-4 text-left transition ${
-                        isCurrent
-                          ? 'border-[#5de8c4] bg-[#5de8c4]/15 ring-1 ring-[#5de8c4]'
-                          : 'border-white/10 bg-white/4 hover:border-white/25 hover:bg-white/8 hover:scale-[1.02]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-3xl">{u.avatar}</span>
-                        {isCurrent ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#5de8c4] bg-[#5de8c4]/20 px-2 py-0.5 rounded-full">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-white/40">{u.rol}</span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-white">{u.nombre}</div>
-                        <div className="text-[11px] text-white/45 truncate mt-0.5">{u.email}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
-                <span>Contraseña demo: <code className="bg-white/10 text-white/80 px-1.5 py-0.5 rounded font-mono">demo</code></span>
-                <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-[#5de8c4] hover:underline font-semibold"
-                >
-                  Entrar con contraseña →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: EMAIL / PASSWORD LOGIN */}
+          {/* TAB 1: EMAIL / PASSWORD LOGIN */}
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
@@ -194,9 +126,11 @@ export const LoginPage: React.FC = () => {
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tomas@personal.io"
+                    placeholder="tu@correo.com"
                     className="cosmos-input pl-10"
                     required
                   />
@@ -204,14 +138,13 @@ export const LoginPage: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <label className="cosmos-field-label">Contraseña</label>
-                  <span className="text-[11px] text-white/40">Por defecto: demo</span>
-                </div>
+                <label className="cosmos-field-label">Contraseña</label>
                 <div className="relative mt-1">
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -226,23 +159,23 @@ export const LoginPage: React.FC = () => {
                 disabled={loading}
                 className="cosmos-button-primary w-full justify-center !py-3 text-sm font-bold mt-2"
               >
-                {loading ? 'Verificando...' : 'Iniciar Sesión'} <ArrowRight size={16} />
+                {loading ? 'Verificando...' : 'Entrar a Jarvis'} <ArrowRight size={16} />
               </button>
 
               <div className="pt-2 text-center text-xs text-white/40">
-                ¿Quieres probar rápido?{' '}
+                ¿No tienes una cuenta aún?{' '}
                 <button
                   type="button"
-                  onClick={() => setTab('demo')}
+                  onClick={() => setTab('register')}
                   className="text-[#5de8c4] hover:underline font-bold"
                 >
-                  Usa el Modo Demo 1-Click
+                  Regístrate aquí
                 </button>
               </div>
             </form>
           )}
 
-          {/* TAB 3: REGISTER */}
+          {/* TAB 2: REGISTER */}
           {tab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
@@ -251,6 +184,8 @@ export const LoginPage: React.FC = () => {
                   <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="text"
+                    name="name"
+                    autoComplete="name"
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     placeholder="Ej. Carlos, Sofía..."
@@ -284,6 +219,8 @@ export const LoginPage: React.FC = () => {
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="correo@ejemplo.com"
@@ -299,9 +236,11 @@ export const LoginPage: React.FC = () => {
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="password"
+                    name="new-password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Elige una contraseña"
+                    placeholder="Elige una contraseña segura"
                     className="cosmos-input pl-10"
                     required
                   />
@@ -313,18 +252,21 @@ export const LoginPage: React.FC = () => {
                 disabled={loading}
                 className="cosmos-button-primary w-full justify-center !py-3 text-sm font-bold mt-2"
               >
-                {loading ? 'Creando espacio...' : 'Crear Espacio Personal'} <Sparkles size={16} />
+                {loading ? 'Creando cuenta...' : 'Crear Espacio Personal'} <Sparkles size={16} />
               </button>
+
+              <div className="pt-2 text-center text-xs text-white/40">
+                ¿Ya tienes una cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => setTab('login')}
+                  className="text-[#5de8c4] hover:underline font-bold"
+                >
+                  Inicia sesión
+                </button>
+              </div>
             </form>
           )}
-        </div>
-
-        {/* Footer credentials reminder */}
-        <div className="mt-8 text-center text-xs text-white/40 space-y-1">
-          <p>Tu cuenta principal de Administrador:</p>
-          <p className="text-white/70 font-mono">
-            <strong>tomas@personal.io</strong> · Clave: <strong>demo</strong>
-          </p>
         </div>
       </div>
     </div>

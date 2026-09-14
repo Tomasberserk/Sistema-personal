@@ -506,7 +506,7 @@ class RecordatorioInput(BaseModel):
     fecha_disparo: str
     regla_recurrencia: str | None = None
     anticipacion_minutos: int = Field(default=0, ge=0)
-    canal: Literal["push", "in_app", "todos"] = "todos"
+    canal: str = "notificacion"
     modulo_origen: str | None = None
     referencia_id: int | None = None
     activo: bool = True
@@ -519,7 +519,7 @@ class RecordatorioUpdate(BaseModel):
     fecha_disparo: str | None = None
     regla_recurrencia: str | None = None
     anticipacion_minutos: int | None = Field(default=None, ge=0)
-    canal: Literal["push", "in_app", "todos"] | None = None
+    canal: str | None = None
     modulo_origen: str | None = None
     referencia_id: int | None = None
     activo: bool | None = None

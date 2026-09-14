@@ -360,7 +360,38 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  // Componer AbortSignal con timeout de 10s para evitar requests colgados indefinidamente
+  let signal: AbortSignal | undefined = init.signal as AbortSignal | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  if (typeof AbortSignal !== "undefined") {
+    if (typeof (AbortSignal as any).any === "function" && typeof (AbortSignal as any).timeout === "function") {
+      const timeoutSig = (AbortSignal as any).timeout(10000);
+      signal = signal ? (AbortSignal as any).any([signal, timeoutSig]) : timeoutSig;
+    } else if (typeof AbortController !== "undefined") {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => {
+        controller.abort(new DOMException("La petición tardó más de 10 segundos en responder", "TimeoutError"));
+      }, 10000);
+
+      if (signal) {
+        const parentSignal = signal;
+        if (parentSignal.aborted) {
+          controller.abort(parentSignal.reason);
+        } else {
+          parentSignal.addEventListener("abort", () => controller.abort(parentSignal.reason), { once: true });
+        }
+      }
+      signal = controller.signal;
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(input, { ...init, method, headers, signal });
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

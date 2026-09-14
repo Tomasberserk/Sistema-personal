@@ -42,6 +42,7 @@ import { AporteModal } from './components/AporteModal';
 import { MovimientosAhorroModal } from './components/MovimientosAhorroModal';
 import { MedioPagoModal } from './components/MedioPagoModal';
 import { useRecordatoriosScheduler, reproducirAlertaSonora } from './hooks/useRecordatoriosScheduler';
+import { AlarmaModal } from './components/AlarmaModal';
 import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro, useSeedDefaultCategorias, useSeedDefaultMediosPago } from './api/customApi';
 import type { MetaAhorro, MetaAhorroInput, MovimientoAhorroInput } from './types/custom';
 
@@ -244,11 +245,19 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  useRecordatoriosScheduler();
+  const { activeAlarm, handleDetener, handlePosponer, handleCumplir } = useRecordatoriosScheduler();
 
   return (
     <div className="relative min-h-[100dvh] overflow-x-clip bg-background text-foreground">
       <CosmosBackground />
+      {activeAlarm && (
+        <AlarmaModal
+          recordatorio={activeAlarm}
+          onDetener={() => handleDetener(activeAlarm)}
+          onPosponer={() => handlePosponer(activeAlarm)}
+          onCumplir={() => handleCumplir(activeAlarm)}
+        />
+      )}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[236px] flex-col border-r border-white/5 bg-black/30 px-5 py-7 backdrop-blur-xl md:flex">
         <div className="mb-6 flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
@@ -3870,6 +3879,53 @@ function RecordatorioModal({
               placeholder="Ej. Con el enlace de Meet o tomar 500ml"
             />
           </label>
+
+          <div>
+            <span className="cosmos-field-label">Tono y estilo de aviso</span>
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => set('canal', 'suave')}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition ${
+                  form.canal === 'suave'
+                    ? 'border-[#5de8c4] bg-[#5de8c4]/15 text-white ring-1 ring-[#5de8c4]'
+                    : 'border-white/10 bg-white/4 text-white/60 hover:bg-white/8 hover:text-white'
+                }`}
+              >
+                <span className="text-xl">🌿</span>
+                <span className="text-xs font-bold">Suave</span>
+                <span className="text-[10px] text-white/40">Tono zen 2.5s</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => set('canal', 'notificacion')}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition ${
+                  form.canal === 'notificacion' || form.canal === 'todos'
+                    ? 'border-[#5de8c4] bg-[#5de8c4]/15 text-white ring-1 ring-[#5de8c4]'
+                    : 'border-white/10 bg-white/4 text-white/60 hover:bg-white/8 hover:text-white'
+                }`}
+              >
+                <span className="text-xl">🔔</span>
+                <span className="text-xs font-bold">Estándar</span>
+                <span className="text-[10px] text-white/40">Chime + Vibrar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => set('canal', 'persistente')}
+                className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition ${
+                  form.canal === 'persistente'
+                    ? 'border-[#5de8c4] bg-[#5de8c4]/15 text-white ring-1 ring-[#5de8c4]'
+                    : 'border-white/10 bg-white/4 text-white/60 hover:bg-white/8 hover:text-white'
+                }`}
+              >
+                <span className="text-xl">🚨</span>
+                <span className="text-xs font-bold">Alarma 15s</span>
+                <span className="text-[10px] text-white/40">Modo llamada</span>
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
