@@ -31,7 +31,7 @@ import {
   useListRecordatorios, useCreateRecordatorio, useUpdateRecordatorio, useDeleteRecordatorio, getListRecordatoriosQueryKey,
 } from '@workspace/api-client-react';
 import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -867,8 +867,17 @@ function Dashboard() {
                 </button>
                 <button
                   onClick={() => seedMedios.mutate(undefined, {
-                    onSuccess: () => toast.success('Medios predeterminados cargados'),
-                    onError: () => toast.error('No se pudieron cargar los medios')
+                    onSuccess: (data) => {
+                      if (Array.isArray(data)) {
+                        queryClient.setQueryData(getListMediosPagoQueryKey(), data);
+                      }
+                      queryClient.invalidateQueries({ queryKey: getListMediosPagoQueryKey() });
+                      queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() });
+                      toast.success('Medios predeterminados cargados');
+                    },
+                    onError: (err) => {
+                      toast.error((err as { detail?: string })?.detail ?? 'No se pudieron cargar los medios');
+                    }
                   })}
                   disabled={seedMedios.isPending}
                   className="cosmos-button-secondary !py-2 !px-3 text-xs"
@@ -2563,7 +2572,7 @@ function CategoriesPage() {
                             invalidateMedios();
                             toast.success('Medios predeterminados cargados');
                           },
-                          onError: () => toast.error('No se pudieron cargar los medios'),
+                          onError: (err) => toast.error((err as { detail?: string })?.detail ?? 'No se pudieron cargar los medios'),
                         })
                       }
                       disabled={seedMedios.isPending}

@@ -1043,6 +1043,7 @@ def _seed_user_medios(connection: Any, user_id: int) -> None:
         connection.commit()
     except Exception as exc:
         print(f"[Seed Medios Error for user {user_id}]: {exc}")
+        raise exc
 
 
 def _seed_user_moto(connection: Any, user_id: int) -> None:
@@ -1223,6 +1224,20 @@ def init_db() -> None:
                             connection.commit()
                 except Exception:
                     pass
+
+            # Migraciones seguras para asegurar columna medio_pago_id en ingresos y gastos_variables
+            for tbl in ["ingresos", "gastos_variables"]:
+                try:
+                    if _is_postgres():
+                        connection.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS medio_pago_id INTEGER")
+                        connection.commit()
+                    else:
+                        cols = [row["name"] for row in connection.execute(f"PRAGMA table_info({tbl})").fetchall()]
+                        if "medio_pago_id" not in cols:
+                            connection.execute(f"ALTER TABLE {tbl} ADD COLUMN medio_pago_id INTEGER")
+                            connection.commit()
+                except Exception as e:
+                    print(f"[MedioPagoID Migration Warn for {tbl}] {e}")
 
             # Sembrar usuarios Demo si no existen
             for u in DEFAULT_DEMO_USERS:
@@ -1856,18 +1871,24 @@ def build_saldos_medios(user_id: int) -> list[dict[str, Any]]:
             (user_id,),
         ).fetchall()
 
-        # Totales por medio
-        ingresos_rows = connection.execute(
-            "SELECT medio_pago_id, SUM(monto) as total FROM ingresos WHERE usuario_id = %s AND medio_pago_id IS NOT NULL GROUP BY medio_pago_id",
-            (user_id,),
-        ).fetchall()
-        ing_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in ingresos_rows}
+        # Totales por medio (con fallback seguro ante esquemas legacy)
+        try:
+            ingresos_rows = connection.execute(
+                "SELECT medio_pago_id, SUM(monto) as total FROM ingresos WHERE usuario_id = %s AND medio_pago_id IS NOT NULL GROUP BY medio_pago_id",
+                (user_id,),
+            ).fetchall()
+            ing_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in ingresos_rows}
+        except Exception:
+            ing_map = {}
 
-        gastos_rows = connection.execute(
-            "SELECT medio_pago_id, SUM(monto) as total FROM gastos_variables WHERE usuario_id = %s AND medio_pago_id IS NOT NULL GROUP BY medio_pago_id",
-            (user_id,),
-        ).fetchall()
-        gastos_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in gastos_rows}
+        try:
+            gastos_rows = connection.execute(
+                "SELECT medio_pago_id, SUM(monto) as total FROM gastos_variables WHERE usuario_id = %s AND medio_pago_id IS NOT NULL GROUP BY medio_pago_id",
+                (user_id,),
+            ).fetchall()
+            gastos_map = {row["medio_pago_id"]: float(row["total"] or 0) for row in gastos_rows}
+        except Exception:
+            gastos_map = {}
 
         trans_in = connection.execute(
             "SELECT destino_id, SUM(monto) as total FROM transferencias_medios WHERE usuario_id = %s GROUP BY destino_id",

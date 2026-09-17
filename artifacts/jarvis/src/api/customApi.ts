@@ -124,7 +124,10 @@ export function useSeedDefaultCategorias() {
   return useMutation({
     mutationFn: () =>
       customFetch<unknown>('/api/categorias/seed-defaults', { method: 'POST' }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (Array.isArray(data)) {
+        queryClient.setQueryData(['/api/categorias'], data);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/categorias'] });
       queryClient.invalidateQueries({ queryKey: ['/api/resumen/mes-actual/por-categoria'] });
     },
@@ -136,7 +139,10 @@ export function useSeedDefaultMediosPago() {
   return useMutation({
     mutationFn: () =>
       customFetch<unknown>('/api/medios-pago/seed-defaults', { method: 'POST' }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (Array.isArray(data)) {
+        queryClient.setQueryData(['/api/medios-pago'], data);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/medios-pago'] });
       queryClient.invalidateQueries({ queryKey: ['/api/resumen/mes-actual'] });
     },
