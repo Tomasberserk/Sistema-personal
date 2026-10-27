@@ -6,6 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './assistantChatInput';
+export * from './assistantConfirmInput';
+export * from './assistantConversation';
+export * from './assistantConversationProvider';
+export * from './assistantExecutedAction';
+export * from './assistantExecutedActionArgumentos';
+export * from './assistantExecutedActionEstado';
+export * from './assistantPendingConfirmation';
+export * from './assistantToolInfo';
+export * from './assistantToolInfoParameters';
+export * from './assistantToolsResponse';
+export * from './assistantToolsResponseProvider';
 export * from './bloqueRutina';
 export * from './bloqueRutinaInput';
 export * from './bloqueRutinaUpdate';
@@ -38,11 +50,8 @@ export * from './habitoResumenItem';
 export * from './habitoUpdate';
 export * from './healthStatus';
 export * from './ingreso';
-export * from './ingresoFuente';
 export * from './ingresoInput';
-export * from './ingresoInputFuente';
 export * from './ingresoUpdate';
-export * from './ingresoUpdateFuente';
 export * from './kilometraje';
 export * from './kilometrajeInput';
 export * from './kilometrajeResumen';

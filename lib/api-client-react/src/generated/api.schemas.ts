@@ -13,8 +13,6 @@ export interface Error {
   detail: string;
 }
 
-export type IngresoFuente = string;
-
 export interface Ingreso {
   id: number;
   fecha: string;
@@ -25,8 +23,6 @@ export interface Ingreso {
   nota: string;
 }
 
-export type IngresoInputFuente = string;
-
 export interface IngresoInput {
   fecha: string;
   fuente: string;
@@ -35,8 +31,6 @@ export interface IngresoInput {
   medio_pago_id?: number;
   nota: string;
 }
-
-export type IngresoUpdateFuente = string;
 
 export interface IngresoUpdate {
   fecha?: string;
@@ -402,7 +396,7 @@ export interface BloqueRutina {
   descripcion: string;
   color: string;
   icono: string;
-  tipo_bloque?: string;
+  tipo_bloque: string;
   activo: boolean;
 }
 
@@ -525,6 +519,9 @@ export const RecordatorioInputCanal = {
   push: 'push',
   in_app: 'in_app',
   todos: 'todos',
+  suave: 'suave',
+  notificacion: 'notificacion',
+  persistente: 'persistente',
 } as const;
 
 export interface RecordatorioInput {
@@ -558,6 +555,9 @@ export const RecordatorioUpdateCanal = {
   push: 'push',
   in_app: 'in_app',
   todos: 'todos',
+  suave: 'suave',
+  notificacion: 'notificacion',
+  persistente: 'persistente',
 } as const;
 
 export interface RecordatorioUpdate {
@@ -589,6 +589,9 @@ export const RecordatorioCanal = {
   push: 'push',
   in_app: 'in_app',
   todos: 'todos',
+  suave: 'suave',
+  notificacion: 'notificacion',
+  persistente: 'persistente',
 } as const;
 
 export interface Recordatorio {
@@ -604,6 +607,86 @@ export interface Recordatorio {
   referencia_id?: number | null;
   activo: boolean;
   disparado: boolean;
+}
+
+export interface AssistantChatInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  message: string;
+  session_id?: string | null;
+}
+
+export interface AssistantConfirmInput {
+  session_id: string;
+  confirmation_id: string;
+  accept?: boolean;
+}
+
+export type AssistantExecutedActionArgumentos = { [key: string]: unknown };
+
+export type AssistantExecutedActionEstado = typeof AssistantExecutedActionEstado[keyof typeof AssistantExecutedActionEstado];
+
+
+export const AssistantExecutedActionEstado = {
+  ok: 'ok',
+  error: 'error',
+} as const;
+
+export interface AssistantExecutedAction {
+  tool: string;
+  argumentos: AssistantExecutedActionArgumentos;
+  estado: AssistantExecutedActionEstado;
+  resumen: string;
+  datos?: unknown;
+}
+
+export interface AssistantPendingConfirmation {
+  id: string;
+  tool: string;
+  resumen: string;
+  prompt: string;
+}
+
+export type AssistantConversationProvider = typeof AssistantConversationProvider[keyof typeof AssistantConversationProvider];
+
+
+export const AssistantConversationProvider = {
+  mock: 'mock',
+  xai: 'xai',
+  groq: 'groq',
+} as const;
+
+export interface AssistantConversation {
+  session_id: string;
+  reply: string;
+  provider: AssistantConversationProvider;
+  executed: AssistantExecutedAction[];
+  pending_confirmation: AssistantPendingConfirmation | null;
+}
+
+export type AssistantToolInfoParameters = { [key: string]: unknown };
+
+export interface AssistantToolInfo {
+  name: string;
+  description: string;
+  destructive: boolean;
+  parameters: AssistantToolInfoParameters;
+}
+
+export type AssistantToolsResponseProvider = typeof AssistantToolsResponseProvider[keyof typeof AssistantToolsResponseProvider];
+
+
+export const AssistantToolsResponseProvider = {
+  mock: 'mock',
+  xai: 'xai',
+  groq: 'groq',
+} as const;
+
+export interface AssistantToolsResponse {
+  provider: AssistantToolsResponseProvider;
+  tools: AssistantToolInfo[];
 }
 
 /**

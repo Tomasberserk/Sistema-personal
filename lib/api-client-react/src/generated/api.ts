@@ -20,6 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssistantChatInput,
+  AssistantConfirmInput,
+  AssistantConversation,
+  AssistantToolsResponse,
   BloqueRutina,
   BloqueRutinaInput,
   BloqueRutinaUpdate,
@@ -3639,6 +3643,77 @@ export const useCreateBloqueRutina = <TError = ErrorType<Error>,
       return useMutation(getCreateBloqueRutinaMutationOptions(options));
     }
 
+export const getDeleteAllBloquesRutinaUrl = () => {
+
+
+
+
+  return `/api/rutina/bloques`
+}
+
+/**
+ * @summary Elimina todos los bloques de rutina
+ */
+export const deleteAllBloquesRutina = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAllBloquesRutinaUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAllBloquesRutinaMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllBloquesRutina>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAllBloquesRutina>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAllBloquesRutina'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAllBloquesRutina>>, void> = () => {
+
+
+          return  deleteAllBloquesRutina(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAllBloquesRutinaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAllBloquesRutina>>>
+
+    export type DeleteAllBloquesRutinaMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Elimina todos los bloques de rutina
+ */
+export const useDeleteAllBloquesRutina = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllBloquesRutina>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAllBloquesRutina>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAllBloquesRutinaMutationOptions(options));
+    }
+
 export const getGetRutinaSemanaUrl = () => {
 
 
@@ -4902,4 +4977,224 @@ export const useDeleteRecordatorio = <TError = ErrorType<NotFoundResponse>,
       > => {
       return useMutation(getDeleteRecordatorioMutationOptions(options));
     }
+
+export const getAssistantChatUrl = () => {
+
+
+
+
+  return `/api/assistant/chat`
+}
+
+/**
+ * Ejecuta las acciones del sistema mediante herramientas tipadas y devuelve la respuesta hablada.
+ * @summary Envía un comando en lenguaje natural al asistente
+ */
+export const assistantChat = async (assistantChatInput: AssistantChatInput, options?: Parameters<typeof customFetch>[1]): Promise<AssistantConversation> => {
+
+  return customFetch<AssistantConversation>(getAssistantChatUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assistantChatInput)
+  }
+);}
+
+
+
+
+
+export const getAssistantChatMutationOptions = <TError = ErrorType<Error | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatInput>}, TContext> => {
+
+const mutationKey = ['assistantChat'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistantChat>>, {data: BodyType<AssistantChatInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assistantChat(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssistantChatMutationResult = NonNullable<Awaited<ReturnType<typeof assistantChat>>>
+    export type AssistantChatMutationBody = BodyType<AssistantChatInput>
+    export type AssistantChatMutationError = ErrorType<Error | void>
+
+    /**
+ * @summary Envía un comando en lenguaje natural al asistente
+ */
+export const useAssistantChat = <TError = ErrorType<Error | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantChat>>, TError,{data: BodyType<AssistantChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assistantChat>>,
+        TError,
+        {data: BodyType<AssistantChatInput>},
+        TContext
+      > => {
+      return useMutation(getAssistantChatMutationOptions(options));
+    }
+
+export const getAssistantConfirmUrl = () => {
+
+
+
+
+  return `/api/assistant/confirm`
+}
+
+/**
+ * @summary Confirma o cancela una acción destructiva pendiente
+ */
+export const assistantConfirm = async (assistantConfirmInput: AssistantConfirmInput, options?: Parameters<typeof customFetch>[1]): Promise<AssistantConversation> => {
+
+  return customFetch<AssistantConversation>(getAssistantConfirmUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assistantConfirmInput)
+  }
+);}
+
+
+
+
+
+export const getAssistantConfirmMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantConfirm>>, TError,{data: BodyType<AssistantConfirmInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assistantConfirm>>, TError,{data: BodyType<AssistantConfirmInput>}, TContext> => {
+
+const mutationKey = ['assistantConfirm'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistantConfirm>>, {data: BodyType<AssistantConfirmInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assistantConfirm(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssistantConfirmMutationResult = NonNullable<Awaited<ReturnType<typeof assistantConfirm>>>
+    export type AssistantConfirmMutationBody = BodyType<AssistantConfirmInput>
+    export type AssistantConfirmMutationError = ErrorType<void>
+
+    /**
+ * @summary Confirma o cancela una acción destructiva pendiente
+ */
+export const useAssistantConfirm = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantConfirm>>, TError,{data: BodyType<AssistantConfirmInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assistantConfirm>>,
+        TError,
+        {data: BodyType<AssistantConfirmInput>},
+        TContext
+      > => {
+      return useMutation(getAssistantConfirmMutationOptions(options));
+    }
+
+export const getListAssistantToolsUrl = () => {
+
+
+
+
+  return `/api/assistant/tools`
+}
+
+/**
+ * @summary Catálogo de acciones disponibles para el asistente
+ */
+export const listAssistantTools = async ( options?: Parameters<typeof customFetch>[1]): Promise<AssistantToolsResponse> => {
+
+  return customFetch<AssistantToolsResponse>(getListAssistantToolsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAssistantToolsQueryKey = () => {
+    return [
+    `/api/assistant/tools`
+    ] as const;
+    }
+
+
+export const getListAssistantToolsQueryOptions = <TData = Awaited<ReturnType<typeof listAssistantTools>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssistantTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAssistantToolsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAssistantTools>>> = ({ signal }) => listAssistantTools({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAssistantTools>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAssistantToolsQueryResult = NonNullable<Awaited<ReturnType<typeof listAssistantTools>>>
+export type ListAssistantToolsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Catálogo de acciones disponibles para el asistente
+ */
+
+export function useListAssistantTools<TData = Awaited<ReturnType<typeof listAssistantTools>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssistantTools>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAssistantToolsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -18,5 +18,6 @@ export interface BloqueRutinaInput {
   descripcion?: string;
   color?: string;
   icono?: string;
+  tipo_bloque?: string;
   activo?: boolean;
 }

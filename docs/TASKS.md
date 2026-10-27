@@ -96,11 +96,28 @@ Convertir observaciones en decisiones de producto.
 
 Implementar únicamente casos de uso validados.
 
+Ver T016 para la primera implementación (asistente de voz con tool calling).
+
 **No construir todavía:**
 - agente autónomo general,
 - memoria compleja sin necesidad,
 - automatizaciones masivas,
 - arquitectura comercial multiusuario.
+
+### T016 — Asistente de voz con ejecución de acciones [COMPLETADA]
+
+**Objetivo:** operar el sistema por voz o texto reutilizando los endpoints existentes, con confirmación explícita para acciones destructivas.
+
+**Resultado:**
+- Paquete `backend/assistant/` con 31 herramientas tipadas (`registry.py`), servicio de conversación (`service.py`), proveedores (`providers.py`: mock determinista y xAI Grok), frases en español (`summaries.py`) y router (`router.py`).
+- Endpoints `POST /api/assistant/chat`, `POST /api/assistant/confirm` y `GET /api/assistant/tools`, autenticados con el token existente.
+- Confirmaciones en memoria con vigencia de 10 minutos, atadas a usuario y sesión; nunca se ejecutan por texto del modelo.
+- Frontend: botón flotante, dictado `es-CO`, respuestas habladas, entrada de texto, confirmación Sí/No y refresco automático de datos.
+- OpenAPI actualizado y documentación en `docs/ASISTENTE_VOZ.md` + `ADR-005`.
+- Pruebas: `backend/test_assistant.py` (7 tests) y suite existente sin regresiones.
+
+**Pendiente:** configurar `XAI_API_KEY` (xAI Grok) o `GROQ_API_KEY` (Groq) para usar el modelo real; el mock cubre desarrollo y demos.
+
 
 ## Definición de terminado
 

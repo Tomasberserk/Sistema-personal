@@ -27,7 +27,7 @@ export const listIngresosResponseMontoMin = 0;
 export const ListIngresosResponseItem = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
+  "fuente": zod.string(),
   "monto": zod.number().min(listIngresosResponseMontoMin),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
@@ -44,7 +44,7 @@ export const createIngresoBodyMontoMin = 0;
 
 export const CreateIngresoBody = zod.object({
   "fecha": zod.coerce.date(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
+  "fuente": zod.string(),
   "monto": zod.number().min(createIngresoBodyMontoMin),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
@@ -57,7 +57,7 @@ export const createIngresoResponseMontoMin = 0;
 export const CreateIngresoResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
+  "fuente": zod.string(),
   "monto": zod.number().min(createIngresoResponseMontoMin),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
@@ -81,7 +81,7 @@ export const getIngresoResponseMontoMin = 0;
 export const GetIngresoResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
+  "fuente": zod.string(),
   "monto": zod.number().min(getIngresoResponseMontoMin),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
@@ -104,7 +104,7 @@ export const updateIngresoBodyMontoMin = 0;
 
 export const UpdateIngresoBody = zod.object({
   "fecha": zod.coerce.date().optional(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']).optional(),
+  "fuente": zod.string().optional(),
   "monto": zod.number().min(updateIngresoBodyMontoMin).optional(),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string().optional()
@@ -117,7 +117,7 @@ export const updateIngresoResponseMontoMin = 0;
 export const UpdateIngresoResponse = zod.object({
   "id": zod.number(),
   "fecha": zod.coerce.date(),
-  "fuente": zod.enum(['Didi', 'papa', 'amigo', 'otro']),
+  "fuente": zod.string(),
   "monto": zod.number().min(updateIngresoResponseMontoMin),
   "medio_pago_id": zod.number().optional(),
   "nota": zod.string()
@@ -1050,6 +1050,7 @@ export const ListBloquesRutinaResponseItem = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 })
 export const ListBloquesRutinaResponse = zod.array(ListBloquesRutinaResponseItem)
@@ -1071,6 +1072,7 @@ export const CreateBloqueRutinaBody = zod.object({
   "descripcion": zod.string().optional(),
   "color": zod.string().optional(),
   "icono": zod.string().optional(),
+  "tipo_bloque": zod.string().optional(),
   "activo": zod.boolean().optional()
 })
 
@@ -1088,8 +1090,15 @@ export const CreateBloqueRutinaResponse = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 })
+
+
+/**
+ * @summary Elimina todos los bloques de rutina
+ */
+export const DeleteAllBloquesRutinaResponse = zod.void()
 
 
 /**
@@ -1111,6 +1120,7 @@ export const GetRutinaSemanaResponseItem = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 }))
 })
@@ -1143,6 +1153,7 @@ export const GetRutinaDiaResponseItem = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 })
 export const GetRutinaDiaResponse = zod.array(GetRutinaDiaResponseItem)
@@ -1172,6 +1183,7 @@ export const GetBloqueRutinaResponse = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 })
 
@@ -1199,6 +1211,7 @@ export const UpdateBloqueRutinaBody = zod.object({
   "descripcion": zod.string().optional(),
   "color": zod.string().optional(),
   "icono": zod.string().optional(),
+  "tipo_bloque": zod.string().optional(),
   "activo": zod.boolean().optional()
 })
 
@@ -1216,6 +1229,7 @@ export const UpdateBloqueRutinaResponse = zod.object({
   "descripcion": zod.string(),
   "color": zod.string(),
   "icono": zod.string(),
+  "tipo_bloque": zod.string(),
   "activo": zod.boolean()
 })
 
@@ -1410,7 +1424,7 @@ export const ListRecordatoriosResponseItem = zod.object({
   "fecha_disparo": zod.string(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']),
   "modulo_origen": zod.string().nullish(),
   "referencia_id": zod.number().nullish(),
   "activo": zod.boolean(),
@@ -1433,7 +1447,7 @@ export const CreateRecordatorioBody = zod.object({
   "fecha_disparo": zod.string(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().min(createRecordatorioBodyAnticipacionMinutosMin).optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']).optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']).optional(),
   "modulo_origen": zod.string().nullish(),
   "referencia_id": zod.number().nullish(),
   "activo": zod.boolean().optional()
@@ -1447,7 +1461,7 @@ export const CreateRecordatorioResponse = zod.object({
   "fecha_disparo": zod.string(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']),
   "modulo_origen": zod.string().nullish(),
   "referencia_id": zod.number().nullish(),
   "activo": zod.boolean(),
@@ -1473,7 +1487,7 @@ export const GetRecordatorioResponse = zod.object({
   "fecha_disparo": zod.string(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']),
   "modulo_origen": zod.string().nullish(),
   "referencia_id": zod.number().nullish(),
   "activo": zod.boolean(),
@@ -1502,7 +1516,7 @@ export const UpdateRecordatorioBody = zod.object({
   "fecha_disparo": zod.string().optional(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().min(updateRecordatorioBodyAnticipacionMinutosMin).optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']).optional(),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']).optional(),
   "activo": zod.boolean().optional()
 })
 
@@ -1514,7 +1528,7 @@ export const UpdateRecordatorioResponse = zod.object({
   "fecha_disparo": zod.string(),
   "regla_recurrencia": zod.string().nullish(),
   "anticipacion_minutos": zod.number().optional(),
-  "canal": zod.enum(['push', 'in_app', 'todos']),
+  "canal": zod.enum(['push', 'in_app', 'todos', 'suave', 'notificacion', 'persistente']),
   "modulo_origen": zod.string().nullish(),
   "referencia_id": zod.number().nullish(),
   "activo": zod.boolean(),
@@ -1533,5 +1547,83 @@ export const DeleteRecordatorioParams = zod.object({
 })
 
 export const DeleteRecordatorioResponse = zod.void()
+
+
+/**
+ * Ejecuta las acciones del sistema mediante herramientas tipadas y devuelve la respuesta hablada.
+ * @summary Envía un comando en lenguaje natural al asistente
+ */
+export const assistantChatBodyMessageMax = 2000;
+
+
+
+export const AssistantChatBody = zod.object({
+  "message": zod.string().min(1).max(assistantChatBodyMessageMax),
+  "session_id": zod.string().nullish()
+})
+
+export const AssistantChatResponse = zod.object({
+  "session_id": zod.string(),
+  "reply": zod.string(),
+  "provider": zod.enum(['mock', 'xai', 'groq']),
+  "executed": zod.array(zod.object({
+  "tool": zod.string(),
+  "argumentos": zod.record(zod.string(), zod.unknown()),
+  "estado": zod.enum(['ok', 'error']),
+  "resumen": zod.string(),
+  "datos": zod.unknown().optional()
+})),
+  "pending_confirmation": zod.union([zod.object({
+  "id": zod.string(),
+  "tool": zod.string(),
+  "resumen": zod.string(),
+  "prompt": zod.string()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Confirma o cancela una acción destructiva pendiente
+ */
+export const assistantConfirmBodyAcceptDefault = true;
+
+export const AssistantConfirmBody = zod.object({
+  "session_id": zod.string(),
+  "confirmation_id": zod.string(),
+  "accept": zod.boolean().default(assistantConfirmBodyAcceptDefault)
+})
+
+export const AssistantConfirmResponse = zod.object({
+  "session_id": zod.string(),
+  "reply": zod.string(),
+  "provider": zod.enum(['mock', 'xai', 'groq']),
+  "executed": zod.array(zod.object({
+  "tool": zod.string(),
+  "argumentos": zod.record(zod.string(), zod.unknown()),
+  "estado": zod.enum(['ok', 'error']),
+  "resumen": zod.string(),
+  "datos": zod.unknown().optional()
+})),
+  "pending_confirmation": zod.union([zod.object({
+  "id": zod.string(),
+  "tool": zod.string(),
+  "resumen": zod.string(),
+  "prompt": zod.string()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Catálogo de acciones disponibles para el asistente
+ */
+export const ListAssistantToolsResponse = zod.object({
+  "provider": zod.enum(['mock', 'xai', 'groq']),
+  "tools": zod.array(zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "destructive": zod.boolean(),
+  "parameters": zod.record(zod.string(), zod.unknown())
+}))
+})
 
 

@@ -36,6 +36,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AuthModal } from './components/AuthModal';
+import { VoiceAssistant } from './components/VoiceAssistant';
 import { LoginPage } from './pages/LoginPage';
 import { AhorroModal } from './components/AhorroModal';
 import { AporteModal } from './components/AporteModal';
@@ -165,25 +166,6 @@ const calcularHorasBloque = (inicio: string, fin: string) => {
   let totalMin = (h2 * 60 + m2) - (h1 * 60 + m1);
   if (totalMin < 0) totalMin += 24 * 60;
   return Math.round((totalMin / 60) * 10) / 10;
-};
-
-const reproducirAlertaSonora = () => {
-  try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.85);
-  } catch {
-    // Audio no soportado o bloqueado
-  }
 };
 
 const PLANTILLA_BLOQUES_EXCEL: Omit<BloqueRutinaInput, 'activo'>[] = [
@@ -3999,6 +3981,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <AppRouter />
+          <VoiceAssistant />
           <Toaster />
         </AuthProvider>
       </TooltipProvider>

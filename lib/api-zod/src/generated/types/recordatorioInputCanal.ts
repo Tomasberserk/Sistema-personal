@@ -13,4 +13,7 @@ export const RecordatorioInputCanal = {
   push: 'push',
   in_app: 'in_app',
   todos: 'todos',
+  suave: 'suave',
+  notificacion: 'notificacion',
+  persistente: 'persistente',
 } as const;

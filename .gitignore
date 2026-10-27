@@ -54,3 +54,11 @@ Thumbs.db
 
 # Jarvis local SQLite database
 jarvis.sqlite3
+
+# Secretos locales (nunca versionar claves)
+.env
+.env.*
+!.env.example
+
+# Entorno virtual de Python del proyecto
+.venv/

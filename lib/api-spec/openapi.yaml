@@ -36,6 +36,8 @@ tags:
     description: Recordatorios y notificaciones universales
   - name: resumen
     description: Resumen financiero
+  - name: asistente
+    description: Asistente de voz con ejecución de acciones
 paths:
   /healthz:
     get:
@@ -1179,6 +1181,73 @@ paths:
           description: Recordatorio eliminado
         "404":
           $ref: "#/components/responses/NotFound"
+  /assistant/chat:
+    post:
+      operationId: assistantChat
+      tags: [asistente]
+      summary: Envía un comando en lenguaje natural al asistente
+      description: Ejecuta las acciones del sistema mediante herramientas tipadas y devuelve la respuesta hablada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantChatInput"
+      responses:
+        "200":
+          description: Respuesta del asistente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantConversation"
+        "400":
+          description: Error en la solicitud
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Token requerido
+        "502":
+          description: Error del proveedor del modelo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /assistant/confirm:
+    post:
+      operationId: assistantConfirm
+      tags: [asistente]
+      summary: Confirma o cancela una acción destructiva pendiente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantConfirmInput"
+      responses:
+        "200":
+          description: Resultado de la confirmación
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantConversation"
+        "401":
+          description: Token requerido
+  /assistant/tools:
+    get:
+      operationId: listAssistantTools
+      tags: [asistente]
+      summary: Catálogo de acciones disponibles para el asistente
+      responses:
+        "200":
+          description: Catálogo de herramientas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantToolsResponse"
+        "401":
+          description: Token requerido
 components:
   parameters:
     Id:
@@ -1952,5 +2021,97 @@ components:
         disparado:
           type: boolean
       required: [id, titulo, tipo, fecha_disparo, canal, activo, disparado]
+    AssistantChatInput:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        session_id:
+          type: string
+          nullable: true
+      required: [message]
+    AssistantConfirmInput:
+      type: object
+      properties:
+        session_id:
+          type: string
+        confirmation_id:
+          type: string
+        accept:
+          type: boolean
+          default: true
+      required: [session_id, confirmation_id]
+    AssistantExecutedAction:
+      type: object
+      properties:
+        tool:
+          type: string
+        argumentos:
+          type: object
+          additionalProperties: true
+        estado:
+          type: string
+          enum: [ok, error]
+        resumen:
+          type: string
+        datos: {}
+      required: [tool, argumentos, estado, resumen]
+    AssistantPendingConfirmation:
+      type: object
+      properties:
+        id:
+          type: string
+        tool:
+          type: string
+        resumen:
+          type: string
+        prompt:
+          type: string
+      required: [id, tool, resumen, prompt]
+    AssistantConversation:
+      type: object
+      properties:
+        session_id:
+          type: string
+        reply:
+          type: string
+        provider:
+          type: string
+          enum: [mock, xai, groq]
+        executed:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantExecutedAction"
+        pending_confirmation:
+          oneOf:
+            - $ref: "#/components/schemas/AssistantPendingConfirmation"
+            - type: "null"
+      required: [session_id, reply, provider, executed, pending_confirmation]
+    AssistantToolInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        destructive:
+          type: boolean
+        parameters:
+          type: object
+          additionalProperties: true
+      required: [name, description, destructive, parameters]
+    AssistantToolsResponse:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [mock, xai, groq]
+        tools:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantToolInfo"
+      required: [provider, tools]
 
 

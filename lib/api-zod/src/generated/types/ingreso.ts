@@ -5,12 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { IngresoFuente } from './ingresoFuente';
 
 export interface Ingreso {
   id: number;
   fecha: Date;
-  fuente: IngresoFuente;
+  fuente: string;
   /** @minimum 0 */
   monto: number;
   medio_pago_id?: number;

@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import os
 import sqlite3
+import sys
 import time
 from contextlib import asynccontextmanager, closing
 from datetime import date, datetime, timedelta
@@ -26,6 +27,14 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "jarvis.sqlite3"
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env")
+except ImportError:  # python-dotenv es opcional; las variables del sistema siguen funcionando
+    pass
+
 SECRET_KEY = os.environ.get("JWT_SECRET", "jarvis-sistema-personal-secret-key-2026")
 
 
@@ -2662,3 +2671,14 @@ def update_recordatorio(item_id: int, payload: RecordatorioUpdate, user: Usuario
 def delete_recordatorio(item_id: int, user: Usuario = Depends(get_current_user)) -> Response:
     delete_item("recordatorios", item_id, user.id)
     return Response(status_code=204)
+
+
+# ==========================================
+# ASISTENTE DE VOZ
+# ==========================================
+try:  # ejecución normal: uvicorn backend.main:app
+    from backend.assistant.router import create_router as _create_assistant_router
+except ImportError:  # tests o ejecución con el directorio backend/ en sys.path
+    from assistant.router import create_router as _create_assistant_router
+
+app.include_router(_create_assistant_router(sys.modules[__name__]))
