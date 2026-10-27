@@ -30,7 +30,7 @@ import {
   useListFechasEspeciales, useCreateFechaEspecial, useUpdateFechaEspecial, useDeleteFechaEspecial, getListFechasEspecialesQueryKey,
   useListRecordatorios, useCreateRecordatorio, useUpdateRecordatorio, useDeleteRecordatorio, getListRecordatoriosQueryKey,
 } from '@workspace/api-client-react';
-import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
+import type { BloqueRutina, BloqueRutinaInput, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -3101,8 +3101,8 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const [form, setForm] = useState<Record<string, string | boolean>>({
     fecha: String(r?.fecha ?? dateValue()), monto: String(r?.monto ?? ''), fuente: String(r?.fuente ?? 'Sueldo / Salario'),
     fuente_custom: '', medio_pago_id: String(r?.medio_pago_id ?? (medios?.[0]?.id ?? '')),
-    nota: r?.nota ?? '', categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: r?.nombre ?? '',
-    tipo: r?.tipo ?? 'mensual', activo: r?.activo ?? true, km_actuales: String(r?.km_actuales ?? ''),
+    nota: String(r?.nota ?? ''), categoria_id: String(r?.categoria_id ?? (categorias?.[0]?.id ?? '')), nombre: String(r?.nombre ?? ''),
+    tipo: String(r?.tipo ?? 'mensual'), activo: Boolean(r?.activo ?? true), km_actuales: String(r?.km_actuales ?? ''),
   });
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
   const availableFuentes = useMemo(() => {
@@ -3409,6 +3409,7 @@ function FechasPage() {
                         setEditingFecha(null);
                         setModalFecha(true);
                       }}
+                      testId="button-empty-fecha-especial"
                     />
                   </div>
                 ) : (
@@ -3495,6 +3496,7 @@ function FechasPage() {
                         setEditingRecordatorio(null);
                         setModalRecordatorio(true);
                       }}
+                      testId="button-empty-recordatorio"
                     />
                   </div>
                 ) : (
@@ -3545,7 +3547,7 @@ function FechasPage() {
 
                       <div className="mt-5 flex items-center justify-between border-t border-white/5 pt-4">
                         <div className="text-xs text-white/45">
-                          {r.anticipacion_minutos > 0 ? `Avisar ${r.anticipacion_minutos} min antes` : 'Aviso al momento'}
+                          {(r.anticipacion_minutos ?? 0) > 0 ? `Avisar ${r.anticipacion_minutos ?? 0} min antes` : 'Aviso al momento'}
                         </div>
                         <button
                           onClick={() => toggleRecordatorioActivo(r)}

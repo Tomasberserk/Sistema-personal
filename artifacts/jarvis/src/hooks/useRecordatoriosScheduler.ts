@@ -58,6 +58,8 @@ export function useRecordatoriosScheduler() {
         bc.close();
       };
     }
+
+    return undefined;
   }, []);
 
   // 2. Acciones del Modal de Alarma
