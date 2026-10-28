@@ -7,3 +7,9 @@ dependencies = [
     "fastapi>=0.141.1",
     "uvicorn>=0.52.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["backend"]
+pythonpath = ["backend"]
+addopts = "-ra"
+norecursedirs = [".venv", "node_modules", "dist"]

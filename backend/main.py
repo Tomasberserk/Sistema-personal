@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
+import secrets
 import sqlite3
 import sys
 import time
@@ -14,7 +16,7 @@ from typing import Any, Literal
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 try:
     import psycopg2
@@ -35,7 +37,62 @@ try:
 except ImportError:  # python-dotenv es opcional; las variables del sistema siguen funcionando
     pass
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "jarvis-sistema-personal-secret-key-2026")
+logger = logging.getLogger("jarvis")
+
+ENV = os.environ.get("ENV", "development").strip().lower()
+IS_PRODUCTION = ENV == "production" or os.environ.get("RENDER", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+_configured_secret = os.environ.get("JWT_SECRET", "").strip()
+if _configured_secret:
+    SECRET_KEY = _configured_secret
+else:
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "JWT_SECRET es obligatoria en producción. Configúrala antes de iniciar el servicio."
+        )
+    SECRET_KEY = secrets.token_urlsafe(48)
+    logger.warning(
+        "JWT_SECRET no está configurada; usando un secreto efímero. "
+        "Los tokens se invalidarán al reiniciar el backend."
+    )
+
+try:
+    TOKEN_TTL_SECONDS = max(60, int(os.environ.get("JWT_TTL_SECONDS", str(7 * 24 * 60 * 60))))
+except ValueError:
+    TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60
+
+ALLOW_DEMO_SWITCH = os.environ.get("ALLOW_DEMO_SWITCH", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+
+def _allowed_origins() -> list[str]:
+    raw = os.environ.get("ALLOWED_ORIGINS", "")
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if origins:
+        return origins
+    if IS_PRODUCTION:
+        # La app Android usa https://localhost. El frontend web debe declararse
+        # explícitamente en ALLOWED_ORIGINS.
+        return ["https://localhost", "capacitor://localhost"]
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://localhost",
+        "capacitor://localhost",
+    ]
 
 
 def _is_postgres() -> bool:
@@ -122,9 +179,25 @@ def verify_auth_token(token: str) -> int | None:
         expected_sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(signature, expected_sig):
             return None
-        return int(user_id_str)
+
+        user_id = int(user_id_str)
+        issued_at = int(ts_str)
+        if user_id <= 0:
+            return None
+
+        now = int(time.time())
+        if issued_at > now + 60:
+            return None
+        if now - issued_at > TOKEN_TTL_SECONDS:
+            return None
+        return user_id
     except Exception:
         return None
+
+
+def _require_demo_switch_enabled() -> None:
+    if not ALLOW_DEMO_SWITCH:
+        raise HTTPException(status_code=403, detail="Modo demo deshabilitado")
 
 
 # --- Pydantic Models ---
@@ -541,6 +614,78 @@ class Recordatorio(RecordatorioInput):
     disparado: bool = False
 
 
+PrioridadMeta = Literal["alta", "media", "baja"]
+
+
+def _validar_fecha_iso(value: str) -> str:
+    try:
+        return date.fromisoformat(value).isoformat()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("fecha debe ser una fecha válida en formato YYYY-MM-DD") from exc
+
+
+class MetaDiariaInput(BaseModel):
+    titulo: str = Field(min_length=1, max_length=255)
+    descripcion: str = ""
+    fecha: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    prioridad: PrioridadMeta = "media"
+    hora: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    orden: int = Field(default=0, ge=0)
+
+    @field_validator("fecha")
+    @classmethod
+    def validar_fecha(cls, value: str) -> str:
+        return _validar_fecha_iso(value)
+
+
+class MetaDiariaUpdate(BaseModel):
+    # Optional means "may be omitted"; explicit null is rejected for non-nullable columns.
+    titulo: str = Field(default=None, min_length=1, max_length=255)
+    descripcion: str = Field(default=None)
+    fecha: str = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    prioridad: PrioridadMeta = Field(default=None)
+    hora: str | None = Field(default=None, pattern=r"^$|^([01]\d|2[0-3]):[0-5]\d$")
+    orden: int = Field(default=None, ge=0)
+    completada: bool = Field(default=None)
+
+    @field_validator("fecha")
+    @classmethod
+    def validar_fecha(cls, value: str) -> str:
+        return _validar_fecha_iso(value)
+
+
+class MetaDiaria(BaseModel):
+    id: int
+    usuario_id: int = 1
+    titulo: str
+    descripcion: str = ""
+    fecha: str
+    prioridad: PrioridadMeta = "media"
+    hora: str | None = None
+    completada: bool = False
+    orden: int = 0
+    creado_en: str | None = None
+    completado_en: str | None = None
+
+
+class MetaDiariaWidgetItem(BaseModel):
+    id: int
+    titulo: str
+    prioridad: PrioridadMeta = "media"
+    hora: str | None = None
+    completada: bool = False
+
+
+class MetasDiariasResumen(BaseModel):
+    fecha: str
+    total: int
+    completadas: int
+    pendientes: int
+    porcentaje: int
+    actualizado_en: str
+    metas: list[MetaDiariaWidgetItem]
+
+
 # --- DB Connection Wrappers ---
 class _Row:
     def __init__(self, description: Any, values: tuple[Any, ...]) -> None:
@@ -846,6 +991,21 @@ POSTGRES_TABLES = [
         activo BOOLEAN NOT NULL DEFAULT TRUE,
         disparado BOOLEAN NOT NULL DEFAULT FALSE
     );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS metas_diarias (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL DEFAULT 1,
+        fecha VARCHAR(50) NOT NULL,
+        titulo VARCHAR(255) NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        prioridad VARCHAR(20) NOT NULL DEFAULT 'media' CHECK (prioridad IN ('alta', 'media', 'baja')),
+        hora VARCHAR(5),
+        completada BOOLEAN NOT NULL DEFAULT FALSE,
+        orden INTEGER NOT NULL DEFAULT 0,
+        creado_en VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text,
+        completado_en VARCHAR(50)
+    );
     """
 ]
 
@@ -1005,6 +1165,20 @@ SQLITE_SCHEMA = """
         activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
         disparado INTEGER NOT NULL DEFAULT 0 CHECK (disparado IN (0, 1))
     );
+    CREATE TABLE IF NOT EXISTS metas_diarias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL DEFAULT 1,
+        fecha TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        descripcion TEXT NOT NULL DEFAULT '',
+        prioridad TEXT NOT NULL DEFAULT 'media' CHECK (prioridad IN ('alta', 'media', 'baja')),
+        hora TEXT,
+        completada INTEGER NOT NULL DEFAULT 0 CHECK (completada IN (0, 1)),
+        orden INTEGER NOT NULL DEFAULT 0,
+        creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+        completado_en TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_metas_diarias_user_fecha ON metas_diarias (usuario_id, fecha);
 """
 
 
@@ -1200,6 +1374,7 @@ def init_db() -> None:
             try:
                 connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_categorias_user_nombre ON categorias (usuario_id, lower(nombre))")
                 connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_medios_pago_user_nombre ON medios_pago (usuario_id, lower(nombre))")
+                connection.execute("CREATE INDEX IF NOT EXISTS idx_metas_diarias_user_fecha ON metas_diarias (usuario_id, fecha)")
                 connection.commit()
             except Exception as e:
                 print(f"[Index Migration Warn] {e}")
@@ -1218,6 +1393,7 @@ def init_db() -> None:
                 "bloques_rutina",
                 "fechas_especiales",
                 "recordatorios",
+                "metas_diarias",
                 "metas_ahorro",
                 "movimientos_ahorro",
             ]
@@ -1248,36 +1424,40 @@ def init_db() -> None:
                 except Exception as e:
                     print(f"[MedioPagoID Migration Warn for {tbl}] {e}")
 
-            # Sembrar usuarios Demo si no existen
-            for u in DEFAULT_DEMO_USERS:
-                try:
-                    if _is_postgres():
-                        connection.execute(
-                            """
-                            INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (id) DO NOTHING
-                            """,
-                            (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
-                        )
-                    else:
-                        connection.execute(
-                            """
-                            INSERT OR IGNORE INTO usuarios (id, nombre, email, password_hash, avatar, rol)
-                            VALUES (%s, %s, %s, %s, %s, %s)
-                            """,
-                            (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
-                        )
-                    connection.commit()
-                except Exception as e:
-                    print(f"[Seed User Warn] {e}")
+            # Sembrar usuarios Demo si no existen. En producción solo se hace
+            # cuando ALLOW_DEMO_SWITCH está explícitamente habilitado.
+            if ALLOW_DEMO_SWITCH or not IS_PRODUCTION:
+                for u in DEFAULT_DEMO_USERS:
+                    try:
+                        if _is_postgres():
+                            connection.execute(
+                                """
+                                INSERT INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (id) DO NOTHING
+                                """,
+                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                            )
+                        else:
+                            connection.execute(
+                                """
+                                INSERT OR IGNORE INTO usuarios (id, nombre, email, password_hash, avatar, rol)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                """,
+                                (u["id"], u["nombre"], u["email"], hash_password("demo"), u["avatar"], u["rol"]),
+                            )
+                        connection.commit()
+                    except Exception as e:
+                        print(f"[Seed User Warn] {e}")
 
             # Ajustar secuencias en PostgreSQL
             if _is_postgres():
                 seq_tables = [
-                    "usuarios", "categorias", "medios_pago", "metas_ahorro", "ingresos",
+                    "usuarios", "categorias", "medios_pago", "metas_ahorro",
+                    "movimientos_ahorro", "transferencias_medios", "ingresos",
                     "gastos_fijos", "gastos_variables", "kilometraje", "moto_config",
-                    "habitos", "bloques_rutina", "fechas_especiales", "recordatorios"
+                    "habitos", "registro_habitos", "bloques_rutina",
+                    "fechas_especiales", "recordatorios", "metas_diarias",
                 ]
                 for seq_table in seq_tables:
                     try:
@@ -1325,6 +1505,7 @@ ALLOWED_USER_ENTITIES = frozenset({
     "transferencias_medios",
     "fechas_especiales",
     "recordatorios",
+    "metas_diarias",
     "metas_ahorro",
     "movimientos_ahorro",
     "moto_config",
@@ -1443,27 +1624,19 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_origin_regex=r"^https?://.*",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_origins=_allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    origin = request.headers.get("origin", "*")
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)},
-        headers={
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        },
+        content={"detail": "Error interno del servidor"},
     )
 
 
@@ -1519,7 +1692,7 @@ def login(payload: UsuarioLogin) -> dict[str, Any]:
 
         user_dict = row_to_dict(user_row)
         expected_hash = hash_password(payload.password)
-        if user_dict["password_hash"] != expected_hash and payload.password != "demo":
+        if user_dict["password_hash"] != expected_hash:
             raise HTTPException(status_code=400, detail="Credenciales incorrectas")
 
         user = Usuario(**user_dict)
@@ -1534,6 +1707,7 @@ def me(user: Usuario = Depends(get_current_user)) -> Usuario:
 
 @app.get("/api/auth/demo-users", response_model=list[DemoUserItem])
 def list_demo_users() -> list[dict[str, Any]]:
+    _require_demo_switch_enabled()
     with closing(get_connection()) as connection:
         rows = connection.execute("SELECT id, nombre, email, avatar, rol FROM usuarios ORDER BY id ASC").fetchall()
         return [row_to_dict(r) for r in rows]
@@ -1541,6 +1715,7 @@ def list_demo_users() -> list[dict[str, Any]]:
 
 @app.post("/api/auth/switch-demo", response_model=AuthResponse)
 def switch_demo(payload: SwitchDemoInput) -> dict[str, Any]:
+    _require_demo_switch_enabled()
     with closing(get_connection()) as connection:
         user_row = connection.execute("SELECT * FROM usuarios WHERE id = %s", (payload.user_id,)).fetchone()
         if not user_row:
@@ -2670,6 +2845,148 @@ def update_recordatorio(item_id: int, payload: RecordatorioUpdate, user: Usuario
 @app.delete("/api/recordatorios/{item_id}", status_code=204)
 def delete_recordatorio(item_id: int, user: Usuario = Depends(get_current_user)) -> Response:
     delete_item("recordatorios", item_id, user.id)
+    return Response(status_code=204)
+
+
+# --- Metas del día ---
+METAS_DIARIAS_ORDER = """
+    ORDER BY completada ASC,
+             CASE prioridad WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END ASC,
+             CASE WHEN hora IS NULL THEN 1 ELSE 0 END ASC,
+             hora ASC,
+             orden ASC,
+             id ASC
+"""
+
+
+def _meta_diaria_dict(row: Any) -> dict[str, Any]:
+    data = row_to_dict(row)
+    data["completada"] = bool(data.get("completada"))
+    return data
+
+
+def _metas_diarias_rows(connection: Any, user_id: int, fecha_iso: str) -> list[Any]:
+    return connection.execute(
+        f"SELECT * FROM metas_diarias WHERE usuario_id = %s AND fecha = %s {METAS_DIARIAS_ORDER}",
+        (user_id, fecha_iso),
+    ).fetchall()
+
+
+@app.get("/api/metas-diarias", response_model=list[MetaDiaria])
+def list_metas_diarias(fecha: date | None = None, user: Usuario = Depends(get_current_user)) -> list[dict[str, Any]]:
+    fecha_iso = (fecha or date.today()).isoformat()
+    with closing(get_connection()) as connection:
+        return [_meta_diaria_dict(row) for row in _metas_diarias_rows(connection, user.id, fecha_iso)]
+
+
+@app.post("/api/metas-diarias", response_model=MetaDiaria, status_code=201)
+def create_meta_diaria(payload: MetaDiariaInput, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    fields = payload.model_dump()
+    fields["titulo"] = fields["titulo"].strip()
+    if not fields["titulo"]:
+        raise HTTPException(status_code=422, detail="El título de la meta no puede estar vacío")
+    if fields.get("hora") == "":
+        fields["hora"] = None
+    created = create_item("metas_diarias", {
+        **fields,
+        "usuario_id": user.id,
+        "completada": _norm_bool(False),
+        "completado_en": None,
+    })
+    return _meta_diaria_dict(created)
+
+
+@app.get("/api/metas-diarias/widget", response_model=MetasDiariasResumen)
+def widget_metas_diarias(
+    fecha: date | None = None,
+    limite: int = 6,
+    user: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Resumen compacto pensado para el widget de pantalla de inicio."""
+    fecha_iso = (fecha or date.today()).isoformat()
+    limite = max(1, min(limite, 20))
+    with closing(get_connection()) as connection:
+        rows = _metas_diarias_rows(connection, user.id, fecha_iso)
+    metas = [_meta_diaria_dict(row) for row in rows]
+    total = len(metas)
+    completadas = sum(1 for meta in metas if meta["completada"])
+    return {
+        "fecha": fecha_iso,
+        "total": total,
+        "completadas": completadas,
+        "pendientes": total - completadas,
+        "porcentaje": round((completadas / total) * 100) if total else 0,
+        "actualizado_en": datetime.now().isoformat(timespec="seconds"),
+        "metas": [
+            {
+                "id": meta["id"],
+                "titulo": meta["titulo"],
+                "prioridad": meta["prioridad"],
+                "hora": meta["hora"],
+                "completada": meta["completada"],
+            }
+            for meta in metas[:limite]
+        ],
+    }
+
+
+@app.get("/api/metas-diarias/{item_id}", response_model=MetaDiaria)
+def get_meta_diaria(item_id: int, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    with closing(get_connection()) as connection:
+        return _meta_diaria_dict(require_user_entity(connection, "metas_diarias", item_id, user.id))
+
+
+@app.patch("/api/metas-diarias/{item_id}", response_model=MetaDiaria)
+def update_meta_diaria(item_id: int, payload: MetaDiariaUpdate, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    fields = payload.model_dump(exclude_unset=True)
+    if "titulo" in fields and fields["titulo"] is not None:
+        fields["titulo"] = fields["titulo"].strip()
+        if not fields["titulo"]:
+            raise HTTPException(status_code=422, detail="El título de la meta no puede estar vacío")
+    if "hora" in fields and fields["hora"] == "":
+        fields["hora"] = None
+    if "completada" in fields and fields["completada"] is not None:
+        completada = bool(fields["completada"])
+        fields["completada"] = _norm_bool(completada)
+        fields["completado_en"] = datetime.now().isoformat(timespec="seconds") if completada else None
+    updated = update_item("metas_diarias", item_id, fields, user.id)
+    return _meta_diaria_dict(updated)
+
+
+@app.post("/api/metas-diarias/{item_id}/toggle", response_model=MetaDiaria)
+def toggle_meta_diaria(item_id: int, user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    now = datetime.now().isoformat(timespec="seconds")
+    with closing(get_connection()) as connection:
+        require_row(connection, "metas_diarias", item_id, user.id)
+        # Toggle in a single UPDATE so concurrent taps cannot lose an update.
+        if _is_postgres():
+            connection.execute(
+                """
+                UPDATE metas_diarias
+                SET completada = NOT completada,
+                    completado_en = CASE WHEN completada THEN NULL ELSE %s END
+                WHERE id = %s AND usuario_id = %s
+                """,
+                (now, item_id, user.id),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE metas_diarias
+                SET completada = CASE WHEN completada = 1 THEN 0 ELSE 1 END,
+                    completado_en = CASE WHEN completada = 1 THEN NULL ELSE %s END
+                WHERE id = %s AND usuario_id = %s
+                """,
+                (now, item_id, user.id),
+            )
+        connection.commit()
+        updated = require_row(connection, "metas_diarias", item_id, user.id)
+    return _meta_diaria_dict(updated)
+
+
+@app.delete("/api/metas-diarias/{item_id}", status_code=204)
+def delete_meta_diaria(item_id: int, user: Usuario = Depends(get_current_user)) -> Response:
+    delete_item("metas_diarias", item_id, user.id)
     return Response(status_code=204)
 
 

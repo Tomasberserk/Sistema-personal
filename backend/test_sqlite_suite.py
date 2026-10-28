@@ -15,6 +15,8 @@ def test_full_system_sqlite_suite():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import main
         main.DB_PATH = Path(db_path)
+        # This legacy end-to-end suite exercises the optional demo switcher.
+        main.ALLOW_DEMO_SWITCH = True
         main.init_db()
 
         with TestClient(main.app) as client:

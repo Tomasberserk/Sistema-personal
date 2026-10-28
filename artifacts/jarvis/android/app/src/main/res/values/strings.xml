@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jarvis</string>
+    <string name="title_activity_main">Jarvis</string>
+    <string name="package_name">com.jarvis.personal</string>
+    <string name="custom_url_scheme">com.jarvis.personal</string>
+    <string name="widget_name">Metas del día</string>
+    <string name="widget_title">Metas de hoy</string>
+    <string name="widget_description">Resumen de tus metas diarias, actualizado desde la app.</string>
+</resources>

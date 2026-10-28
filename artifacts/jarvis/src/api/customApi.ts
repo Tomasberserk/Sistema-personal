@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
-import type { AuthResponse, DemoUserItem, MetaAhorro, MetaAhorroInput, MovimientoAhorro, MovimientoAhorroInput, Usuario } from '../types/custom';
+import type { AuthResponse, DemoUserItem, MetaAhorro, MetaAhorroInput, MetaDiaria, MetaDiariaInput, MetasDiariasResumen, MovimientoAhorro, MovimientoAhorroInput, Usuario } from '../types/custom';
 
 // Query Keys
 export const getAhorrosQueryKey = () => ['/api/ahorros'] as const;
 export const getAhorroMovimientosQueryKey = (id: number) => [`/api/ahorros/${id}/movimientos`] as const;
 export const getAuthMeQueryKey = () => ['/api/auth/me'] as const;
 export const getDemoUsersQueryKey = () => ['/api/auth/demo-users'] as const;
+export const getMetasDiariasQueryKey = (fecha: string) => ['/api/metas-diarias', fecha] as const;
+export const getMetasDiariasWidgetQueryKey = (fecha: string, limite = 6) => ['/api/metas-diarias', 'widget', fecha, limite] as const;
 
 // Ahorros Hooks
 export function useListAhorros() {
@@ -146,5 +148,71 @@ export function useSeedDefaultMediosPago() {
       queryClient.invalidateQueries({ queryKey: ['/api/medios-pago'] });
       queryClient.invalidateQueries({ queryKey: ['/api/resumen/mes-actual'] });
     },
+  });
+}
+
+// Metas del día
+const invalidateMetasDiarias = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['/api/metas-diarias'] });
+};
+
+export function useListMetasDiarias(fecha: string) {
+  return useQuery<MetaDiaria[]>({
+    queryKey: getMetasDiariasQueryKey(fecha),
+    queryFn: () => customFetch<MetaDiaria[]>(`/api/metas-diarias?fecha=${encodeURIComponent(fecha)}`, { method: 'GET' }),
+  });
+}
+
+export function useGetMetasDiariasWidget(fecha: string, limite = 6) {
+  return useQuery<MetasDiariasResumen>({
+    queryKey: getMetasDiariasWidgetQueryKey(fecha, limite),
+    queryFn: () => customFetch<MetasDiariasResumen>(
+      `/api/metas-diarias/widget?fecha=${encodeURIComponent(fecha)}&limite=${limite}`,
+      { method: 'GET' },
+    ),
+  });
+}
+
+export function useCreateMetaDiaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: MetaDiariaInput) =>
+      customFetch<MetaDiaria>('/api/metas-diarias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidateMetasDiarias(queryClient),
+  });
+}
+
+export function useUpdateMetaDiaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<MetaDiariaInput> & { completada?: boolean } }) =>
+      customFetch<MetaDiaria>(`/api/metas-diarias/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidateMetasDiarias(queryClient),
+  });
+}
+
+export function useToggleMetaDiaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      customFetch<MetaDiaria>(`/api/metas-diarias/${id}/toggle`, { method: 'POST' }),
+    onSuccess: () => invalidateMetasDiarias(queryClient),
+  });
+}
+
+export function useDeleteMetaDiaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      customFetch<void>(`/api/metas-diarias/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateMetasDiarias(queryClient),
   });
 }

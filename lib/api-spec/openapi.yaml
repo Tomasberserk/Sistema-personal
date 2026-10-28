@@ -34,6 +34,8 @@ tags:
     description: Cumpleaños, aniversarios y eventos especiales
   - name: recordatorios
     description: Recordatorios y notificaciones universales
+  - name: metas-diarias
+    description: Metas y pendientes del día, con resumen para widgets
   - name: resumen
     description: Resumen financiero
   - name: asistente
@@ -1181,6 +1183,142 @@ paths:
           description: Recordatorio eliminado
         "404":
           $ref: "#/components/responses/NotFound"
+  /metas-diarias:
+    get:
+      operationId: listMetasDiarias
+      tags: [metas-diarias]
+      summary: Lista las metas de una fecha
+      parameters:
+        - name: fecha
+          in: query
+          required: false
+          description: Fecha en formato YYYY-MM-DD. Por defecto, hoy.
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Metas del día
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MetaDiaria"
+    post:
+      operationId: createMetaDiaria
+      tags: [metas-diarias]
+      summary: Crea una meta del día
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetaDiariaInput"
+      responses:
+        "201":
+          description: Meta creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaDiaria"
+        "422":
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /metas-diarias/widget:
+    get:
+      operationId: getMetasDiariasWidget
+      tags: [metas-diarias]
+      summary: Resumen compacto para el widget de pantalla de inicio
+      parameters:
+        - name: fecha
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 1
+            maximum: 20
+            default: 6
+      responses:
+        "200":
+          description: Resumen de metas del día
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetasDiariasResumen"
+  /metas-diarias/{id}:
+    get:
+      operationId: getMetaDiaria
+      tags: [metas-diarias]
+      summary: Obtiene una meta por ID
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Meta del día
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaDiaria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateMetaDiaria
+      tags: [metas-diarias]
+      summary: Actualiza una meta
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetaDiariaUpdate"
+      responses:
+        "200":
+          description: Meta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaDiaria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteMetaDiaria
+      tags: [metas-diarias]
+      summary: Elimina una meta
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Meta eliminada
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /metas-diarias/{id}/toggle:
+    post:
+      operationId: toggleMetaDiaria
+      tags: [metas-diarias]
+      summary: Marca o desmarca una meta como completada
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Meta actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaDiaria"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /assistant/chat:
     post:
       operationId: assistantChat
@@ -1932,8 +2070,7 @@ components:
         dias_restantes:
           type: number
         edad_o_aniversario:
-          type: number
-          nullable: true
+          type: [number, "null"]
       required: [id, nombre, fecha, tipo, icono, color, recordar_dias_antes, nota, dias_restantes]
     RecordatorioInput:
       type: object
@@ -1948,8 +2085,7 @@ components:
         fecha_disparo:
           type: string
         regla_recurrencia:
-          type: string
-          nullable: true
+          type: [string, "null"]
         anticipacion_minutos:
           type: number
           minimum: 0
@@ -1957,11 +2093,9 @@ components:
           type: string
           enum: [push, in_app, todos, suave, notificacion, persistente]
         modulo_origen:
-          type: string
-          nullable: true
+          type: [string, "null"]
         referencia_id:
-          type: number
-          nullable: true
+          type: [number, "null"]
         activo:
           type: boolean
       required: [titulo, fecha_disparo]
@@ -1978,8 +2112,7 @@ components:
         fecha_disparo:
           type: string
         regla_recurrencia:
-          type: string
-          nullable: true
+          type: [string, "null"]
         anticipacion_minutos:
           type: number
           minimum: 0
@@ -2003,24 +2136,128 @@ components:
         fecha_disparo:
           type: string
         regla_recurrencia:
-          type: string
-          nullable: true
+          type: [string, "null"]
         anticipacion_minutos:
           type: number
         canal:
           type: string
           enum: [push, in_app, todos, suave, notificacion, persistente]
         modulo_origen:
-          type: string
-          nullable: true
+          type: [string, "null"]
         referencia_id:
-          type: number
-          nullable: true
+          type: [number, "null"]
         activo:
           type: boolean
         disparado:
           type: boolean
       required: [id, titulo, tipo, fecha_disparo, canal, activo, disparado]
+    MetaDiariaInput:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 255
+        descripcion:
+          type: string
+        fecha:
+          type: string
+          format: date
+        prioridad:
+          type: string
+          enum: [alta, media, baja]
+        hora:
+          type: [string, "null"]
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        orden:
+          type: number
+          minimum: 0
+      required: [titulo, fecha]
+    MetaDiariaUpdate:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 255
+        descripcion:
+          type: string
+        fecha:
+          type: string
+          format: date
+        prioridad:
+          type: string
+          enum: [alta, media, baja]
+        hora:
+          type: [string, "null"]
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        orden:
+          type: number
+          minimum: 0
+        completada:
+          type: boolean
+    MetaDiaria:
+      type: object
+      properties:
+        id:
+          type: number
+        usuario_id:
+          type: number
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        fecha:
+          type: string
+        prioridad:
+          type: string
+          enum: [alta, media, baja]
+        hora:
+          type: [string, "null"]
+        completada:
+          type: boolean
+        orden:
+          type: number
+        creado_en:
+          type: [string, "null"]
+        completado_en:
+          type: [string, "null"]
+      required: [id, titulo, fecha, prioridad, completada, orden]
+    MetaDiariaWidgetItem:
+      type: object
+      properties:
+        id:
+          type: number
+        titulo:
+          type: string
+        prioridad:
+          type: string
+          enum: [alta, media, baja]
+        hora:
+          type: [string, "null"]
+        completada:
+          type: boolean
+      required: [id, titulo, prioridad, completada]
+    MetasDiariasResumen:
+      type: object
+      properties:
+        fecha:
+          type: string
+        total:
+          type: number
+        completadas:
+          type: number
+        pendientes:
+          type: number
+        porcentaje:
+          type: number
+        actualizado_en:
+          type: string
+        metas:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetaDiariaWidgetItem"
+      required: [fecha, total, completadas, pendientes, porcentaje, actualizado_en, metas]
     AssistantChatInput:
       type: object
       properties:
@@ -2029,8 +2266,7 @@ components:
           minLength: 1
           maxLength: 2000
         session_id:
-          type: string
-          nullable: true
+          type: [string, "null"]
       required: [message]
     AssistantConfirmInput:
       type: object

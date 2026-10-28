@@ -30,7 +30,7 @@ import {
   useListFechasEspeciales, useCreateFechaEspecial, useUpdateFechaEspecial, useDeleteFechaEspecial, getListFechasEspecialesQueryKey,
   useListRecordatorios, useCreateRecordatorio, useUpdateRecordatorio, useDeleteRecordatorio, getListRecordatoriosQueryKey,
 } from '@workspace/api-client-react';
-import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
+import type { BloqueRutina, BloqueRutinaInput, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -43,9 +43,10 @@ import { AporteModal } from './components/AporteModal';
 import { MovimientosAhorroModal } from './components/MovimientosAhorroModal';
 import { MedioPagoModal } from './components/MedioPagoModal';
 import { useRecordatoriosScheduler, reproducirAlertaSonora } from './hooks/useRecordatoriosScheduler';
+import { syncMetasWidget } from './services/metasWidget';
 import { AlarmaModal } from './components/AlarmaModal';
-import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro, useSeedDefaultCategorias, useSeedDefaultMediosPago } from './api/customApi';
-import type { MetaAhorro, MetaAhorroInput, MovimientoAhorroInput } from './types/custom';
+import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro, useSeedDefaultCategorias, useSeedDefaultMediosPago, useListMetasDiarias, useCreateMetaDiaria, useUpdateMetaDiaria, useDeleteMetaDiaria, useToggleMetaDiaria } from './api/customApi';
+import type { MetaAhorro, MetaAhorroInput, MetaDiaria, MetasDiariasResumen, MovimientoAhorroInput } from './types/custom';
 
 const queryClient = new QueryClient();
 type ModalKind = 'ingreso' | 'variable' | 'fijo' | 'km' | null;
@@ -63,8 +64,8 @@ const asList = <T,>(value: unknown): T[] => {
   return [];
 };
 const dateValue = (date?: string) => date ? date.slice(0, 10) : new Date().toISOString().slice(0, 10);
-const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)) : 'Sin fecha';
-const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(new Date());
+const dateLabel = (date?: string) => date ? new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' }).format(new Date(`${date.slice(0, 10)}T12:00:00`)) : 'Sin fecha';
+const monthLabel = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric' }).format(new Date());
 
 export const DEFAULT_INCOME_SOURCES = [
   { id: 'Sueldo / Salario', label: 'Sueldo', icono: '💼', color: '#5de8c4', desc: 'Salario fijo, nómina, quincena' },
@@ -235,6 +236,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
         <nav className="space-y-2">
           <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={18} />} label="Finanzas" testId="link-finanzas" />
+          <NavItem href="/metas" active={location === '/metas'} icon={<Target size={18} />} label="Metas del día" testId="link-metas" />
           <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={18} />} label="Kilometraje" testId="link-kilometraje" />
           <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={18} />} label="Hábitos" testId="link-habitos" />
           <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={18} />} label="Rutina" testId="link-rutina" />
@@ -265,6 +267,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[68px] items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#0a0a0a]/95 px-3 py-1.5 backdrop-blur-2xl scrollbar-none md:hidden">
         <NavItem href="/" active={location === '/'} icon={<CircleDollarSign size={17} />} label="Finanzas" testId="mobile-link-finanzas" />
+        <NavItem href="/metas" active={location === '/metas'} icon={<Target size={17} />} label="Metas" testId="mobile-link-metas" />
         <NavItem href="/kilometraje" active={location === '/kilometraje'} icon={<Bike size={17} />} label="Km" testId="mobile-link-kilometraje" />
         <NavItem href="/habitos" active={location === '/habitos'} icon={<Flame size={17} />} label="Hábitos" testId="mobile-link-habitos" />
         <NavItem href="/rutina" active={location === '/rutina'} icon={<CalendarClock size={17} />} label="Rutina" testId="mobile-link-rutina" />
@@ -1105,14 +1108,14 @@ function KilometrajePage() {
   const remove = (id: number) => { if (window.confirm('¿Eliminar este registro?')) removeMutation.mutate({ id }, { onSuccess: invalidate }); };
   return <Shell><div className="relative z-10 min-h-[100dvh]"><Topbar eyebrow="ruta y mantenimiento" title="Kilometraje" onAdd={() => { setEditing(null); setModal(true); }} /><div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
     <div className="grid gap-4 sm:grid-cols-3">
-      <Metric label="Odómetro actual" value={`${(resumen.data?.km_actuales ?? 0).toLocaleString('es-MX')} km`} icon={<Gauge size={19} />} tone="warm" note="Última lectura del cuenta kilómetros" />
+      <Metric label="Odómetro actual" value={`${(resumen.data?.km_actuales ?? 0).toLocaleString('es-CO')} km`} icon={<Gauge size={19} />} tone="warm" note="Última lectura del cuenta kilómetros" />
       <Metric label="Jornadas anotadas" value={`${kms.length}`} icon={<CalendarDays size={19} />} note="Cada lectura que registraste" />
-      <Metric label="Último registro" value={kms[0] ? dateLabel(kms[0].fecha) : '—'} icon={<Bike size={19} />} note="Fecha de la última lectura" />
+      <Metric label="Último registro" value={kms[0] ? dateLabel(kms[0].fecha) : '-'} icon={<Bike size={19} />} note="Fecha de la última lectura" />
     </div>
     <section className="cosmos-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/6 px-5 py-4 sm:px-6"><div><div className="cosmos-eyebrow mb-1">historial</div><h2 className="cosmos-title text-lg font-bold">Tus recorridos</h2></div><button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-kilometraje" className="cosmos-button-secondary px-3 py-2 text-sm"><Plus size={16} /> <span className="hidden sm:inline">Registrar</span></button></div>
       <div className="p-3 sm:p-4">
-        {list.isLoading ? <LoadingRows /> : !kms.length ? <EmptyState title="Tu primera ruta empieza aquí" copy="Anota los kilómetros del odómetro al terminar tu jornada." action="Registrar kilometraje" onClick={() => setModal(true)} testId="button-empty-kilometraje" /> : <div className="space-y-1">{kms.map((x) => <div key={x.id} data-testid={`row-kilometraje-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 hover:bg-white/4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/6 text-white/70"><Bike size={17} /></div><div><div className="text-sm font-semibold text-white">{x.km_actuales.toLocaleString('es-MX')} km</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><RowActions id={x.id} onEdit={() => { setEditing(x); setModal(true); }} onDelete={() => remove(x.id)} /></div>)}</div>}
+        {list.isLoading ? <LoadingRows /> : !kms.length ? <EmptyState title="Tu primera ruta empieza aquí" copy="Anota los kilómetros del odómetro al terminar tu jornada." action="Registrar kilometraje" onClick={() => setModal(true)} testId="button-empty-kilometraje" /> : <div className="space-y-1">{kms.map((x) => <div key={x.id} data-testid={`row-kilometraje-${x.id}`} className="group flex items-center justify-between rounded-xl px-2 py-3 hover:bg-white/4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/6 text-white/70"><Bike size={17} /></div><div><div className="text-sm font-semibold text-white">{x.km_actuales.toLocaleString('es-CO')} km</div><div className="text-xs text-white/45">{dateLabel(x.fecha)}{x.nota ? ` · ${x.nota}` : ''}</div></div></div><RowActions id={x.id} onEdit={() => { setEditing(x); setModal(true); }} onDelete={() => remove(x.id)} /></div>)}</div>}
       </div>
     </section>
   </div>{modal && <RecordModal kind="km" record={editing} pending={create.isPending || update.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={submit} />}</div></Shell>;
@@ -1197,7 +1200,7 @@ function MotoPage() {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e85d4a]/20 text-[#ff8a7a]"><TriangleAlert size={18} /></span>
                 <div>
                   <p className="text-sm font-bold text-[#ff8a7a]">Cambio de aceite pendiente</p>
-                  <p className="text-xs text-white/60">{e.km_restantes <= 0 ? `Te pasaste ${Math.abs(e.km_restantes).toLocaleString('es-MX')} km del cambio en ${e.km_proximo_cambio.toLocaleString('es-MX')} km.` : `Te faltan ${e.km_restantes.toLocaleString('es-MX')} km para el próximo cambio (${e.km_proximo_cambio.toLocaleString('es-MX')} km).`}</p>
+                  <p className="text-xs text-white/60">{e.km_restantes <= 0 ? `Te pasaste ${Math.abs(e.km_restantes).toLocaleString('es-CO')} km del cambio en ${e.km_proximo_cambio.toLocaleString('es-CO')} km.` : `Te faltan ${e.km_restantes.toLocaleString('es-CO')} km para el próximo cambio (${e.km_proximo_cambio.toLocaleString('es-CO')} km).`}</p>
                 </div>
               </div>
             </div>
@@ -1219,12 +1222,12 @@ function MotoPage() {
                 <div>
                   <div className="cosmos-eyebrow mb-1">{tone.label}</div>
                   <h2 className="cosmos-title text-2xl font-bold">Aceite de la moto</h2>
-                  <p className="mt-2 text-sm leading-5 text-white/50">El cambio cada {e.intervalo_km.toLocaleString('es-MX')} km cuesta unos 60.000 COP. Mantén el ojo encima para que la moto rinda.</p>
+                  <p className="mt-2 text-sm leading-5 text-white/50">El cambio cada {e.intervalo_km.toLocaleString('es-CO')} km cuesta unos 60.000 COP. Mantén el ojo encima para que la moto rinda.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Stat label="Km actuales" value={`${e.km_actuales.toLocaleString('es-MX')} km`} />
-                  <Stat label="Próximo cambio" value={`${e.km_proximo_cambio.toLocaleString('es-MX')} km`} />
-                  <Stat label="Km restantes" value={e.km_restantes <= 0 ? '0 km' : `${e.km_restantes.toLocaleString('es-MX')} km`} accent={tone.color} />
+                  <Stat label="Km actuales" value={`${e.km_actuales.toLocaleString('es-CO')} km`} />
+                  <Stat label="Próximo cambio" value={`${e.km_proximo_cambio.toLocaleString('es-CO')} km`} />
+                  <Stat label="Km restantes" value={e.km_restantes <= 0 ? '0 km' : `${e.km_restantes.toLocaleString('es-CO')} km`} accent={tone.color} />
                 </div>
                 <button onClick={() => setModalOil(true)} disabled={changeOil.isPending} data-testid="button-cambio-aceite" className="cosmos-button-primary">
                   <Wrench size={17} />
@@ -1246,7 +1249,7 @@ function MotoPage() {
                 </div>
                 <form onSubmit={confirmChange} className="space-y-4">
                   <div className="rounded-xl bg-white/5 p-4 text-sm text-white/70">
-                    Se actualizará el odómetro del último cambio al kilometraje actual: <strong className="text-white">{e.km_actuales.toLocaleString('es-MX')} km</strong>.
+                    Se actualizará el odómetro del último cambio al kilometraje actual: <strong className="text-white">{e.km_actuales.toLocaleString('es-CO')} km</strong>.
                   </div>
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-white/5 p-3 text-sm font-medium text-white/80">
                     <input
@@ -1341,13 +1344,20 @@ function MotoPage() {
   </Shell>;
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const shiftIso = (iso: string, days: number) => {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+const localIso = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
-const isoLabel = (iso: string) => new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${iso}T12:00:00`));
+const todayIso = () => localIso(new Date());
+const shiftIso = (iso: string, days: number) => {
+  const [year, month, day] = iso.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() + days);
+  return localIso(d);
+};
+const isoLabel = (iso: string) => new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${iso}T12:00:00`));
 
 function HabitosPage() {
   const queryClient = useQueryClient();
@@ -1509,6 +1519,241 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
           <div className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
             <span className="text-sm font-medium text-white/80">¿Mostrarlo en la lista diaria?</span>
             <button type="button" onClick={() => set('activo', !form.activo)} data-testid="toggle-habito-activo" className={`relative h-6 w-11 rounded-full transition ${form.activo ? 'bg-white' : 'bg-white/15'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-all ${form.activo ? 'left-[22px]' : 'left-0.5'}`} /></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const META_PRIORIDADES = [
+  { value: 'alta', label: 'Alta', color: '#e85d5d' },
+  { value: 'media', label: 'Media', color: '#e8a85d' },
+  { value: 'baja', label: 'Baja', color: '#5d8ae8' },
+] as const;
+
+const prioridadInfo = (prioridad: MetaDiaria['prioridad']) =>
+  META_PRIORIDADES.find((item) => item.value === prioridad) ?? META_PRIORIDADES[1];
+
+function MetasPage() {
+  const queryClient = useQueryClient();
+  const today = todayIso();
+  const [fecha, setFecha] = useState(today);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<MetaDiaria | null>(null);
+  const [quick, setQuick] = useState('');
+  const list = useListMetasDiarias(fecha);
+  const create = useCreateMetaDiaria();
+  const update = useUpdateMetaDiaria();
+  const remove = useDeleteMetaDiaria();
+  const toggle = useToggleMetaDiaria();
+  const items = asList<MetaDiaria>(list.data);
+  const done = items.filter((m) => m.completada).length;
+  const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const pendientes = items.filter((m) => !m.completada).slice(0, 4);
+  const widgetSummary = useMemo<MetasDiariasResumen>(() => ({
+    fecha,
+    total: items.length,
+    completadas: done,
+    pendientes: items.length - done,
+    porcentaje: pct,
+    actualizado_en: new Date().toISOString(),
+    metas: items.slice(0, 5).map((meta) => ({
+      id: meta.id,
+      titulo: meta.titulo,
+      prioridad: meta.prioridad,
+      hora: meta.hora ?? null,
+      completada: meta.completada,
+    })),
+  }), [fecha, items, done, pct]);
+
+  useEffect(() => {
+    if (!list.isSuccess) return;
+    void syncMetasWidget(widgetSummary);
+  }, [list.isSuccess, widgetSummary]);
+  const onError = (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar la meta');
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/metas-diarias'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/metas-diarias', 'widget'] });
+  };
+  const onQuickAdd = (event: React.FormEvent) => {
+    event.preventDefault();
+    const titulo = quick.trim();
+    if (!titulo) return;
+    create.mutate({ titulo, fecha }, {
+      onSuccess: () => { setQuick(''); invalidate(); toast.success('Meta añadida'); },
+      onError,
+    });
+  };
+  const onToggle = (id: number) => {
+    toggle.mutate(id, {
+      onSuccess: () => invalidate(),
+      onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo actualizar la meta'),
+    });
+  };
+  const onSave = (data: Record<string, unknown>) => {
+    const doneMut = () => { invalidate(); setModal(false); setEditing(null); toast.success(editing ? 'Meta actualizada' : 'Meta creada'); };
+    if (editing) update.mutate({ id: editing.id, data: data as never }, { onSuccess: doneMut, onError });
+    else create.mutate(data as never, { onSuccess: doneMut, onError });
+  };
+  const onDelete = (meta: MetaDiaria) => {
+    if (!window.confirm(`¿Eliminar "${meta.titulo}"?`)) return;
+    remove.mutate(meta.id, {
+      onSuccess: () => { invalidate(); toast.success('Meta eliminada'); },
+      onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar la meta'),
+    });
+  };
+  return <Shell><div className="relative z-10 min-h-[100dvh]">
+    <Topbar eyebrow="foco y prioridades" title="Metas del día" onAdd={() => { setEditing(null); setModal(true); }} />
+    <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
+      <section className="cosmos-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-center gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#5de8c4]/12 text-[#5de8c4]"><Target size={22} /></span>
+          <div>
+            <div className="cosmos-eyebrow mb-1 capitalize">{isoLabel(fecha)}</div>
+            <div className="cosmos-title text-xl font-bold">{fecha === today ? 'Hoy' : fecha < today ? 'Día pasado' : 'Planificación'}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setFecha((f) => shiftIso(f, -1))} data-testid="button-metas-dia-anterior" aria-label="Día anterior" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition hover:bg-white/6 hover:text-white"><ChevronLeft size={18} /></button>
+          <button onClick={() => setFecha(today)} data-testid="button-metas-hoy" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6">Hoy</button>
+          <button onClick={() => setFecha((f) => shiftIso(f, 1))} data-testid="button-metas-dia-siguiente" aria-label="Día siguiente" className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition hover:bg-white/6 hover:text-white"><ChevronRight size={18} /></button>
+        </div>
+      </section>
+
+      <section className="cosmos-card p-5 sm:p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <div><div className="cosmos-eyebrow mb-1">avance del día</div><h2 className="cosmos-title text-lg font-bold">{done} de {items.length} metas completadas</h2></div>
+          <span className="cosmos-number text-xl font-bold text-[#5de8c4]">{pct}%</span>
+        </div>
+        <div className="h-2.5 overflow-hidden rounded-full bg-white/6">
+          <div className="h-full rounded-full bg-gradient-to-r from-[#5de8c4] to-[#5dc4e8] transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+      </section>
+
+      <form onSubmit={onQuickAdd} className="cosmos-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-1 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/6 text-white/60"><Plus size={17} /></span>
+          <input value={quick} onChange={(e) => setQuick(e.target.value)} className="cosmos-input" placeholder="¿Qué necesitas lograr hoy?" data-testid="input-meta-rapida" aria-label="Nueva meta rápida" />
+        </div>
+        <button type="submit" disabled={create.isPending || !quick.trim()} data-testid="button-agregar-meta-rapida" className="cosmos-button-primary justify-center disabled:opacity-40">Añadir</button>
+      </form>
+
+      <section className="grid gap-3">
+        {list.isLoading ? <LoadingRows /> : list.isError ? (
+          <EmptyState title="No pudimos cargar tus metas" copy="Revisa tu conexión e inténtalo de nuevo." action="Reintentar" onClick={() => { void list.refetch(); }} testId="button-retry-metas" />
+        ) : !items.length ? (
+          <EmptyState title="Sin metas para este día" copy="Escribe tu primera meta arriba o usa 'Registrar' para añadir prioridad, hora y detalle." action="Crear meta" onClick={() => { setEditing(null); setModal(true); }} testId="button-empty-metas" />
+        ) : items.map((meta) => {
+          const info = prioridadInfo(meta.prioridad);
+          return (
+            <div key={meta.id} data-testid={`carta-meta-${meta.id}`} className={`cosmos-card flex items-start gap-3 p-4 transition ${meta.completada ? 'border-[#5de8c4]/30 bg-[#5de8c4]/5' : 'border-white/10 hover:border-white/20'}`}>
+              <button onClick={() => onToggle(meta.id)} disabled={toggle.isPending} data-testid={`check-meta-${meta.id}`} aria-label={meta.completada ? 'Desmarcar meta' : 'Completar meta'}
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition ${meta.completada ? 'border-transparent bg-[#5de8c4] text-black' : 'border-white/30 text-transparent hover:border-white/60'}`}>
+                <Check size={15} strokeWidth={3} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className={`text-sm font-semibold ${meta.completada ? 'text-white/45 line-through decoration-white/30' : 'text-white'}`}>{meta.titulo}</div>
+                {meta.descripcion ? <p className="mt-1 text-xs leading-5 text-white/45">{meta.descripcion}</p> : null}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: `${info.color}1f`, color: info.color }}>{info.label}</span>
+                  {meta.hora ? <span className="flex items-center gap-1 text-white/45"><Clock size={11} />{meta.hora}</span> : null}
+                  <span className="text-white/30">{meta.completada ? 'Completada' : 'Pendiente'}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button onClick={() => { setEditing(meta); setModal(true); }} aria-label="Editar meta" className="rounded-lg p-2 text-white/55 hover:bg-white/8 hover:text-white"><Pencil size={15} /></button>
+                <button onClick={() => onDelete(meta)} aria-label="Eliminar meta" className="rounded-lg p-2 text-white/55 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={15} /></button>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="cosmos-card p-5 sm:p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <div><div className="cosmos-eyebrow mb-1">pantalla de inicio</div><h2 className="cosmos-title text-lg font-bold">Vista previa del widget</h2></div>
+          <span className="rounded-full border border-white/15 px-2 py-1 text-[10px] font-semibold text-white/45">Android</span>
+        </div>
+        <div className="mx-auto max-w-sm rounded-[24px] border border-white/10 bg-black/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-white"><Target size={14} className="text-[#5de8c4]" /> Metas de hoy</div>
+            <span className="text-[10px] text-white/40">{done}/{items.length}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-[#5de8c4]" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {pendientes.length ? pendientes.map((meta) => (
+              <div key={meta.id} className="flex items-center gap-2 text-[11px] text-white/70">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: prioridadInfo(meta.prioridad).color }} />
+                <span className="truncate">{meta.titulo}</span>
+                {meta.hora ? <span className="ml-auto shrink-0 text-white/35">{meta.hora}</span> : null}
+              </div>
+            )) : <div className="text-[11px] text-white/40">{items.length ? 'Todo completado por hoy 🎉' : 'Añade una meta para verla aquí.'}</div>}
+          </div>
+        </div>
+        <p className="mt-3 text-center text-xs text-white/35">El widget nativo muestra estas mismas metas en tu pantalla de inicio.</p>
+      </section>
+    </div>
+    {modal && <MetaDiariaModal record={editing} fechaInicial={fecha} pending={create.isPending || update.isPending} onClose={() => { setModal(false); setEditing(null); }} onSubmit={onSave} />}
+  </div></Shell>;
+}
+
+function MetaDiariaModal({ record, fechaInicial, pending, onClose, onSubmit }: { record: MetaDiaria | null; fechaInicial: string; pending: boolean; onClose: () => void; onSubmit: (data: Record<string, unknown>) => void }) {
+  const [form, setForm] = useState<Record<string, string>>({
+    titulo: record?.titulo ?? '',
+    descripcion: record?.descripcion ?? '',
+    fecha: record?.fecha ?? fechaInicial,
+    prioridad: record?.prioridad ?? 'media',
+    hora: record?.hora ?? '',
+  });
+  const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.titulo.trim()) return;
+    onSubmit({
+      titulo: form.titulo.trim(),
+      descripcion: form.descripcion.trim(),
+      fecha: form.fecha,
+      prioridad: form.prioridad,
+      hora: form.hora ? form.hora : null,
+    });
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+        <form onSubmit={submit} className="space-y-5">
+          <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
+            <div>
+              <div className="cosmos-eyebrow mb-1">jarvis / meta diaria</div>
+              <h2 className="cosmos-title text-2xl font-bold">{record ? 'Editar meta' : 'Nueva meta'}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button disabled={pending} type="submit" className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/90 disabled:opacity-50">
+                {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                {pending ? '...' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onClose} data-testid="button-close-meta-modal" className="rounded-xl p-2 text-white/55 hover:bg-white/8 hover:text-white"><X size={20} /></button>
+            </div>
+          </div>
+          <label className="block"><span className="cosmos-field-label">Meta</span><input required autoFocus className="cosmos-input" value={form.titulo} onChange={(e) => set('titulo', e.target.value)} data-testid="input-meta-titulo" placeholder="Ej. Terminar el informe, entrenar, llamar a mamá..." /></label>
+          <label className="block"><span className="cosmos-field-label">Detalle (opcional)</span><textarea rows={3} className="cosmos-input resize-none" value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-meta-descripcion" placeholder="Contexto, pasos o recordatorios" /></label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block"><span className="cosmos-field-label">Fecha</span><input type="date" required className="cosmos-input" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} data-testid="input-meta-fecha" /></label>
+            <label className="block"><span className="cosmos-field-label">Hora (opcional)</span><input type="time" className="cosmos-input" value={form.hora} onChange={(e) => set('hora', e.target.value)} data-testid="input-meta-hora" /></label>
+          </div>
+          <div>
+            <span className="cosmos-field-label">Prioridad</span>
+            <div className="grid grid-cols-3 gap-2">
+              {META_PRIORIDADES.map((prioridad) => (
+                <button key={prioridad.value} type="button" onClick={() => set('prioridad', prioridad.value)} data-testid={`prioridad-meta-${prioridad.value}`}
+                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${form.prioridad === prioridad.value ? 'border-transparent text-black' : 'border-white/15 text-white/60 hover:border-white/30 hover:text-white'}`}
+                  style={form.prioridad === prioridad.value ? { backgroundColor: prioridad.color } : undefined}>
+                  {prioridad.label}
+                </button>
+              ))}
+            </div>
           </div>
         </form>
       </div>
@@ -1858,7 +2103,7 @@ function RutinaPage() {
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
                       <span className="flex items-center gap-1 font-mono font-semibold text-white/90">
-                        <Clock size={12} /> {b.hora_inicio} – {b.hora_fin} ({horas}h)
+                        <Clock size={12} /> {b.hora_inicio} - {b.hora_fin} ({horas}h)
                       </span>
                       {b.descripcion && <span className="text-white/60">· {b.descripcion}</span>}
                     </div>
@@ -1943,7 +2188,7 @@ function RutinaPage() {
                       <span className="truncate text-sm font-semibold text-white">{b.icono} {b.titulo}</span>
                       <span className="text-[10px] font-bold rounded px-1.5 py-0.2" style={{ backgroundColor: `${tipoInfo.color}20`, color: tipoInfo.color }}>{tipoInfo.id}</span>
                     </div>
-                    <div className="text-xs text-white/45">{RUTINA_DIAS[b.dia_semana]} · {b.hora_inicio}–{b.hora_fin}{b.descripcion ? ` · ${b.descripcion}` : ''}</div>
+                    <div className="text-xs text-white/45">{RUTINA_DIAS[b.dia_semana]} · {b.hora_inicio}-{b.hora_fin}{b.descripcion ? ` · ${b.descripcion}` : ''}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -3917,6 +4162,7 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/" component={Dashboard} />
+      <Route path="/metas" component={MetasPage} />
       <Route path="/kilometraje" component={KilometrajePage} />
       <Route path="/habitos" component={HabitosPage} />
       <Route path="/rutina" component={RutinaPage} />

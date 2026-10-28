@@ -66,3 +66,46 @@ export interface MovimientoAhorroInput {
   medio_pago_id?: number;
   nota?: string;
 }
+
+export type PrioridadMeta = 'alta' | 'media' | 'baja';
+
+export interface MetaDiaria {
+  id: number;
+  usuario_id: number;
+  titulo: string;
+  descripcion: string;
+  fecha: string;
+  prioridad: PrioridadMeta;
+  hora?: string | null;
+  completada: boolean;
+  orden: number;
+  creado_en?: string | null;
+  completado_en?: string | null;
+}
+
+export interface MetaDiariaInput {
+  titulo: string;
+  descripcion?: string;
+  fecha: string;
+  prioridad?: PrioridadMeta;
+  hora?: string | null;
+  orden?: number;
+}
+
+export interface MetaDiariaWidgetItem {
+  id: number;
+  titulo: string;
+  prioridad: PrioridadMeta;
+  hora?: string | null;
+  completada: boolean;
+}
+
+export interface MetasDiariasResumen {
+  fecha: string;
+  total: number;
+  completadas: number;
+  pendientes: number;
+  porcentaje: number;
+  actualizado_en: string;
+  metas: MetaDiariaWidgetItem[];
+}

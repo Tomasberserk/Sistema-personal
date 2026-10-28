@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
 import { apiGetDemoUsers, apiGetMe, apiLogin, apiRegister, apiSwitchDemo } from '../api/customApi';
+import { clearMetasWidget } from '../services/metasWidget';
 import type { DemoUserItem, Usuario } from '../types/custom';
 
 interface AuthContextType {
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) {
       setUser(null);
       setLoading(false);
+      void clearMetasWidget();
       return;
     }
 
@@ -56,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(TOKEN_KEY);
       setUser(null);
       queryClient.clear();
+      void clearMetasWidget();
     } finally {
       setLoading(false);
     }
@@ -71,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!e.newValue) {
           setUser(null);
           queryClient.clear();
+          void clearMetasWidget();
         } else {
           refreshUser();
         }
@@ -85,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(TOKEN_KEY, res.token);
     setUser(res.usuario);
     queryClient.clear();
+    void clearMetasWidget();
   };
 
   const register = async (nombre: string, email: string, pass: string, avatar = '🚀') => {
@@ -93,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.usuario);
     await loadDemoUsers();
     queryClient.clear();
+    void clearMetasWidget();
   };
 
   const switchDemoUser = async (userId: number) => {
@@ -100,12 +106,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(TOKEN_KEY, res.token);
     setUser(res.usuario);
     queryClient.clear();
+    void clearMetasWidget();
   };
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     queryClient.clear();
+    void clearMetasWidget();
   };
 
   return (
