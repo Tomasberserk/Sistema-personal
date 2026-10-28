@@ -30,7 +30,7 @@ import {
   useListFechasEspeciales, useCreateFechaEspecial, useUpdateFechaEspecial, useDeleteFechaEspecial, getListFechasEspecialesQueryKey,
   useListRecordatorios, useCreateRecordatorio, useUpdateRecordatorio, useDeleteRecordatorio, getListRecordatoriosQueryKey,
 } from '@workspace/api-client-react';
-import type { BloqueRutina, BloqueRutinaInput, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
+import type { BloqueRutina, Categoria, DiaRutina, EstadoAceite, FechaEspecial, GastoFijo, GastoVariable, Habito, HabitoResumenItem, Ingreso, Kilometraje, MedioPago, MedioPagoSaldo, Recordatorio, ResumenCategoria, TransferenciaMedio } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -139,8 +139,8 @@ const RUTINA_COLORS = ['#5de8c4', '#5d8ae8', '#e8a85d', '#a85de8', '#e85d8a', '#
 
 const TIPOS_BLOQUE = [
   { id: 'Enfoque', label: 'Enfoque / Creación', icono: '🎯', color: '#5de8c4', desc: 'Trabajo profundo en proyecto prioritario (35 min / bloques)' },
-  { id: 'Flexible', label: 'Flexible / Elección', icono: '💼', color: '#5d8ae8', desc: 'Digi, SENA, gestión, proyectos o vida personal' },
-  { id: 'Fijo', label: 'Fijo / Clases / Trabajo', icono: '🎓', color: '#e8a85d', desc: 'Compromisos ineludibles (SENA, horario fijo)' },
+  { id: 'Flexible', label: 'Flexible / Elección', icono: '💼', color: '#5d8ae8', desc: 'Proyectos, estudio, gestión o vida personal' },
+  { id: 'Fijo', label: 'Fijo / Clases / Trabajo', icono: '🎓', color: '#e8a85d', desc: 'Compromisos ineludibles (clases, trabajo u horario fijo)' },
   { id: 'Recuperación', label: 'Recuperación / Comida', icono: '🍲', color: '#a85de8', desc: 'Comer, descansar, desconectar energía' },
   { id: 'Personal', label: 'Tiempo personal / Pareja', icono: '❤️', color: '#e85d8a', desc: 'Pareja, familia, ocio o descanso sin culpa' },
   { id: 'Inicio', label: 'Inicio del día', icono: '🌅', color: '#e8d95d', desc: 'Despertar, aseo, desayuno y puesta en marcha' },
@@ -167,38 +167,6 @@ const calcularHorasBloque = (inicio: string, fin: string) => {
   if (totalMin < 0) totalMin += 24 * 60;
   return Math.round((totalMin / 60) * 10) / 10;
 };
-
-const PLANTILLA_BLOQUES_EXCEL: Omit<BloqueRutinaInput, 'activo'>[] = [
-  // LUNES (0)
-  { dia_semana: 0, hora_inicio: '12:00', hora_fin: '13:30', titulo: 'Almuerzo y pausa', descripcion: 'Comer, descansar y desconectar un rato.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
-  { dia_semana: 0, hora_inicio: '13:30', hora_fin: '16:30', titulo: 'Bloque flexible', descripcion: 'Digi, SENA, gestión de microempresa, continuar el proyecto de la mañana o vida personal según prioridades.', icono: '💼', color: '#5d8ae8', tipo_bloque: 'Flexible' },
-  { dia_semana: 0, hora_inicio: '16:30', hora_fin: '17:40', titulo: 'Cierre y transición', descripcion: 'Ordenar pendientes, preparar comida/cosas del SENA, bañarse y salir.', icono: '🚶', color: '#8a8aa0', tipo_bloque: 'Transición' },
-  { dia_semana: 0, hora_inicio: '17:40', hora_fin: '23:59', titulo: 'SENA', descripcion: 'Clases y actividades del SENA. Al llegar, rutina breve de cierre y descanso.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
-
-  // MARTES (1) a VIERNES (4)
-  ...[1, 2, 3, 4].flatMap((d) => [
-    { dia_semana: d, hora_inicio: '08:00', hora_fin: '09:00', titulo: 'Inicio del día', descripcion: 'Despertar, aseo, desayuno y puesta en marcha.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
-    { dia_semana: d, hora_inicio: '09:00', hora_fin: '12:00', titulo: 'Bloque de creación', descripcion: 'Proyecto prioritario del momento. Sesiones de 35 min + 15 min de descanso.', icono: '🎯', color: '#5de8c4', tipo_bloque: 'Enfoque' },
-    { dia_semana: d, hora_inicio: '12:00', hora_fin: '13:30', titulo: 'Almuerzo y pausa', descripcion: 'Comer y recuperar energía.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
-    { dia_semana: d, hora_inicio: '13:30', hora_fin: '16:30', titulo: 'Bloque flexible', descripcion: 'Digi, SENA, gestión, continuación del proyecto o vida personal.', icono: '💼', color: '#5d8ae8', tipo_bloque: 'Flexible' },
-    { dia_semana: d, hora_inicio: '16:30', hora_fin: '17:40', titulo: 'Cierre y transición', descripcion: 'Organizar, comer/preparar lo necesario y salir.', icono: '🚶', color: '#8a8aa0', tipo_bloque: 'Transición' },
-    { dia_semana: d, hora_inicio: '17:40', hora_fin: '23:59', titulo: 'SENA', descripcion: 'Clases y actividades del SENA.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
-  ]),
-
-  // SÁBADO (5)
-  { dia_semana: 5, hora_inicio: '05:00', hora_fin: '05:40', titulo: 'Inicio del día', descripcion: 'Levantarse, aseo, desayuno ligero y preparación para clase.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
-  { dia_semana: 5, hora_inicio: '06:00', hora_fin: '18:00', titulo: 'SENA', descripcion: 'Jornada presencial de clase. Prioridad: cumplir y conservar energía.', icono: '🎓', color: '#e8a85d', tipo_bloque: 'Fijo' },
-  { dia_semana: 5, hora_inicio: '18:00', hora_fin: '20:00', titulo: 'Recuperación', descripcion: 'Regreso, comida, descanso y desconexión. Sin exigir productividad.', icono: '🛋️', color: '#a85de8', tipo_bloque: 'Recuperación' },
-  { dia_semana: 5, hora_inicio: '20:00', hora_fin: '20:30', titulo: 'Revisión ligera', descripcion: 'Revisar cómo fue la semana y anotar lo importante para el domingo/lunes.', icono: '👁️', color: '#5dc4e8', tipo_bloque: 'Revisión' },
-  { dia_semana: 5, hora_inicio: '20:30', hora_fin: '23:59', titulo: 'Tiempo personal', descripcion: 'Pareja, familia, ocio o descanso sin culpa.', icono: '❤️', color: '#e85d8a', tipo_bloque: 'Personal' },
-
-  // DOMINGO (6)
-  { dia_semana: 6, hora_inicio: '08:00', hora_fin: '09:00', titulo: 'Inicio del día', descripcion: 'Despertar tranquilo, aseo y desayuno.', icono: '🌅', color: '#e8d95d', tipo_bloque: 'Inicio' },
-  { dia_semana: 6, hora_inicio: '09:00', hora_fin: '12:00', titulo: 'Bloque estratégico', descripcion: 'Proyecto principal o trabajo de mayor impacto. También puede ser planeación profunda.', icono: '🚀', color: '#5de8c4', tipo_bloque: 'Enfoque' },
-  { dia_semana: 6, hora_inicio: '12:00', hora_fin: '14:00', titulo: 'Almuerzo y pausa', descripcion: 'Comer y desconectar.', icono: '🍲', color: '#a85de8', tipo_bloque: 'Recuperación' },
-  { dia_semana: 6, hora_inicio: '14:00', hora_fin: '17:00', titulo: 'Bloque de elección', descripcion: 'Proyecto secundario, finanzas, aprendizaje, gestión, pareja, familia o tiempo para ti.', icono: '🧩', color: '#5d8ae8', tipo_bloque: 'Flexible' },
-  { dia_semana: 6, hora_inicio: '17:00', hora_fin: '18:00', titulo: 'Planificación semanal', descripcion: 'Elegir prioridades y preparar los bloques de la semana; no llenar cada minuto.', icono: '📋', color: '#b7e85d', tipo_bloque: 'Planificación' },
-];
 
 const hoyIdx = () => (new Date().getDay() + 6) % 7;
 const horaAhora = () => new Date().toTimeString().slice(0, 5);
@@ -1868,7 +1836,7 @@ function RutinaPage() {
             <button onClick={() => { setEditing(null); setModal(true); }} data-testid="button-add-rutina" className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/6"><Plus size={16} /><span className="hidden sm:inline">Añadir bloque</span></button>
           </div>
           {diaQ.isLoading ? <LoadingRows /> : !bloquesDia.length ? (
-            <EmptyState title="Día con espacio libre" copy="No tienes bloques configurados. Añade uno o carga la plantilla recomendada." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-rutina" />
+            <EmptyState title="Día con espacio libre" copy="No tienes bloques configurados. Añade el primer bloque." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-rutina" />
           ) : bloquesDia.map((b) => {
             const running = activoAhora(b);
             const tipoInfo = getTipoBloqueInfo(b.tipo_bloque);
@@ -1964,7 +1932,7 @@ function RutinaPage() {
           </div>
         </div>
         <div className="p-3 sm:p-4">
-          {todosQ.isLoading ? <LoadingRows /> : !todos.length ? <EmptyState title="Sin bloques configurados" copy="Agrega el primer bloque o carga la plantilla recomendada." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-gestion-rutina" /> : <div className="grid gap-1.5 sm:grid-cols-2">{todos.map((b) => {
+          {todosQ.isLoading ? <LoadingRows /> : !todos.length ? <EmptyState title="Sin bloques configurados" copy="Agrega el primer bloque para empezar." action="Crear bloque" onClick={() => setModal(true)} testId="button-empty-gestion-rutina" /> : <div className="grid gap-1.5 sm:grid-cols-2">{todos.map((b) => {
             const tipoInfo = getTipoBloqueInfo(b.tipo_bloque);
             return (
               <div key={b.id} data-testid={`fila-bloque-${b.id}`} className={`group flex items-center justify-between rounded-xl px-3 py-2.5 transition hover:bg-white/4 ${b.activo ? '' : 'opacity-50'}`}>
@@ -2065,7 +2033,7 @@ function RutinaModal({
       tipo_bloque: tipo.id,
       icono: tipo.icono,
       color: tipo.color,
-      titulo: curr.titulo && curr.titulo !== 'Bloque de creación' ? curr.titulo : (tipo.id === 'Enfoque' ? 'Bloque de creación' : tipo.id === 'Flexible' ? 'Bloque flexible' : tipo.id === 'Fijo' ? 'SENA / Clase' : tipo.id === 'Recuperación' ? 'Almuerzo y pausa' : tipo.label),
+      titulo: curr.titulo && curr.titulo !== 'Bloque de creación' ? curr.titulo : (tipo.id === 'Enfoque' ? 'Bloque de creación' : tipo.id === 'Flexible' ? 'Bloque flexible' : tipo.id === 'Fijo' ? 'Clase / Trabajo' : tipo.id === 'Recuperación' ? 'Almuerzo y pausa' : tipo.label),
       descripcion: curr.descripcion || tipo.desc,
     }));
   };
@@ -2206,12 +2174,12 @@ function RutinaModal({
           {/* 4. Título y descripción */}
           <label className="block">
             <span className="cosmos-field-label">Título del bloque</span>
-            <input required className="cosmos-input" value={String(form.titulo)} onChange={(e) => set('titulo', e.target.value)} data-testid="input-rutina-titulo" placeholder="Ej. Bloque de creación, Bloque flexible, SENA..." />
+            <input required className="cosmos-input" value={String(form.titulo)} onChange={(e) => set('titulo', e.target.value)} data-testid="input-rutina-titulo" placeholder="Ej. Bloque de creación, Bloque flexible, Clase..." />
           </label>
 
           <label className="block">
             <span className="cosmos-field-label">Propósito / Descripción de posibilidades (opcional)</span>
-            <input className="cosmos-input" value={String(form.descripcion)} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-rutina-descripcion" placeholder="Ej. Proyecto prioritario (HyperBowl u otro), Digi, tareas..." />
+            <input className="cosmos-input" value={String(form.descripcion)} onChange={(e) => set('descripcion', e.target.value)} data-testid="input-rutina-descripcion" placeholder="Ej. Proyecto prioritario, estudio, tareas..." />
           </label>
 
           {/* 5. Icono y Color */}
@@ -3801,7 +3769,7 @@ function RecordatorioModal({
               className="cosmos-input"
               value={form.titulo}
               onChange={(e) => set('titulo', e.target.value)}
-              placeholder="Ej. Tomar agua, Enviar reporte del SENA, Llamar al doctor..."
+              placeholder="Ej. Tomar agua, Enviar reporte semanal, Llamar al doctor..."
             />
           </label>
 

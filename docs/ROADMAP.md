@@ -34,10 +34,10 @@ Cada fase debe dejar el sistema más confiable y más útil, no solo más grande
 | Finanzas | Operativo | Ingresos, gastos fijos y variables, categorías, medios de pago, transferencias, resumen mensual, ahorros con aportes | Presupuesto, reportes históricos, exportación |
 | Moto | Operativo | Kilometraje, configuración de aceite, cambio de aceite con gasto financiero opcional | Combustible, mantenimientos programados |
 | Hábitos | Operativo | CRUD, marcado diario, rachas, resumen | Vínculo con metas |
-| Rutina | Operativo | Bloques por día, vista semanal, plantilla editable | Vínculo con recordatorios y estudio |
+| Rutina | Operativo | Bloques por día, vista semanal, creación manual | Vínculo con recordatorios y estudio |
 | Fechas y recordatorios | Operativo | Fechas especiales, recordatorios puntuales y recurrentes, canales in-app/push, alarmas | Validación de push en dispositivo real |
 | Ahorros / metas | Parcial | Metas de ahorro y aportes | Metas generales (moto, hábitos, estudio) |
-| Estudio / SENA | Pendiente | — | Clases, materias, entregas, horarios y progreso |
+| Estudio / formación | Pendiente | — | Instituciones, clases, materias, entregas, horarios y progreso |
 | Agente personal | Operativo en desarrollo | Voz y texto, 31 herramientas, confirmaciones, Groq/xAI/mock | Clave en producción, validación de uso real, métricas |
 | Onboarding | Pendiente | Estado inicial limpio, sin seeds personales | Tour guiado, PWA/Capacitor |
 
@@ -83,7 +83,7 @@ Completado:
 
 Pendiente, en este orden:
 
-1. **T011 — Estudio / SENA.** Clases, materias, entregas, horarios y progreso.
+1. **T011 — Estudio / formación.** Instituciones, clases, materias, entregas, horarios y progreso. Sin asumir una institución concreta.
 2. **T012 — Metas generales.** Además de ahorro: moto, hábitos, estudio y proyectos.
 3. **Combustible.** Registro de gasolina conectado con Moto y Finanzas.
 4. **Presupuesto.** Límites por categoría y alertas de desviación.
@@ -174,7 +174,7 @@ requiera.
 | P0 | Configurar la clave del proveedor en producción y verificar `provider` | `GET /api/assistant/tools` responde `groq` o `xai` |
 | P0 | Ejecutar la validación de 7 días y 10 comandos reales | Informe de fricciones T014 |
 | P0 | Mantener typecheck, build y pruebas en verde | `tsc`, `vite build`, `pytest` sin errores |
-| P1 | T011 Estudio / SENA | Módulo usable con clases y entregas |
+| P1 | T011 Estudio / formación | Módulo usable con instituciones, clases y entregas |
 | P1 | T012 Metas generales | Metas medidas y conectadas a su módulo |
 | P1 | Combustible ↔ Moto + Finanzas | Registro de gasolina con costo y consumo |
 | P2 | Presupuesto por categoría | Límites y alertas funcionando |
@@ -213,3 +213,6 @@ Una fase se considera terminada cuando:
 - **27 oct 2026:** reescritura completa del roadmap para reflejar el estado real
   (T001–T016), eliminar el contenido HTML corrupto y ordenar las fases con la
   validación de uso como prioridad actual. Se saneó el typecheck del frontend.
+- **27 oct 2026:** se retiró el nombre de una institución concreta como módulo.
+  Pasa a **Estudio / formación**, sin institución asumida. También se eliminó
+  del frontend la plantilla de rutina personal que era código muerto.

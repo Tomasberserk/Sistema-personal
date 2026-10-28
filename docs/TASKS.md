@@ -72,9 +72,9 @@ Este archivo contiene tareas ejecutables. Las tareas deben realizarse en orden s
 - Desarrollada la vista interactiva `FechasPage` en React con cuentas regresivas, gestión de alarmas y disparador de notificaciones del navegador/móvil (Web Push Notification API).
 - OpenAPI sincronizado y frontend build verificado al 100%.
 
-### T011 — SENA / estudio
+### T011 — Estudio / formación
 
-Diseñar y construir clases, materias, entregas y progreso, conectados con agenda cuando corresponda.
+Diseñar y construir instituciones, clases, materias, entregas y progreso, conectados con agenda cuando corresponda. Debe servir para cualquier institución y no asumir una concreta.
 
 ### T012 — Metas
 

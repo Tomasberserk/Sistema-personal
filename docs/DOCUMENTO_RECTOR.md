@@ -107,9 +107,9 @@ No debe inventar una rutina diaria genérica de actividades obvias. La rutina ha
 
 Debe cubrir cumpleaños, aniversarios, vencimientos, pagos, mantenimientos y otros eventos importantes.
 
-### Estudio / SENA
+### Estudio / formación
 
-Debe cubrir clases, materias, tareas, entregas, horarios y progreso cuando este módulo sea priorizado.
+Debe cubrir clases, materias, tareas, entregas, horarios y progreso cuando este módulo sea priorizado. Debe servir para cualquier institución (universidad, instituto, academia o formación técnica) y no asumir una institución concreta.
 
 ### Metas
 
