@@ -30,6 +30,7 @@ public class MetasWidgetPlugin extends Plugin {
         SharedPreferences prefs = context.getSharedPreferences(MetasWidgetProvider.PREFS, Context.MODE_PRIVATE);
         prefs.edit().putString(MetasWidgetProvider.KEY_JSON, json).apply();
         MetasWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         JSObject result = new JSObject();
         result.put("updated", true);
@@ -42,6 +43,7 @@ public class MetasWidgetPlugin extends Plugin {
         SharedPreferences prefs = context.getSharedPreferences(MetasWidgetProvider.PREFS, Context.MODE_PRIVATE);
         prefs.edit().remove(MetasWidgetProvider.KEY_JSON).apply();
         MetasWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
         call.resolve();
     }
 }

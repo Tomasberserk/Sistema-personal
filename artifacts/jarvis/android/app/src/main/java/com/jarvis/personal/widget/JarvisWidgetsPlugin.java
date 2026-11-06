@@ -33,7 +33,10 @@ public class JarvisWidgetsPlugin extends Plugin {
         // Guardamos también en MetasWidgetProvider.PREFS para mantener compatibilidad
         SharedPreferences metasPrefs = context.getSharedPreferences(MetasWidgetProvider.PREFS, Context.MODE_PRIVATE);
         metasPrefs.edit().putString(MetasWidgetProvider.KEY_JSON, json).apply();
+        SharedPreferences commonPrefs = context.getSharedPreferences(PREFS_COMMON, Context.MODE_PRIVATE);
+        commonPrefs.edit().putString(MetasWidgetProvider.KEY_JSON, json).apply();
         MetasWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         JSObject result = new JSObject();
         result.put("updated", true);
@@ -52,6 +55,7 @@ public class JarvisWidgetsPlugin extends Plugin {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_COMMON, Context.MODE_PRIVATE);
         prefs.edit().putString(FinanzasWidgetProvider.KEY_FINANZAS_JSON, json).apply();
         FinanzasWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         JSObject result = new JSObject();
         result.put("updated", true);
@@ -70,6 +74,7 @@ public class JarvisWidgetsPlugin extends Plugin {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_COMMON, Context.MODE_PRIVATE);
         prefs.edit().putString(HabitosWidgetProvider.KEY_HABITOS_JSON, json).apply();
         HabitosWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         JSObject result = new JSObject();
         result.put("updated", true);
@@ -88,6 +93,7 @@ public class JarvisWidgetsPlugin extends Plugin {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_COMMON, Context.MODE_PRIVATE);
         prefs.edit().putString(MotoWidgetProvider.KEY_MOTO_JSON, json).apply();
         MotoWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         JSObject result = new JSObject();
         result.put("updated", true);
@@ -109,6 +115,7 @@ public class JarvisWidgetsPlugin extends Plugin {
         FinanzasWidgetProvider.updateAll(context);
         HabitosWidgetProvider.updateAll(context);
         MotoWidgetProvider.updateAll(context);
+        JarvisHubWidgetProvider.updateAll(context);
 
         call.resolve();
     }

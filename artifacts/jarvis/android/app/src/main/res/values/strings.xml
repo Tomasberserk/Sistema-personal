@@ -22,4 +22,9 @@
     <string name="widget_moto_name">Moto: Aceite y Km</string>
     <string name="widget_moto_title">Mantenimiento Moto</string>
     <string name="widget_moto_description">Odómetro actual y estado de vida útil del aceite.</string>
+
+    <!-- Jarvis Hub Master Widget -->
+    <string name="widget_hub_name">Jarvis Hub</string>
+    <string name="widget_hub_title">Jarvis Hub</string>
+    <string name="widget_hub_description">Mega-widget interactivo con carrusel paginado para Finanzas, Hábitos, Moto y Metas.</string>
 </resources>

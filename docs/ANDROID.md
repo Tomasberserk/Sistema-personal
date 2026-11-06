@@ -1,4 +1,4 @@
-# Android, APK y widget de metas
+# Android, APK y Widgets de Jarvis
 
 ## Requisitos
 
@@ -24,6 +24,7 @@ corepack pnpm --config.verifyDepsBeforeRun=false --filter @workspace/jarvis exec
 
 # 3. Generar APK debug
 cd artifacts\jarvis\android
+$env:JAVA_HOME = 'C:\Users\merid\.jdk\jdk-17'
 .\gradlew.bat assembleDebug
 ```
 
@@ -51,25 +52,31 @@ ALLOWED_ORIGINS=https://localhost,https://tu-dominio-web
 
 La URL de API se inyecta en build desde `artifacts/jarvis/.env.production` (`VITE_API_URL`). Para probar contra un backend local, cambia esa variable a la URL accesible desde el emulador (`http://10.0.2.2:8000`) y habilita tráfico cleartext solo en un build de desarrollo.
 
-## Widget "Metas del día"
+## Widgets de Jarvis
 
-- Se declara en `android/app/src/main/AndroidManifest.xml`.
-- Layout: `android/app/src/main/res/layout/widget_metas.xml`.
-- Provider: `android/app/src/main/java/com/jarvis/personal/widget/MetasWidgetProvider.java`.
-- Puente JS: `artifacts/jarvis/src/services/metasWidget.ts` y `MetasWidgetPlugin.java`.
+La aplicación provee widgets nativos de pantalla de inicio optimizados para launchers modernos (Niagara Launcher, Nova Launcher, Pixel Launcher):
 
-Uso:
+### 1. Jarvis Hub Master Widget (Mega-Widget Todo-en-Uno Paginado)
+- **Objetivo**: Proveer un único widget maestro en pantalla capaz de alternar interactivamente mediante botones `◀` y `▶` entre las 4 áreas principales de Jarvis:
+  1. **Finanzas**: Saldo total disponible, gastos y entradas del día, y desglose de medios principales.
+  2. **Hábitos**: Barra de progreso diario, porcentaje y checklist con rachas activas.
+  3. **Moto**: Odómetro actual (km), porcentaje de vida útil del aceite y alertas de cambio.
+  4. **Metas del día**: Checklist de metas con indicador de prioridad/completado y progreso del día.
+- **Provider**: `android/app/src/main/java/com/jarvis/personal/widget/JarvisHubWidgetProvider.java`.
+- **Layout**: `android/app/src/main/res/layout/widget_jarvis_hub.xml`.
+- **Acción interactiva**: Recibe broadcast `com.jarvis.personal.ACTION_HUB_PAGE` para alternar la página activa (`hub_current_page` 0 a 3) en SharedPreferences (`jarvis_widgets`).
+- **Sincronización**: Se refresca automáticamente mediante `JarvisHubWidgetProvider.updateAll(context)` cada vez que el plugin `JarvisWidgetsPlugin` recibe actualizaciones de cualquiera de los cuatro módulos.
 
-1. Instala el APK.
-2. Mantén presionada la pantalla de inicio → Widgets → Jarvis → **Metas del día**.
-3. Abre Jarvis → **Metas del día**. La app envía al widget el resumen de la fecha visible.
-4. Toca el widget para abrir la app.
+### 2. Widgets Individuales Específicos
+- **Metas del día**: `MetasWidgetProvider.java` (`@layout/widget_metas`).
+- **Finanzas: Saldo y Flujo**: `FinanzasWidgetProvider.java` (`@layout/widget_finanzas`).
+- **Hábitos y Rachas**: `HabitosWidgetProvider.java` (`@layout/widget_habitos`).
+- **Moto: Aceite y Km**: `MotoWidgetProvider.java` (`@layout/widget_moto`).
 
-Privacidad y límites:
-
-- El widget guarda solo el resumen (`total`, `completadas`, `porcentaje` y hasta 6 títulos); **no guarda el token**.
-- Al cerrar sesión o invalidar el token, la app borra la instantánea del widget.
-- El widget no consulta la API en segundo plano: se actualiza cuando la app está abierta. Esto evita duplicar autenticación y reduce el riesgo de exponer credenciales.
+### Privacidad y límites:
+- Los widgets guardan exclusivamente instantáneas y resúmenes sanitizados; **no almacenan credenciales ni tokens JWT**.
+- Al cerrar sesión o invalidar el token, la app limpia las instantáneas de SharedPreferences.
+- Los widgets no realizan peticiones de red autónomas: se alimentan del estado validado enviado por la app cuando está en uso.
 - El periodo de actualización declarado es de 30 minutos, pero Android puede diferirlo según batería y fabricante.
 
 ## Firma de release

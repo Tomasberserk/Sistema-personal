@@ -81,6 +81,19 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/moto_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".widget.JarvisHubWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_hub_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.jarvis.personal.ACTION_HUB_PAGE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/jarvis_hub_widget_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->

@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_hub_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <!-- Header: Título del Módulo, Fecha y Botones del Carrusel -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hub_header_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📊 Finanzas"
+                android:textColor="#F5F5F7"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/hub_header_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hoy"
+                android:textColor="#8A8A96"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Navegación Carrusel: [◀]  1/4  [▶] -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/hub_btn_prev"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="◀"
+                android:textColor="#5DE8C4"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/hub_page_indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
+                android:text="1/4"
+                android:textColor="#A0A0B0"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/hub_btn_next"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="▶"
+                android:textColor="#5DE8C4"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ==================== SECCIÓN 0: FINANZAS ==================== -->
+    <LinearLayout
+        android:id="@+id/hub_section_finanzas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <!-- Saldo Total Grande -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saldo Total: "
+                android:textColor="#8A8A96"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/hub_finanzas_saldo_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="$0 COP"
+                android:textColor="#5DE8C4"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Flujo de Hoy: Gastos vs Ingresos -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Gastos hoy"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/hub_finanzas_gastos_hoy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-$0 COP"
+                    android:textColor="#E85D5D"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Entradas hoy"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/hub_finanzas_ingresos_hoy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+$0 COP"
+                    android:textColor="#5DE87A"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Footer / Medios principales -->
+        <TextView
+            android:id="@+id/hub_finanzas_medios_summary"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#A0A0B0"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/hub_finanzas_updated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="end"
+            android:textColor="#5A5A66"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <!-- ==================== SECCIÓN 1: HÁBITOS ==================== -->
+    <LinearLayout
+        android:id="@+id/hub_section_habitos"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Barra de progreso -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/hub_habitos_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressBackgroundTint="#33FFFFFF"
+                android:progressTint="#5DE8C4" />
+
+            <TextView
+                android:id="@+id/hub_habitos_progress_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="0 de 0"
+                android:textColor="#5DE8C4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hub_habitos_empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Sin hábitos activos hoy."
+            android:textColor="#8A8A96"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <!-- Lista de hasta 4 hábitos -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Habito 1 -->
+            <LinearLayout
+                android:id="@+id/hub_habito_row_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_habito_icon_1"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="✅"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_name_1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_streak_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E8A85D"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Habito 2 -->
+            <LinearLayout
+                android:id="@+id/hub_habito_row_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_habito_icon_2"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="✅"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_name_2"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_streak_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E8A85D"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Habito 3 -->
+            <LinearLayout
+                android:id="@+id/hub_habito_row_3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_habito_icon_3"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="✅"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_name_3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_streak_3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E8A85D"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Habito 4 -->
+            <LinearLayout
+                android:id="@+id/hub_habito_row_4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_habito_icon_4"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="✅"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_name_4"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_habito_streak_4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E8A85D"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hub_habitos_updated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="end"
+            android:textColor="#5A5A66"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <!-- ==================== SECCIÓN 2: MOTO ==================== -->
+    <LinearLayout
+        android:id="@+id/hub_section_moto"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Odómetro actual -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/hub_moto_km_actuales"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#F5F5F7"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="2dp"
+                android:layout_weight="1"
+                android:text="km actuales"
+                android:textColor="#8A8A96"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/hub_moto_alerta_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚠️ CAMBIO"
+                android:textColor="#E85D5D"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Barra de vida útil del aceite -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/hub_moto_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="100"
+                android:progressBackgroundTint="#33FFFFFF"
+                android:progressTint="#5DE8C4" />
+
+            <TextView
+                android:id="@+id/hub_moto_porcentaje_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="100%"
+                android:textColor="#5DE8C4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Km restantes para el próximo cambio -->
+        <TextView
+            android:id="@+id/hub_moto_restantes_text"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            android:text="Restan 0 km para cambio de aceite"
+            android:textColor="#A0A0B0"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/hub_moto_updated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="end"
+            android:textColor="#5A5A66"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <!-- ==================== SECCIÓN 3: METAS ==================== -->
+    <LinearLayout
+        android:id="@+id/hub_section_metas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Barra de progreso -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/hub_metas_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressBackgroundTint="#33FFFFFF"
+                android:progressTint="#5DE8C4" />
+
+            <TextView
+                android:id="@+id/hub_metas_progress_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="0 de 0"
+                android:textColor="#5DE8C4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hub_metas_empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Sin metas para hoy."
+            android:textColor="#8A8A96"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <!-- Lista de hasta 4 metas -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Meta 1 -->
+            <LinearLayout
+                android:id="@+id/hub_meta_row_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_meta_dot_1"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="●"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_title_1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_time_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Meta 2 -->
+            <LinearLayout
+                android:id="@+id/hub_meta_row_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_meta_dot_2"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="●"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_title_2"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_time_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Meta 3 -->
+            <LinearLayout
+                android:id="@+id/hub_meta_row_3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_meta_dot_3"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="●"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_title_3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_time_3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Meta 4 -->
+            <LinearLayout
+                android:id="@+id/hub_meta_row_4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp">
+
+                <TextView
+                    android:id="@+id/hub_meta_dot_4"
+                    android:layout_width="16dp"
+                    android:layout_height="wrap_content"
+                    android:text="●"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_title_4"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#F5F5F7"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/hub_meta_time_4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#8A8A96"
+                    android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/hub_metas_updated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="end"
+            android:textColor="#5A5A66"
+            android:textSize="9sp" />
+    </LinearLayout>
+</LinearLayout>
