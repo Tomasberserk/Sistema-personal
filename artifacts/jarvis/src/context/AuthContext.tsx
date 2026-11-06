@@ -9,6 +9,7 @@ interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
   demoUsers: DemoUserItem[];
+  quickLogin: () => Promise<void>;
   login: (email: string, pass: string) => Promise<void>;
   register: (nombre: string, email: string, pass: string, avatar?: string) => Promise<void>;
   switchDemoUser: (userId: number) => Promise<void>;
@@ -41,10 +42,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const quickLogin = async () => {
+    localStorage.removeItem('jarvis_explicit_logout');
+    const res = await apiLogin('tomas@personal.io', 'demo');
+    localStorage.setItem(TOKEN_KEY, res.token);
+    setUser(res.usuario);
+    queryClient.clear();
+    void clearMetasWidget();
+  };
+
   const refreshUser = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
+    const explicitLogout = localStorage.getItem('jarvis_explicit_logout');
 
     if (!token) {
+      // Auto-login directo sin contrasena como Tomas / Andres para acceso inmediato
+      if (!explicitLogout) {
+        try {
+          const res = await apiLogin('tomas@personal.io', 'demo');
+          localStorage.setItem(TOKEN_KEY, res.token);
+          setUser(res.usuario);
+          setLoading(false);
+          return;
+        } catch {
+          // fallback
+        }
+      }
       setUser(null);
       setLoading(false);
       void clearMetasWidget();
@@ -55,9 +78,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const me = await apiGetMe();
       setUser(me);
     } catch {
-      localStorage.removeItem(TOKEN_KEY);
-      setUser(null);
-      queryClient.clear();
+      try {
+        const res = await apiLogin('tomas@personal.io', 'demo');
+        localStorage.setItem(TOKEN_KEY, res.token);
+        setUser(res.usuario);
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        setUser(null);
+        queryClient.clear();
+      }
       void clearMetasWidget();
     } finally {
       setLoading(false);
@@ -111,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.setItem('jarvis_explicit_logout', '1');
     setUser(null);
     queryClient.clear();
     void clearMetasWidget();
@@ -125,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         switchDemoUser,
+        quickLogin,
         logout,
         refreshUser,
       }}

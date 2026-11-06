@@ -45,6 +45,7 @@ import { MedioPagoModal } from './components/MedioPagoModal';
 import { useRecordatoriosScheduler, reproducirAlertaSonora } from './hooks/useRecordatoriosScheduler';
 import { syncMetasWidget } from './services/metasWidget';
 import { AlarmaModal } from './components/AlarmaModal';
+import { useJarvisWidgetsSync } from './hooks/useJarvisWidgetsSync';
 import { useListAhorros, useCreateAhorro, useUpdateAhorro, useDeleteAhorro, useAportarAhorro, useSeedDefaultCategorias, useSeedDefaultMediosPago, useListMetasDiarias, useCreateMetaDiaria, useUpdateMetaDiaria, useDeleteMetaDiaria, useToggleMetaDiaria } from './api/customApi';
 import type { MetaAhorro, MetaAhorroInput, MetaDiaria, MetasDiariasResumen, MovimientoAhorroInput } from './types/custom';
 
@@ -4141,6 +4142,9 @@ function RecordatorioModal({
 function AppRouter() {
   const { user, loading } = useAuth();
   const [location] = useLocation();
+
+  // Sincronización automática de widgets nativos de Android
+  useJarvisWidgetsSync();
 
   if (loading) {
     return (

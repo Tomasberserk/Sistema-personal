@@ -5,7 +5,20 @@ import { Activity, Lock, Mail, User, ArrowRight, UserPlus, LogIn, Sparkles } fro
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
-  const { login, register } = useAuth();
+  const { login, register, quickLogin } = useAuth();
+
+  const handleQuickLogin = async () => {
+    try {
+      setLoading(true);
+      await quickLogin();
+      toast.success('¡Bienvenido Tomás! Acceso rápido directo.');
+      handleSuccess();
+    } catch {
+      toast.error('No se pudo conectar con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
@@ -114,6 +127,32 @@ export const LoginPage: React.FC = () => {
               }`}
             >
               <UserPlus size={14} /> Registrarse
+            </button>
+          </div>
+
+          {/* ACCESO RÁPIDO SIN CONTRASEÑA */}
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-[#5de8c4]/15 to-[#5d8ae8]/15 border border-[#5de8c4]/40 flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center text-2xl shadow-inner">
+                🚀
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  Tomás / Andrés
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#5de8c4]/20 text-[#5de8c4] font-semibold tracking-wider">
+                    DIRECTO
+                  </span>
+                </div>
+                <div className="text-xs text-white/50">Acceso rápido sin contraseña</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickLogin}
+              disabled={loading}
+              className="px-3.5 py-2 rounded-xl bg-[#5de8c4] text-black text-xs font-bold hover:bg-[#4bd6b2] transition active:scale-95 shadow cursor-pointer disabled:opacity-50"
+            >
+              {loading ? 'Entrando...' : 'Entrar Ya'}
             </button>
           </div>
 

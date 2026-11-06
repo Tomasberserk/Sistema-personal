@@ -686,6 +686,52 @@ class MetasDiariasResumen(BaseModel):
     metas: list[MetaDiariaWidgetItem]
 
 
+class FinanzasMedioWidgetItem(BaseModel):
+    id: int
+    nombre: str
+    icono: str = "💵"
+    saldo_actual: float = 0.0
+
+
+class FinanzasWidgetResumen(BaseModel):
+    fecha: str
+    saldo_total: float
+    gastos_hoy: float
+    ingresos_hoy: float
+    balance_hoy: float
+    actualizado_en: str
+    medios_principales: list[FinanzasMedioWidgetItem]
+
+
+class HabitoWidgetItem(BaseModel):
+    id: int
+    nombre: str
+    icono: str = "✅"
+    color: str = "#5de8c4"
+    racha: int = 0
+    completado: bool = False
+
+
+class HabitosWidgetResumen(BaseModel):
+    fecha: str
+    total: int
+    completados: int
+    pendientes: int
+    porcentaje: int
+    actualizado_en: str
+    habitos: list[HabitoWidgetItem]
+
+
+class MotoWidgetResumen(BaseModel):
+    km_actuales: int
+    km_ultimo_cambio: int
+    km_proximo_cambio: int
+    km_restantes: int
+    porcentaje_vida_aceite: float
+    alerta: bool
+    actualizado_en: str
+
+
 # --- DB Connection Wrappers ---
 class _Row:
     def __init__(self, description: Any, values: tuple[Any, ...]) -> None:
@@ -2988,6 +3034,116 @@ def toggle_meta_diaria(item_id: int, user: Usuario = Depends(get_current_user)) 
 def delete_meta_diaria(item_id: int, user: Usuario = Depends(get_current_user)) -> Response:
     delete_item("metas_diarias", item_id, user.id)
     return Response(status_code=204)
+
+
+# ==========================================
+# WIDGETS RESUMEN COMPACTO (FINANZAS, HÁBITOS, MOTO)
+# ==========================================
+@app.get("/api/widgets/finanzas", response_model=FinanzasWidgetResumen)
+def widget_finanzas(
+    fecha: date | None = None,
+    user: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Resumen compacto de saldo y flujo de hoy para widget de pantalla de inicio."""
+    fecha_iso = (fecha or date.today()).isoformat()
+    saldos_medios = build_saldos_medios(user.id)
+    medios_activos = [m for m in saldos_medios if m["activo"]]
+    saldo_total = sum(m["saldo_actual"] for m in medios_activos)
+
+    with closing(get_connection()) as connection:
+        ingresos_hoy = connection.execute(
+            "SELECT COALESCE(SUM(monto), 0) FROM ingresos WHERE usuario_id = %s AND fecha = %s",
+            (user.id, fecha_iso),
+        ).fetchone()[0]
+        gastos_hoy = connection.execute(
+            "SELECT COALESCE(SUM(monto), 0) FROM gastos_variables WHERE usuario_id = %s AND fecha = %s",
+            (user.id, fecha_iso),
+        ).fetchone()[0]
+
+    ingresos_val = float(ingresos_hoy or 0.0)
+    gastos_val = float(gastos_hoy or 0.0)
+
+    medios_principales = [
+        {
+            "id": m["id"],
+            "nombre": m["nombre"],
+            "icono": m.get("icono") or "💵",
+            "saldo_actual": float(m["saldo_actual"] or 0.0),
+        }
+        for m in sorted(medios_activos, key=lambda x: x["saldo_actual"], reverse=True)[:4]
+    ]
+
+    return {
+        "fecha": fecha_iso,
+        "saldo_total": float(saldo_total),
+        "gastos_hoy": gastos_val,
+        "ingresos_hoy": ingresos_val,
+        "balance_hoy": ingresos_val - gastos_val,
+        "actualizado_en": datetime.now().isoformat(timespec="seconds"),
+        "medios_principales": medios_principales,
+    }
+
+
+@app.get("/api/widgets/habitos", response_model=HabitosWidgetResumen)
+def widget_habitos(
+    fecha: date | None = None,
+    limite: int = 6,
+    user: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Resumen compacto de hábitos y rachas de hoy para widget de pantalla de inicio."""
+    fecha_dt = fecha or date.today()
+    fecha_iso = fecha_dt.isoformat()
+    limite = max(1, min(limite, 20))
+    with closing(get_connection()) as connection:
+        estado_rows = {
+            row["habito_id"]: bool(row["completado"])
+            for row in connection.execute(
+                "SELECT habito_id, completado FROM registro_habitos WHERE fecha = %s",
+                (fecha_iso,),
+            ).fetchall()
+        }
+        habits = connection.execute(
+            "SELECT * FROM habitos WHERE usuario_id = %s AND activo = TRUE ORDER BY id",
+            (user.id,),
+        ).fetchall()
+        items = [
+            {
+                "id": row["id"],
+                "nombre": row["nombre"],
+                "icono": row["icono"] or "✅",
+                "color": row["color"] or "#5de8c4",
+                "racha": calcular_racha(connection, row["id"], fecha_dt),
+                "completado": bool(estado_rows.get(row["id"], False)),
+            }
+            for row in habits
+        ]
+
+    total = len(items)
+    completados = sum(1 for h in items if h["completado"])
+    return {
+        "fecha": fecha_iso,
+        "total": total,
+        "completados": completados,
+        "pendientes": total - completados,
+        "porcentaje": round((completados / total) * 100) if total else 0,
+        "actualizado_en": datetime.now().isoformat(timespec="seconds"),
+        "habitos": items[:limite],
+    }
+
+
+@app.get("/api/widgets/moto", response_model=MotoWidgetResumen)
+def widget_moto(user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    """Resumen compacto de odómetro y aceite de moto para widget de pantalla de inicio."""
+    estado = build_estado_aceite(user.id)
+    return {
+        "km_actuales": int(estado.get("km_actuales", 0)),
+        "km_ultimo_cambio": int(estado.get("km_ultimo_cambio", 0)),
+        "km_proximo_cambio": int(estado.get("km_proximo_cambio", 0)),
+        "km_restantes": int(estado.get("km_restantes", 0)),
+        "porcentaje_vida_aceite": float(estado.get("porcentaje_vida_aceite", 0.0)),
+        "alerta": bool(estado.get("alerta", False)),
+        "actualizado_en": datetime.now().isoformat(timespec="seconds"),
+    }
 
 
 # ==========================================

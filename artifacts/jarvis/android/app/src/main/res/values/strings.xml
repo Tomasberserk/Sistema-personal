@@ -7,4 +7,19 @@
     <string name="widget_name">Metas del día</string>
     <string name="widget_title">Metas de hoy</string>
     <string name="widget_description">Resumen de tus metas diarias, actualizado desde la app.</string>
+
+    <!-- Finanzas Widget -->
+    <string name="widget_finanzas_name">Finanzas: Saldo y Flujo</string>
+    <string name="widget_finanzas_title">Finanzas de hoy</string>
+    <string name="widget_finanzas_description">Saldo total disponible, gastos y entradas del día.</string>
+
+    <!-- Hábitos Widget -->
+    <string name="widget_habitos_name">Hábitos y Rachas</string>
+    <string name="widget_habitos_title">Hábitos de hoy</string>
+    <string name="widget_habitos_description">Cumplimiento y rachas de tus hábitos diarios.</string>
+
+    <!-- Moto Widget -->
+    <string name="widget_moto_name">Moto: Aceite y Km</string>
+    <string name="widget_moto_title">Mantenimiento Moto</string>
+    <string name="widget_moto_description">Odómetro actual y estado de vida útil del aceite.</string>
 </resources>

@@ -109,3 +109,49 @@ export interface MetasDiariasResumen {
   actualizado_en: string;
   metas: MetaDiariaWidgetItem[];
 }
+
+export interface FinanzasMedioWidgetItem {
+  id: number;
+  nombre: string;
+  icono: string;
+  saldo_actual: number;
+}
+
+export interface FinanzasWidgetResumen {
+  fecha: string;
+  saldo_total: number;
+  gastos_hoy: number;
+  ingresos_hoy: number;
+  balance_hoy: number;
+  actualizado_en: string;
+  medios_principales: FinanzasMedioWidgetItem[];
+}
+
+export interface HabitoWidgetItem {
+  id: number;
+  nombre: string;
+  icono: string;
+  color: string;
+  racha: number;
+  completado: boolean;
+}
+
+export interface HabitosWidgetResumen {
+  fecha: string;
+  total: number;
+  completados: number;
+  pendientes: number;
+  porcentaje: number;
+  actualizado_en: string;
+  habitos: HabitoWidgetItem[];
+}
+
+export interface MotoWidgetResumen {
+  km_actuales: number;
+  km_ultimo_cambio: number;
+  km_proximo_cambio: number;
+  km_restantes: number;
+  porcentaje_vida_aceite: number;
+  alerta: boolean;
+  actualizado_en: string;
+}

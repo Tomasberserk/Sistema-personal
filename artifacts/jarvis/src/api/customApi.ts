@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
-import type { AuthResponse, DemoUserItem, MetaAhorro, MetaAhorroInput, MetaDiaria, MetaDiariaInput, MetasDiariasResumen, MovimientoAhorro, MovimientoAhorroInput, Usuario } from '../types/custom';
+import type { AuthResponse, DemoUserItem, FinanzasWidgetResumen, HabitosWidgetResumen, MetaAhorro, MetaAhorroInput, MetaDiaria, MetaDiariaInput, MetasDiariasResumen, MotoWidgetResumen, MovimientoAhorro, MovimientoAhorroInput, Usuario } from '../types/custom';
 
 // Query Keys
 export const getAhorrosQueryKey = () => ['/api/ahorros'] as const;
@@ -9,6 +9,9 @@ export const getAuthMeQueryKey = () => ['/api/auth/me'] as const;
 export const getDemoUsersQueryKey = () => ['/api/auth/demo-users'] as const;
 export const getMetasDiariasQueryKey = (fecha: string) => ['/api/metas-diarias', fecha] as const;
 export const getMetasDiariasWidgetQueryKey = (fecha: string, limite = 6) => ['/api/metas-diarias', 'widget', fecha, limite] as const;
+export const getWidgetFinanzasQueryKey = () => ['/api/widgets/finanzas'] as const;
+export const getWidgetHabitosQueryKey = (fecha: string, limite = 6) => ['/api/widgets/habitos', fecha, limite] as const;
+export const getWidgetMotoQueryKey = () => ['/api/widgets/moto'] as const;
 
 // Ahorros Hooks
 export function useListAhorros() {
@@ -214,5 +217,36 @@ export function useDeleteMetaDiaria() {
     mutationFn: (id: number) =>
       customFetch<void>(`/api/metas-diarias/${id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateMetasDiarias(queryClient),
+  });
+}
+
+// Hooks para Widgets Nativos
+export function useWidgetFinanzas(enabled = true) {
+  return useQuery<FinanzasWidgetResumen>({
+    queryKey: getWidgetFinanzasQueryKey(),
+    queryFn: () => customFetch<FinanzasWidgetResumen>('/api/widgets/finanzas', { method: 'GET' }),
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useWidgetHabitos(fecha: string, limite = 6, enabled = true) {
+  return useQuery<HabitosWidgetResumen>({
+    queryKey: getWidgetHabitosQueryKey(fecha, limite),
+    queryFn: () => customFetch<HabitosWidgetResumen>(
+      `/api/widgets/habitos?fecha=${encodeURIComponent(fecha)}&limite=${limite}`,
+      { method: 'GET' },
+    ),
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useWidgetMoto(enabled = true) {
+  return useQuery<MotoWidgetResumen>({
+    queryKey: getWidgetMotoQueryKey(),
+    queryFn: () => customFetch<MotoWidgetResumen>('/api/widgets/moto', { method: 'GET' }),
+    enabled,
+    refetchInterval: 120_000,
   });
 }
