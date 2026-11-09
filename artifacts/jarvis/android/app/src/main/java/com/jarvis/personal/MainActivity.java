@@ -3,6 +3,7 @@ package com.jarvis.personal;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
+import com.jarvis.personal.voice.TomasVoicePlugin;
 import com.jarvis.personal.widget.JarvisWidgetsPlugin;
 import com.jarvis.personal.widget.MetasWidgetPlugin;
 
@@ -11,6 +12,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MetasWidgetPlugin.class);
         registerPlugin(JarvisWidgetsPlugin.class);
+        registerPlugin(TomasVoicePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

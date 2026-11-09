@@ -63,3 +63,55 @@ export function assistantConfirm(
     }),
   });
 }
+
+export interface ToolExecuteResult {
+  status: 'COMMITTED' | 'PROCESSING' | 'REJECTED';
+  tool_name: string;
+  idempotency_key: string;
+  result: unknown;
+  state_version: number;
+  cached: boolean;
+  server_received_at: string;
+  committed_at: string;
+}
+
+export interface LiveSessionInfo {
+  ephemeral_token: string;
+  model: string;
+  expires_at: string;
+  new_session_expire_time: string;
+  session_resumption_allowed: boolean;
+  ws_url: string;
+}
+
+export function executeAssistantTool(
+  toolName: string,
+  parameters: Record<string, unknown>,
+  idempotencyKey?: string,
+): Promise<ToolExecuteResult> {
+  const effectiveKey =
+    idempotencyKey ||
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  return assistantFetch<ToolExecuteResult>('/api/v1/assistant/tools/execute', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': effectiveKey,
+    },
+    body: JSON.stringify({
+      tool_name: toolName,
+      parameters,
+      idempotency_key: effectiveKey,
+      occurred_at_client: new Date().toISOString(),
+    }),
+  });
+}
+
+export function fetchLiveSession(): Promise<LiveSessionInfo> {
+  return assistantFetch<LiveSessionInfo>('/api/v1/live/session', {
+    method: 'POST',
+  });
+}
