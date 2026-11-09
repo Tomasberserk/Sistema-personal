@@ -99,6 +99,7 @@
   --popover-foreground: 0 0% 96%;
   --popover-border: 0 0% 100% / 0.1;
 
+
   --primary: 0 0% 100%;
   --primary-foreground: 0 0% 0%;
 
@@ -487,4 +488,18 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+}
+
+/* Fallback y compatibilidad obligatoria para Android WebView legacy (Chromium < 108):
+   Garantiza que ningún modal quede sin altura máxima ni desborde fuera de la pantalla. */
+[role="dialog"] {
+  max-height: 85vh !important;
+  max-height: 85dvh !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
 }

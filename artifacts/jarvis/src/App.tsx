@@ -200,7 +200,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { activeAlarm, handleDetener, handlePosponer, handleCumplir } = useRecordatoriosScheduler();
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-clip bg-background text-foreground">
+    <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
       <CosmosBackground />
       {activeAlarm && (
         <AlarmaModal
@@ -648,7 +648,7 @@ function Dashboard() {
   };
 
   return <Shell>
-    <div className="relative z-10 min-h-[100dvh]">
+    <div className="relative z-10 min-h-screen">
       <Topbar eyebrow={`finanzas · visión de ${monthLabel}`} title="Que tu dinero te siga el paso." onAdd={() => setModal('ingreso')} />
       <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -1107,7 +1107,7 @@ function KilometrajePage() {
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: getListKilometrajesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetKilometrajeResumenQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetMotoEstadoAceiteQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetResumenMesActualQueryKey() }); };
   const submit = (data: Record<string, unknown>) => { const done = () => { invalidate(); setModal(false); setEditing(null); }; editing ? update.mutate({ id: editing.id, data: data as never }, { onSuccess: done, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el registro') }) : create.mutate({ data: data as never }, { onSuccess: done, onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo guardar el registro') }); };
   const remove = (id: number) => { if (window.confirm('¿Eliminar este registro?')) removeMutation.mutate({ id }, { onSuccess: invalidate }); };
-  return <Shell><div className="relative z-10 min-h-[100dvh]"><Topbar eyebrow="ruta y mantenimiento" title="Kilometraje" onAdd={() => { setEditing(null); setModal(true); }} /><div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
+  return <Shell><div className="relative z-10 min-h-screen"><Topbar eyebrow="ruta y mantenimiento" title="Kilometraje" onAdd={() => { setEditing(null); setModal(true); }} /><div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
     <div className="grid gap-4 sm:grid-cols-3">
       <Metric label="Odómetro actual" value={`${(resumen.data?.km_actuales ?? 0).toLocaleString('es-CO')} km`} icon={<Gauge size={19} />} tone="warm" note="Última lectura del cuenta kilómetros" />
       <Metric label="Jornadas anotadas" value={`${kms.length}`} icon={<CalendarDays size={19} />} note="Cada lectura que registraste" />
@@ -1189,7 +1189,7 @@ function MotoPage() {
     });
   };
   return <Shell>
-    <div className="relative z-10 min-h-[100dvh]">
+    <div className="relative z-10 min-h-screen">
       <Topbar eyebrow="moto y mantenimiento" title="Estado del aceite" />
       <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
         {estado.isLoading ? <LoadingRows /> : !e ? (
@@ -1240,7 +1240,7 @@ function MotoPage() {
 
           {modalOil && (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-              <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
+              <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[24px] p-5 shadow-2xl sm:rounded-[24px] sm:p-7">
                 <div className="mb-6 flex items-start justify-between">
                   <div>
                     <div className="cosmos-eyebrow mb-1">moto / mantenimiento</div>
@@ -1397,7 +1397,7 @@ function HabitosPage() {
   const onActive = (h: Habito, activo: boolean) => {
     update.mutate({ id: h.id, data: { activo } as never }, { onSuccess: invalidate });
   };
-  return <Shell><div className="relative z-10 min-h-[100dvh]">
+  return <Shell><div className="relative z-10 min-h-screen">
     <Topbar eyebrow="constancia y rachas" title="Hábitos" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
       <section className="cosmos-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -1487,7 +1487,7 @@ function HabitoModal({ record, pending, onClose, onSubmit }: { record: Habito | 
   };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-5">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -1604,7 +1604,7 @@ function MetasPage() {
       onError: (e: unknown) => toast.error((e as { detail?: string })?.detail ?? 'No se pudo eliminar la meta'),
     });
   };
-  return <Shell><div className="relative z-10 min-h-[100dvh]">
+  return <Shell><div className="relative z-10 min-h-screen">
     <Topbar eyebrow="foco y prioridades" title="Metas del día" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
       <section className="cosmos-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -1723,7 +1723,7 @@ function MetaDiariaModal({ record, fechaInicial, pending, onClose, onSubmit }: {
   };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-5">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -2014,7 +2014,7 @@ function RutinaPage() {
     }));
   }, [todos]);
 
-  return <Shell><div className="relative z-10 min-h-[100dvh]">
+  return <Shell><div className="relative z-10 min-h-screen">
     <Topbar eyebrow="arquitectura del día" title="Rutinas y Bloques" onAdd={() => { setEditing(null); setModal(true); }} />
     <div className="mx-auto max-w-[1180px] space-y-5 px-5 pb-28 sm:px-8 md:px-10">
       
@@ -2328,7 +2328,7 @@ function RutinaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
           <div className="mb-4 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -2535,7 +2535,7 @@ function CategoriesPage() {
     );
   };
 
-  return <Shell><div className="relative z-10 min-h-[100dvh]">
+  return <Shell><div className="relative z-10 min-h-screen">
     <Topbar
       eyebrow="colores, cuentas y fuentes"
       title="Categorías"
@@ -2905,7 +2905,7 @@ function CategoryModal({
   };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={edit} className="space-y-5">
           <div className="mb-4 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -3006,7 +3006,7 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
   };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -3068,6 +3068,17 @@ function TransferenciaModal({ medios, pending, onClose, onSubmit }: { medios: Me
           </div>
           <span className="block"><span className="cosmos-field-label">Monto a transferir</span><input required min="0.01" step="0.01" type="number" className="cosmos-input" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" /></span>
           <span className="block"><span className="cosmos-field-label">Nota o motivo (opcional)</span><input className="cosmos-input" value={form.nota} onChange={(e) => set('nota', e.target.value)} placeholder="Ej. Retiro cajero, recarga Nequi..." /></span>
+          <div className="pt-3 pb-2 sm:hidden">
+            <button
+              disabled={pending || activos.length < 2}
+              type="submit"
+              data-testid="button-save-transferencia-bottom"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-bold text-black shadow-xl transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {pending ? <RefreshCw size={16} className="animate-spin" /> : <ArrowRightLeft size={16} />}
+              {pending ? 'Transfiriendo...' : 'Confirmar transferencia'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -3130,7 +3141,7 @@ function HistorialFinancieroModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="cosmos-card flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-t-[28px] p-5 shadow-2xl sm:rounded-[28px] sm:p-7 pb-10 sm:pb-7"
+        className="cosmos-card flex max-h-[85vh] w-full max-w-2xl flex-col rounded-t-[28px] p-5 shadow-2xl sm:rounded-[28px] sm:p-7 pb-10 sm:pb-7"
       >
         <div className="flex items-start justify-between border-b border-white/6 pb-4">
           <div>
@@ -3196,7 +3207,7 @@ function HistorialFinancieroModal({
         </div>
 
         {/* Lista con scroll interno */}
-        <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-1.5 min-h-[220px] max-h-[50dvh]">
+        <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-1.5 min-h-[220px] max-h-[50vh]">
           {items.length === 0 ? (
             <div className="py-12 text-center text-sm text-white/40">
               No hay registros para el periodo seleccionado.
@@ -3345,7 +3356,7 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
   const title = isIngreso ? (record ? 'Editar ingreso' : 'Nuevo ingreso') : isVariable ? (record ? 'Editar gasto variable' : 'Nuevo gasto variable') : isFijo ? (record ? 'Editar gasto fijo' : 'Nuevo gasto fijo') : (record ? 'Editar kilometraje' : 'Registrar kilometraje');
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4 pb-4 sm:pb-0">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -3487,6 +3498,17 @@ function RecordModal({ kind, record, categorias, medios, pending, onClose, onSub
             {isKm ? <span className="block"><span className="cosmos-field-label">Kilómetros actuales</span><input required min="0" step="0.1" type="number" className="cosmos-input" value={String(form.km_actuales)} onChange={(e) => set('km_actuales', e.target.value)} data-testid="input-km-actuales" placeholder="0" /></span> : <span className="block"><span className="cosmos-field-label">Monto</span><input required min="0" step="0.01" type="number" className="cosmos-input" value={String(form.monto)} onChange={(e) => set('monto', e.target.value)} data-testid="input-monto" placeholder="0" /></span>}
             {!isKm && <span className="block"><span className="cosmos-field-label">Nota (opcional)</span><input className="cosmos-input" value={String(form.nota)} onChange={(e) => set('nota', e.target.value)} placeholder="Un detalle, la ruta, la hora..." /></span>}
           </>}
+          <div className="pt-3 pb-2 sm:hidden">
+            <button
+              disabled={pending}
+              type="submit"
+              data-testid="button-save-record-bottom"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-sm font-bold text-black shadow-xl transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {pending ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+              {pending ? 'Guardando...' : 'Guardar registro'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -3566,7 +3588,7 @@ function FechasPage() {
 
   return (
     <Shell>
-      <div className="relative z-10 min-h-[100dvh]">
+      <div className="relative z-10 min-h-screen">
         <Topbar
           eyebrow="eventos, cumpleaños & alarmas"
           title="Fechas & Recordatorios"
@@ -3865,7 +3887,7 @@ function FechaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -3992,7 +4014,7 @@ function RecordatorioModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
+      <div role="dialog" aria-modal="true" className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7">
         <form onSubmit={submit} className="space-y-4">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
             <div>
@@ -4148,7 +4170,7 @@ function AppRouter() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#07070a] text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#07070a] text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#5de8c4] border-t-transparent" />
           <div className="text-xs text-white/50 tracking-wider uppercase font-semibold">Iniciando Jarvis...</div>
@@ -4176,7 +4198,7 @@ function AppRouter() {
       <Route
         component={() => (
           <Shell>
-            <div className="relative z-10 flex min-h-[100dvh] items-center justify-center p-8 text-center">
+            <div className="relative z-10 flex min-h-screen items-center justify-center p-8 text-center">
               <div>
                 <h1 className="cosmos-title text-3xl font-bold">Esta ruta no existe</h1>
                 <Link

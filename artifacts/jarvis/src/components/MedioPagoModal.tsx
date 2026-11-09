@@ -76,7 +76,7 @@ export const MedioPagoModal: React.FC<MedioPagoModalProps> = ({ record, pending,
       <div
         role="dialog"
         aria-modal="true"
-        className="cosmos-card max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7"
+        className="cosmos-card max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-2xl sm:rounded-[28px] sm:p-7 sm:pb-7"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="mb-6 flex items-center justify-between border-b border-white/6 pb-4">
