@@ -1052,6 +1052,33 @@ POSTGRES_TABLES = [
         creado_en VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text,
         completado_en VARCHAR(50)
     );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS idempotency_records (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        idempotency_key VARCHAR(64) NOT NULL,
+        tool_name VARCHAR(64) NOT NULL,
+        payload_hash CHAR(64) NOT NULL,
+        status VARCHAR(24) NOT NULL DEFAULT 'PROCESSING',
+        response_json TEXT,
+        transaction_id BIGINT,
+        created_at VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text,
+        updated_at VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text,
+        CONSTRAINT uq_idempotency_user UNIQUE(user_id, idempotency_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_idempotency_lookup ON idempotency_records(user_id, idempotency_key);
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS aprendizajes (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        categoria VARCHAR(64) NOT NULL DEFAULT 'general',
+        contenido TEXT NOT NULL,
+        origen VARCHAR(64) NOT NULL DEFAULT 'asistente_voz',
+        creado_en VARCHAR(50) NOT NULL DEFAULT CURRENT_TIMESTAMP::text
+    );
+    CREATE INDEX IF NOT EXISTS idx_aprendizajes_user ON aprendizajes(usuario_id);
     """
 ]
 
@@ -1225,6 +1252,29 @@ SQLITE_SCHEMA = """
         completado_en TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_metas_diarias_user_fecha ON metas_diarias (usuario_id, fecha);
+    CREATE TABLE IF NOT EXISTS idempotency_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        idempotency_key TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PROCESSING' CHECK (status IN ('PROCESSING', 'COMMITTED', 'REJECTED')),
+        response_json TEXT,
+        transaction_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        CONSTRAINT uq_idempotency_user UNIQUE(user_id, idempotency_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_idempotency_lookup ON idempotency_records(user_id, idempotency_key);
+    CREATE TABLE IF NOT EXISTS aprendizajes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        categoria TEXT NOT NULL DEFAULT 'general',
+        contenido TEXT NOT NULL,
+        origen TEXT NOT NULL DEFAULT 'asistente_voz',
+        creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_aprendizajes_user ON aprendizajes(usuario_id);
 """
 
 
@@ -1673,7 +1723,13 @@ app.add_middleware(
     allow_origins=_allowed_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-Idempotency-Key",
+        "X-Payload-Hash",
+    ],
 )
 
 
@@ -3147,11 +3203,30 @@ def widget_moto(user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
 
 
 # ==========================================
-# ASISTENTE DE VOZ
+# ASISTENTE DE VOZ & BFF TOOL EXECUTOR
 # ==========================================
 try:  # ejecución normal: uvicorn backend.main:app
     from backend.assistant.router import create_router as _create_assistant_router
 except ImportError:  # tests o ejecución con el directorio backend/ en sys.path
     from assistant.router import create_router as _create_assistant_router
 
-app.include_router(_create_assistant_router(sys.modules[__name__]))
+_assistant_router = _create_assistant_router(sys.modules[__name__])
+app.include_router(_assistant_router, prefix="/api/assistant")
+app.include_router(_assistant_router, prefix="/api/v1/assistant")
+
+
+@app.get("/api/v1/live/session")
+@app.post("/api/v1/live/session")
+def v1_live_session(user: Usuario = Depends(get_current_user)) -> dict[str, Any]:
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    expires = (datetime.now() + timedelta(minutes=30)).isoformat()
+    new_session_expire = (datetime.now() + timedelta(minutes=2)).isoformat()
+    token_val = gemini_key if gemini_key else secrets.token_urlsafe(32)
+    return {
+        "ephemeral_token": token_val,
+        "model": "models/gemini-3.8-live",
+        "expires_at": expires,
+        "new_session_expire_time": new_session_expire,
+        "session_resumption_allowed": True,
+        "ws_url": "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent",
+    }
