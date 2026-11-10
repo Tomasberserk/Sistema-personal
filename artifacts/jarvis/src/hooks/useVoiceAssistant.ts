@@ -12,6 +12,17 @@ import type { AssistantMessage, PendingConfirmation } from '../types/assistant';
 import { AudioCapture } from '../voice/audioCapture';
 import { AudioPlayback } from '../voice/audioPlayback';
 import { GeminiLiveClient, type ToolCall } from '../voice/geminiLive';
+import {
+  controlNativeTorch,
+  getNativeBattery,
+  launchNativeApp,
+  loadLocalContacts,
+  openWhatsAppDraft,
+  resolveLocalContact,
+  saveLocalContact,
+  startVoiceForegroundService,
+  stopVoiceForegroundService,
+} from '../services/nativeDevice';
 
 export type VoiceStatus = 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -55,6 +66,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
   const currentTurnAssistantTextRef = useRef('');
   const mutedRef = useRef(muted);
   const actionsRef = useRef(options.onActionsExecuted);
+  const pendingWhatsAppRef = useRef<{ phone: string; name: string; message: string } | null>(null);
 
   mutedRef.current = muted;
   actionsRef.current = options.onActionsExecuted;
@@ -76,6 +88,8 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     liveClientRef.current?.disconnect();
     audioPlaybackRef.current?.stop();
     audioCaptureRef.current?.setMuted(true);
+    void stopVoiceForegroundService();
+    pendingWhatsAppRef.current = null;
     setStatus('idle');
     setMessages([]);
     setPending(null);
@@ -92,12 +106,64 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     setStatus('idle');
   }, []);
 
-  // Dispatch de herramientas ejecutadas por Gemini Live
+  // Dispatch de herramientas ejecutadas por Gemini Live (Hardware Nativo Android + BFF Cloud)
   const handleToolCall = useCallback(
     async (toolCall: ToolCall): Promise<Record<string, unknown>> => {
       setStatus('thinking');
       try {
         console.info(`[VoiceAssistant] Ejecutando tool: ${toolCall.name} con parámetros:`, toolCall.args);
+
+        if (toolCall.name === 'control_torch') {
+          const enabled = toolCall.args.state !== 'off';
+          const res = await controlNativeTorch(enabled);
+          if (res.success) {
+            toast.success(enabled ? 'Linterna encendida' : 'Linterna apagada');
+          }
+          return res;
+        }
+
+        if (toolCall.name === 'check_battery') {
+          return await getNativeBattery();
+        }
+
+        if (toolCall.name === 'launch_app') {
+          return await launchNativeApp(String(toolCall.args.app_name || ''));
+        }
+
+        if (toolCall.name === 'guardar_contacto') {
+          const saved = saveLocalContact(
+            String(toolCall.args.nombre || ''),
+            String(toolCall.args.telefono || ''),
+            Array.isArray(toolCall.args.alias) ? toolCall.args.alias.map(String) : [],
+          );
+          return { success: true, contacto: saved };
+        }
+
+        if (toolCall.name === 'whatsapp_preparar_mensaje') {
+          const dest = String(toolCall.args.destinatario || '');
+          const mensaje = String(toolCall.args.mensaje || '');
+          const contact = resolveLocalContact(dest);
+          if (!contact) {
+            return {
+              status: 'CONTACT_NOT_FOUND',
+              known_contacts: loadLocalContacts().map((c) => c.name),
+              message: `No tengo el número de '${dest}'. Pídelo una vez para guardarlo con guardar_contacto.`,
+            };
+          }
+          pendingWhatsAppRef.current = { phone: contact.phone, name: contact.name, message: mensaje };
+          setPending({
+            id: `whatsapp_${Date.now()}`,
+            tool: 'whatsapp_preparar_mensaje',
+            resumen: `WhatsApp a ${contact.name} (+${contact.phone})`,
+            prompt: `¿Confirmas abrir WhatsApp con "${mensaje}" para ${contact.name}?`,
+          });
+          return {
+            status: 'PENDING_CONFIRMATION',
+            destinatario: contact.name,
+            message: `Solicité confirmación en pantalla para abrir WhatsApp con el mensaje listo para ${contact.name}.`,
+          };
+        }
+
         const result = await executeAssistantTool(toolCall.name, toolCall.args);
 
         if (result.status === 'COMMITTED') {
@@ -136,6 +202,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     liveClientRef.current?.disconnect();
     audioPlaybackRef.current?.stop();
     audioCaptureRef.current?.setMuted(true);
+    void stopVoiceForegroundService();
     setStatus('idle');
   }, []);
 
@@ -147,9 +214,19 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
 
     try {
       setStatus('thinking');
+      void startVoiceForegroundService();
 
-      // 1. Aprovisionamiento efímero desde Jarvis Cloud BFF
+      // 1. Aprovisionamiento efímero desde Jarvis Cloud BFF (con fallback local explícito)
       const sessionInfo = await fetchLiveSession();
+      let liveToken = sessionInfo.ephemeral_token;
+      if (sessionInfo.configured === false) {
+        const localKey = typeof window !== 'undefined' ? localStorage.getItem('tomas_gemini_api_key')?.trim() : '';
+        if (localKey) {
+          liveToken = localKey;
+        } else {
+          throw new Error('Falta GEMINI_API_KEY en Render para habilitar la voz Live sin PC.');
+        }
+      }
 
       // 2. Inicializar AudioContext y AudioPlayback
       const AudioCtx =
@@ -175,14 +252,16 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         audioCaptureRef.current = new AudioCapture();
       }
 
-      // 3. Crear e iniciar GeminiLiveClient
+      // 3. Crear e iniciar GeminiLiveClient con fallback multimodelo
       const client = new GeminiLiveClient();
       liveClientRef.current = client;
 
       client.connect({
-        token: sessionInfo.ephemeral_token,
+        token: liveToken,
         wsUrl: sessionInfo.ws_url,
+        wsUrlV1Beta: sessionInfo.ws_url_v1beta,
         model: sessionInfo.model || 'models/gemini-3.8-live',
+        fallbackModels: sessionInfo.fallback_models,
         callbacks: {
           onConnected: () => {
             console.info('[VoiceAssistant] WebSocket conectado con Gemini Live');
@@ -241,11 +320,13 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
             handleError(err);
           },
           onClose: () => {
+            void stopVoiceForegroundService();
             setStatus('idle');
           },
         },
       });
     } catch (err) {
+      void stopVoiceForegroundService();
       console.error('[VoiceAssistant] Error iniciando sesión Live:', err);
       handleError(err);
     }
@@ -284,7 +365,28 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
 
   const confirm = useCallback(
     async (accept: boolean) => {
-      if (!pending || !sessionId) return;
+      if (!pending) return;
+
+      if (pending.id.startsWith('whatsapp_') && pendingWhatsAppRef.current) {
+        const draft = pendingWhatsAppRef.current;
+        pendingWhatsAppRef.current = null;
+        setPending(null);
+        if (!accept) {
+          const cancelMsg = `Envío de WhatsApp a ${draft.name} cancelado.`;
+          setMessages((prev) => [...prev, { id: nuevoId(), role: 'assistant', text: cancelMsg }]);
+          liveClientRef.current?.sendText(`[SISTEMA]: El usuario canceló el envío de WhatsApp a ${draft.name}.`);
+          return;
+        }
+        const openRes = await openWhatsAppDraft(draft.phone, draft.message);
+        const okMsg = openRes.success
+          ? `WhatsApp abierto con el mensaje listo para ${draft.name}. Toca enviar en WhatsApp.`
+          : `No se pudo abrir WhatsApp: ${openRes.error}`;
+        setMessages((prev) => [...prev, { id: nuevoId(), role: 'assistant', text: okMsg }]);
+        liveClientRef.current?.sendText(`[SISTEMA]: ${okMsg}`);
+        return;
+      }
+
+      if (!sessionId) return;
       setStatus('thinking');
       try {
         const response = await assistantConfirm(sessionId, pending.id, accept);
@@ -304,6 +406,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     return () => {
       liveClientRef.current?.disconnect();
       audioPlaybackRef.current?.stop();
+      void stopVoiceForegroundService();
     };
   }, []);
 

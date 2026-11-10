@@ -89,6 +89,9 @@ class LiveSessionResponse(BaseModel):
     new_session_expire_time: str
     session_resumption_allowed: bool
     ws_url: str
+    ws_url_v1beta: str = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+    fallback_models: list[str] = Field(default_factory=list)
+    configured: bool = False
 
 
 def create_router(main_module: Any) -> APIRouter:
@@ -270,6 +273,13 @@ def create_router(main_module: Any) -> APIRouter:
             "new_session_expire_time": new_session_expire,
             "session_resumption_allowed": True,
             "ws_url": "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent",
+            "ws_url_v1beta": "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent",
+            "fallback_models": [
+                "models/gemini-3.8-live",
+                "models/gemini-3.1-flash-live-preview",
+                "models/gemini-2.5-flash-native-audio-latest",
+            ],
+            "configured": bool(gemini_key),
         }
 
     return router

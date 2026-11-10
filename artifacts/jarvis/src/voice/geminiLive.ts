@@ -23,7 +23,9 @@ export interface GeminiLiveCallbacks {
 export interface ConnectOptions {
   token: string;
   wsUrl?: string;
+  wsUrlV1Beta?: string;
   model?: string;
+  fallbackModels?: string[];
   callbacks: GeminiLiveCallbacks;
 }
 
@@ -33,12 +35,39 @@ export class GeminiLiveClient {
   private isIntentionalDisconnect = false;
   private callbacks: GeminiLiveCallbacks | null = null;
   private currentModel = 'models/gemini-3.8-live';
+  private candidateModels: string[] = [
+    'models/gemini-3.8-live',
+    'models/gemini-3.1-flash-live-preview',
+    'models/gemini-2.5-flash-native-audio-latest',
+  ];
+  private candidateIndex = 0;
+  private connectToken = '';
+  private primaryWsUrl = '';
+  private fallbackWsUrl = '';
 
   connect(options: ConnectOptions): void {
     this.callbacks = options.callbacks;
-    this.currentModel = options.model || 'models/gemini-3.8-live';
+    const requested = options.model || 'models/gemini-3.8-live';
+    const extras = options.fallbackModels && options.fallbackModels.length > 0
+      ? options.fallbackModels
+      : ['models/gemini-3.8-live', 'models/gemini-3.1-flash-live-preview', 'models/gemini-2.5-flash-native-audio-latest'];
+    this.candidateModels = Array.from(new Set([requested, ...extras]));
+    this.candidateIndex = 0;
+    this.currentModel = this.candidateModels[0];
+    this.connectToken = options.token;
+    this.primaryWsUrl =
+      options.wsUrl ||
+      'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
+    this.fallbackWsUrl =
+      options.wsUrlV1Beta ||
+      'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
     this.isIntentionalDisconnect = false;
+    this._openSocket();
+  }
+
+  private _openSocket(): void {
     this.isSetupDone = false;
+    this.currentModel = this.candidateModels[this.candidateIndex] || 'models/gemini-2.5-flash-native-audio-latest';
 
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       try {
@@ -49,9 +78,9 @@ export class GeminiLiveClient {
       this.ws = null;
     }
 
-    const rawWsUrl = options.wsUrl || 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
+    const rawWsUrl = this.candidateIndex === 0 ? this.primaryWsUrl : this.fallbackWsUrl;
     const separator = rawWsUrl.includes('?') ? '&' : '?';
-    const finalUrl = `${rawWsUrl}${separator}key=${options.token}`;
+    const finalUrl = `${rawWsUrl}${separator}key=${this.connectToken}`;
 
     this.log(`Conectando a Gemini Live (${this.currentModel})...`);
     this.ws = new WebSocket(finalUrl);
@@ -89,6 +118,19 @@ export class GeminiLiveClient {
 
     this.ws.onclose = (event) => {
       this.log(`WebSocket cerrado. Código: ${event.code}, Razón: ${event.reason || 'ninguna'}`);
+      const isModelReject =
+        !this.isIntentionalDisconnect &&
+        !this.isSetupDone &&
+        (event.code === 1008 || (event.reason || '').toLowerCase().includes('not found')) &&
+        this.candidateIndex < this.candidateModels.length - 1;
+
+      if (isModelReject) {
+        this.candidateIndex += 1;
+        this.log(`Modelo rechazado (${event.code}); reintentando con ${this.candidateModels[this.candidateIndex]}...`);
+        this._openSocket();
+        return;
+      }
+
       this.callbacks?.onClose?.(event);
       this.ws = null;
       this.isSetupDone = false;
@@ -114,21 +156,16 @@ export class GeminiLiveClient {
         systemInstruction: {
           parts: [
             {
-              text: `Eres Tomás, el compañero inteligente, presencia ejecutiva y segundo cerebro de Andrés en Jarvis. Eres directo, cercano, conciso (máximo 1 a 2 oraciones por intervención), cálido y sumamente eficiente. Hablas en español colombiano natural.
+              text: `Eres Tomás, el compañero inteligente, presencia ejecutiva y segundo cerebro de Tomás Barrera en Jarvis. Eres directo, cercano, conciso (máximo 1 a 2 oraciones por intervención), cálido y sumamente eficiente. Hablas en español colombiano natural.
 
-TIENES ACCESO DIRECTO AL BFF CLOUD DE JARVIS:
-- registrar_gasto: Registra gastos con monto, concepto, categoría y medio de pago (Nequi, Bancolombia, Daviplata, Efectivo).
-- registrar_ingreso: Registra ingresos de dinero con monto, fuente y medio de pago.
-- consultar_finanzas: Consulta el saldo total, gastos de hoy y balance del mes.
-- registrar_habito: Marca o desmarca hábitos de vida diaria.
-- consultar_rutina: Consulta el bloque horario actual y qué sigue en el día.
-- registrar_odometro: Actualiza los kilómetros de la moto y calcula el próximo cambio de aceite.
-- record_learning: Registra preferencias, decisiones y aprendizajes personales en la memoria permanente.
+TIENES ACCESO DIRECTO AL BFF CLOUD DE JARVIS Y HARDWARE NATIVO DEL CELULAR (SIN PC):
+- Finanzas, Hábitos y Moto: registrar_gasto, registrar_ingreso, consultar_finanzas, registrar_habito, consultar_rutina, registrar_odometro, record_learning.
+- Control Nativo Android: control_torch (linterna real vía CameraManager), check_battery (batería), launch_app (abrir WhatsApp, Instagram, Cámara, Spotify, Nequi, etc.), whatsapp_preparar_mensaje (abre chat directo con el mensaje pre-llenado) y guardar_contacto.
 
 REGLAS DE ORO DE SEGURIDAD (INVIOLABLES):
-1. REGLA 1: NUNCA afirmes verbalmente que un gasto, ingreso o hábito fue guardado hasta que la herramienta correspondiente haya retornado respuesta exitosa (COMMITTED). Si la herramienta falla o retorna error, explica el fallo con honestidad y brevedad.
-2. REGLA 2: Si consultas finanzas o rutina, di las cifras en pesos colombianos ($ COP) con total claridad y exactitud.
-3. Respuestas orales cortas, al grano, sin rodeos ni preámbulos innecesarios.`,
+1. REGLA 1: NUNCA afirmes que un gasto, ingreso, hábito o encendido de linterna funcionó hasta que la herramienta correspondiente retorne éxito confirmado ('COMMITTED' o 'success: true'). Si falla o falta configuración, dilo con honestidad y brevedad.
+2. REGLA 2: Para enviar un mensaje de WhatsApp usa siempre whatsapp_preparar_mensaje, pide confirmación explícita del usuario y nunca inventes números de contacto si no están guardados.
+3. REGLA 3: Si consultas finanzas o rutina, di las cifras en pesos colombianos ($ COP) con claridad.`,
             },
           ],
         },
@@ -209,7 +246,7 @@ REGLAS DE ORO DE SEGURIDAD (INVIOLABLES):
               },
               {
                 name: 'record_learning',
-                description: 'Registra en la memoria permanente un aprendizaje, preferencia o decisión sobre Andrés.',
+                description: 'Registra en la memoria permanente un aprendizaje, preferencia o decisión sobre Tomás Barrera.',
                 parameters: {
                   type: 'OBJECT',
                   properties: {
@@ -218,6 +255,58 @@ REGLAS DE ORO DE SEGURIDAD (INVIOLABLES):
                     contexto: { type: 'STRING', description: 'Detalle o justificación contextual' },
                   },
                   required: ['categoria', 'aprendizaje'],
+                },
+              },
+              {
+                name: 'control_torch',
+                description: 'Enciende o apaga nativamente la linterna LED del celular sin requerir PC ni Termux.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    state: { type: 'STRING', description: '"on" para encender, "off" para apagar', enum: ['on', 'off'] },
+                  },
+                  required: ['state'],
+                },
+              },
+              {
+                name: 'check_battery',
+                description: 'Consulta el nivel de batería, carga y temperatura del dispositivo.',
+                parameters: { type: 'OBJECT', properties: {} },
+              },
+              {
+                name: 'launch_app',
+                description: 'Abre nativamente una app instalada en Android (whatsapp, instagram, camara, spotify, nequi, bancolombia, ajustes).',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    app_name: { type: 'STRING', description: 'Nombre o paquete de la app' },
+                  },
+                  required: ['app_name'],
+                },
+              },
+              {
+                name: 'whatsapp_preparar_mensaje',
+                description: 'Prepara un borrador de WhatsApp con el contacto y texto para que el usuario lo confirme y envíe.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    destinatario: { type: 'STRING', description: 'Alias del contacto (ej. mamá, mi número) o teléfono' },
+                    mensaje: { type: 'STRING', description: 'Mensaje a redactar' },
+                  },
+                  required: ['destinatario', 'mensaje'],
+                },
+              },
+              {
+                name: 'guardar_contacto',
+                description: 'Guarda un contacto telefónico de confianza localmente en Jarvis para WhatsApp rápido.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    nombre: { type: 'STRING', description: 'Nombre o alias principal (ej. Mamá, Mi número)' },
+                    telefono: { type: 'STRING', description: 'Teléfono móvil' },
+                    alias: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Apodos opcionales' },
+                  },
+                  required: ['nombre', 'telefono'],
                 },
               },
             ],

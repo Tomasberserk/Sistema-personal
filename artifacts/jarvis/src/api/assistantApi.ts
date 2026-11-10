@@ -11,13 +11,16 @@ async function assistantFetch<T>(path: string, init: RequestInit): Promise<T> {
   const timeout = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
+    const mergedHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((init.headers as Record<string, string>) || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
     const response = await fetch(`${API_BASE}${path}`, {
       ...init,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: mergedHeaders,
     });
 
     if (!response.ok) {
@@ -82,6 +85,9 @@ export interface LiveSessionInfo {
   new_session_expire_time: string;
   session_resumption_allowed: boolean;
   ws_url: string;
+  ws_url_v1beta?: string;
+  fallback_models?: string[];
+  configured?: boolean;
 }
 
 export function executeAssistantTool(
